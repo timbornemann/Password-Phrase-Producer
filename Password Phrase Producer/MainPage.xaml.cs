@@ -1,4 +1,6 @@
-﻿namespace Password_Phrase_Producer
+﻿using Password_Phrase_Producer.Password_generation_techniques.tbv_techniques;
+
+namespace Password_Phrase_Producer
 {
     public partial class MainPage : ContentPage
     {
@@ -9,16 +11,15 @@
             InitializeComponent();
         }
 
-        private void OnCounterClicked(object sender, EventArgs e)
+        private void Button_Clicked(object sender, EventArgs e)
         {
-            count++;
+            TBV1WithErrors tbv1 = new TBV1WithErrors();
+            string password = PasswordField.Text;
+            int code1 = int.Parse(Code1Field.Text);
+            int code2 = int.Parse(Code2Field.Text);
+            int code3 = int.Parse(Code3Field.Text);
+            ResultField.Text = tbv1.Encrypt(password, code1, code2, code3);
 
-            if (count == 1)
-                CounterBtn.Text = $"Clicked {count} time";
-            else
-                CounterBtn.Text = $"Clicked {count} times";
-
-            SemanticScreenReader.Announce(CounterBtn.Text);
         }
     }
 
