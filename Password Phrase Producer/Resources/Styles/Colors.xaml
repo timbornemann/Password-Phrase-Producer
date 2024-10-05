@@ -6,12 +6,19 @@
 
     <!-- Note: For Android please see also Platforms\Android\Resources\values\colors.xml -->
 
-    <Color x:Key="Primary">#512BD4</Color>
-    <Color x:Key="PrimaryDark">#ac99ea</Color>
-    <Color x:Key="PrimaryDarkText">#242424</Color>
-    <Color x:Key="Secondary">#DFD8F7</Color>
-    <Color x:Key="SecondaryDarkText">#9880e5</Color>
-    <Color x:Key="Tertiary">#2B0B98</Color>
+    <Color x:Key="Primary">#353B48</Color>
+    <!-- Dunkles Blau-Grau, modern und schlicht -->
+    <Color x:Key="PrimaryDark">#2C3A47</Color>
+    <!-- Etwas dunkler für tiefere Akzente -->
+    <Color x:Key="PrimaryDarkText">#F5F6FA</Color>
+    <!-- Helles Grau für Kontrast im dunklen Design -->
+    <Color x:Key="Secondary">#4BCFFA</Color>
+    <!-- Dezentes Blau für sekundäre Highlights -->
+    <Color x:Key="SecondaryDarkText">#00A8FF</Color>
+    <!-- Hellblau für sekundäre Texte oder Akzente -->
+    <Color x:Key="Tertiary">#1E272E</Color>
+    <!-- Sehr dunkles Grau, fast schwarz, für Elemente wie Hintergrund oder Ränder -->
+
 
     <Color x:Key="White">White</Color>
     <Color x:Key="Black">Black</Color>
