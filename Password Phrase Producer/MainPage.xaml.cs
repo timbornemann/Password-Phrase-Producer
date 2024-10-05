@@ -1,26 +1,87 @@
-﻿using Password_Phrase_Producer.Password_generation_techniques.tbv_techniques;
+﻿using Password_Phrase_Producer.PasswordGenerationTechniques.ConcatenationTechniques;
+using Password_Phrase_Producer.Windows;
+using PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques;
 
 namespace Password_Phrase_Producer
 {
     public partial class MainPage : ContentPage
     {
-        int count = 0;
+        
+
+        TbvUiPage TBVUiPage;
 
         public MainPage()
         {
             InitializeComponent();
         }
 
-        private void Button_Clicked(object sender, EventArgs e)
-        {
-            TBV1WithErrors tbv1 = new TBV1WithErrors();
-            string password = PasswordField.Text;
-            int code1 = int.Parse(Code1Field.Text);
-            int code2 = int.Parse(Code2Field.Text);
-            int code3 = int.Parse(Code3Field.Text);
-            ResultField.Text = tbv1.Encrypt(password, code1, code2, code3);
 
+
+
+        private void OnMenuClicked(object sender, EventArgs e)
+        {
+            ShowMenuButtons();
+            if (this.TBVUiPage != null)
+            {
+                Content.Remove(this.TBVUiPage);
+            }
         }
+
+        private void OnAlternateWordsClicked(object sender, EventArgs e)
+        {
+            HideMenuButtons();
+        }
+
+        private void OnTBV1WithErrorsClicked(object sender, EventArgs e)
+        {
+            HideMenuButtons();
+
+            this.TBVUiPage = new TBVUiPage(new TBV1WithErrors());
+            Content.Add(this.TBVUiPage);
+        }
+
+        private void OnTBV1Clicked(object sender, EventArgs e)
+        {
+            HideMenuButtons();
+            this.TBVUiPage = new TBVUiPage(new TBV1());
+            Content.Add(this.TBVUiPage);
+        }
+
+        private void OnTBV2Clicked(object sender, EventArgs e)
+        {
+            HideMenuButtons();
+            this.TBVUiPage = new TBVUiPage(new TBV2());
+            Content.Add(this.TBVUiPage);
+        }
+
+        private void OnTBV3Clicked(object sender, EventArgs e)
+        {
+            HideMenuButtons();
+            this.TBVUiPage = new TBVUiPage(new TBV3());
+            Content.Add(this.TBVUiPage);
+        }
+
+        public void HideMenuButtons()
+        {
+            L1.IsVisible = false;
+            B1.IsVisible = false;
+            B2.IsVisible = false;
+            B3.IsVisible = false;
+            B4.IsVisible = false;
+            B5.IsVisible = false;
+        }
+
+        public void ShowMenuButtons()
+        {
+            L1.IsVisible = true;
+            B1.IsVisible = true;
+            B2.IsVisible = true;
+            B3.IsVisible = true;
+            B4.IsVisible = true;
+            B5.IsVisible = true;
+        }
+
+
     }
 
 }
