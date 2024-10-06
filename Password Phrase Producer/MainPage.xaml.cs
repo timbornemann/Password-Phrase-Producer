@@ -1,5 +1,5 @@
 ﻿using Password_Phrase_Producer.PasswordGenerationTechniques.ConcatenationTechniques;
-using Password_Phrase_Producer.Windows;
+using Password_Phrase_Producer.Windows.PasswordGenerationWindows;
 using PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques;
 
 namespace Password_Phrase_Producer
@@ -8,57 +8,61 @@ namespace Password_Phrase_Producer
     {
         
 
-        TbvUiPage TBVUiPage;
-
+       TbvUiView TbvUiPage;
+        ConcatenationTechniquesUiPage ConcatenationTechniquesUiPage;
         public MainPage()
         {
             InitializeComponent();
         }
 
-
-
-
         private void OnMenuClicked(object sender, EventArgs e)
         {
             ShowMenuButtons();
-            if (this.TBVUiPage != null)
+            if (this.TbvUiPage != null)
             {
-                Content.Remove(this.TBVUiPage);
+                Content.Remove(this.TbvUiPage);
+                this.TbvUiPage = null;
+            }
+            if(this.ConcatenationTechniquesUiPage != null)
+            {
+                Content.Remove(this.ConcatenationTechniquesUiPage);
+                this.ConcatenationTechniquesUiPage = null;
             }
         }
 
         private void OnAlternateWordsClicked(object sender, EventArgs e)
         {
             HideMenuButtons();
+            this.ConcatenationTechniquesUiPage = new ConcatenationTechniquesUiPage(new AlternatingUpDownChaining());
+            Content.Add(this.ConcatenationTechniquesUiPage);
         }
 
         private void OnTBV1WithErrorsClicked(object sender, EventArgs e)
         {
             HideMenuButtons();
-
-            this.TBVUiPage = new TBVUiPage(new TBV1WithErrors());
-            Content.Add(this.TBVUiPage);
+            this.TbvUiPage = new TbvUiView(new TBV1WithErrors());
+            Content.Add(this.TbvUiPage);          
         }
 
         private void OnTBV1Clicked(object sender, EventArgs e)
         {
             HideMenuButtons();
-            this.TBVUiPage = new TBVUiPage(new TBV1());
-            Content.Add(this.TBVUiPage);
+            this.TbvUiPage = new TbvUiView(new TBV1());
+            Content.Add(this.TbvUiPage);
         }
 
         private void OnTBV2Clicked(object sender, EventArgs e)
         {
             HideMenuButtons();
-            this.TBVUiPage = new TBVUiPage(new TBV2());
-            Content.Add(this.TBVUiPage);
+            this.TbvUiPage = new TbvUiView(new TBV2());
+            Content.Add(this.TbvUiPage);
         }
 
         private void OnTBV3Clicked(object sender, EventArgs e)
         {
             HideMenuButtons();
-            this.TBVUiPage = new TBVUiPage(new TBV3());
-            Content.Add(this.TBVUiPage);
+            this.TbvUiPage = new TbvUiView(new TBV3());
+            Content.Add(this.TbvUiPage);
         }
 
         public void HideMenuButtons()
