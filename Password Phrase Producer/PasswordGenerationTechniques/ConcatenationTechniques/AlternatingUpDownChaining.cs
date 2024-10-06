@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Password_Phrase_Producer.PasswordGenerationTechniques.ConcatenationTechniques
 {
-    internal class AlternatingUpDownChaining
+    internal class AlternatingUpDownChaining : IConcatenationTechnique
     {
         public string EncryptPassword(IEnumerable<string> plainTextWords)
         {
