@@ -23,7 +23,6 @@ namespace PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques
             string intermediatePassword = userPassword;
             int lengthMultiplier = (code1 + code2 + code3) / 3;
 
-            // Main encryption loop
             for (int i = 1; i < lengthMultiplier + code1; i++)
             {
                 if (IsCancelled) return "";
@@ -38,11 +37,9 @@ namespace PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques
                 intermediatePassword = helper.ShuffleString(intermediatePassword, code1, code2, code3);
             }
 
-            // Reverse encryption
             string reversedPassword = new string(intermediatePassword.Reverse().ToArray());
             reversedPassword = helper.ShuffleString(reversedPassword, code1, code3, code2);
 
-            // Combine forward and reverse strings
             string finalPassword = "";
             for (int i = 0; i < intermediatePassword.Length; i++)
             {

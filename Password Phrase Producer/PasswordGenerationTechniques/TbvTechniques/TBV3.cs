@@ -23,7 +23,6 @@ namespace PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques
             string tempPassword = userPassword;
             int lengthMultiplier = ((code1 + code2 + code3) / 3) + 1;
 
-            // First encryption loop
             for (int i = 1; i <= lengthMultiplier; i++)
             {
                 if (Cancellation) return "";
@@ -35,7 +34,6 @@ namespace PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques
                 tempPassword = helper.ShuffleString(tempPassword, code1, code2, code3);
             }
 
-            // Second encryption loop
             for (int i = 0; i < code3; i++)
             {
                 if (Cancellation) return "";
@@ -43,7 +41,6 @@ namespace PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques
                 tempPassword = helper.ShuffleString(tempPassword, code2, code1, code3);
             }
 
-            // Third encryption loop
             for (int i = ((code3 + code2) / 2) + userPassword.Length; i > 0; i--)
             {
                 if (Cancellation) return "";
@@ -52,7 +49,6 @@ namespace PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques
                     i + (((code1 + code3) + i) + ((code3 + code2) * i)), shuffledCharactersArray.Length - 1)];
             }
 
-            // Fourth encryption loop
             for (int i = 1; i < (code1 * lengthMultiplier + 1); i++)
             {
                 if (Cancellation) return "";
@@ -61,7 +57,6 @@ namespace PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques
                     ((i + code3) + (i * code2) + (i * code1) * code1), shuffledCharactersArray.Length - 1)];
             }
 
-            // Fifth encryption loop
             for (int i = 0; i < code3; i++)
             {
                 if (Cancellation) return "";
@@ -69,11 +64,10 @@ namespace PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques
                 tempPassword = helper.ShuffleString(tempPassword, code1, code2, code3);
             }
 
-            // Reverse encryption
             string reversedPassword = new string(tempPassword.Reverse().ToArray());
             reversedPassword = helper.ShuffleString(reversedPassword, code1, code3, code2);
 
-            // Reverse encryption loop
+
             reversedPassword = helper.ShuffleString(reversedPassword, code1, code3, code2);
             char[] reversedPasswordChars = reversedPassword.ToCharArray();
             string finalPassword = "";

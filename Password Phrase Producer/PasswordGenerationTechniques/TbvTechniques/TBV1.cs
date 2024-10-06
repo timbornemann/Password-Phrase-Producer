@@ -166,7 +166,6 @@ namespace PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques
             int[] encodedNumbers = new int[passwordChars.Length];
             string encryptedPassword = " ";
 
-            // Main encryption loop
             for (int i = 0; i < passwordChars.Length; i++)
             {
                 if (IsCancelled) return "";
@@ -182,7 +181,6 @@ namespace PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques
                 encryptedPassword += allCharactersArray[helper.ValidateIndex(encodedNumbers[i], 104)];
             }
 
-            // Extension with Code1
             for (int i = 0; i < code1; i++)
             {
                 if (IsCancelled) return "";
@@ -192,7 +190,6 @@ namespace PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques
                 encryptedPassword += allCharactersArray[helper.ValidateIndex((code2 * i + code2) * 2 + i + (code1 - i + code3) - 3 + i, 104)];
             }
 
-            // Reverse encryption
             string reversedPassword = new string(encryptedPassword.Reverse().ToArray());
             char[] reversedChars = reversedPassword.ToCharArray();
             char[] encryptedChars = encryptedPassword.ToCharArray();
