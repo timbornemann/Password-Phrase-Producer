@@ -14,11 +14,8 @@
             var window = base.CreateWindow(activationState);
 
             #if WINDOWS
-                if (DeviceInfo.Idiom == DeviceIdiom.Desktop)
-                {
-                  window.Width = 300;
-                  window.Height = 500;
-                }
+                  window.Width = 350;
+                  window.Height = 600;            
             #endif
 
             return window;
