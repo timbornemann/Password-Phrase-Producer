@@ -27,6 +27,17 @@
                Margin="10"
                x:Name="L1"/>
 
+        <Button Text="1 Word Password"
+        BackgroundColor="#4CAF50"
+        TextColor="White"
+        CornerRadius="25"
+        FontSize="18"
+        HeightRequest="50"
+        Margin="5"
+        HorizontalOptions="FillAndExpand"
+        Clicked="OneWordPasswordClicked"
+        x:Name="B6"/>
+        
         <Button Text="Alternate Words"
                 BackgroundColor="#4CAF50"
                 TextColor="White"

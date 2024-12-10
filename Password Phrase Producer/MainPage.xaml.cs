@@ -1,4 +1,5 @@
 ﻿using Password_Phrase_Producer.PasswordGenerationTechniques.ConcatenationTechniques;
+using Password_Phrase_Producer.PasswordGenerationTechniques.HashBasedTechniques;
 using Password_Phrase_Producer.Windows.PasswordGenerationWindows;
 using PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques;
 
@@ -8,8 +9,9 @@ namespace Password_Phrase_Producer
     {
         
 
-       TbvUiView TbvUiPage;
+        TbvUiPage TbvUiPage;
         ConcatenationTechniquesUiPage ConcatenationTechniquesUiPage;
+        HachBasedTechniquesUiPage HachBasedTechniquesUiPage;
         public MainPage()
         {
             InitializeComponent();
@@ -28,6 +30,12 @@ namespace Password_Phrase_Producer
                 Content.Remove(this.ConcatenationTechniquesUiPage);
                 this.ConcatenationTechniquesUiPage = null;
             }
+
+            if (this.HachBasedTechniquesUiPage != null)
+            {
+                Content.Remove(this.HachBasedTechniquesUiPage);
+                this.HachBasedTechniquesUiPage = null;
+            }
         }
 
         private void OnAlternateWordsClicked(object sender, EventArgs e)
@@ -37,31 +45,40 @@ namespace Password_Phrase_Producer
             Content.Add(this.ConcatenationTechniquesUiPage);
         }
 
+        private void OneWordPasswordClicked(object sender, EventArgs e)
+        {
+            HideMenuButtons();
+            this.HachBasedTechniquesUiPage = new HachBasedTechniquesUiPage(new DeterministicHashPasswordGenerator());
+            Content.Add(this.HachBasedTechniquesUiPage);
+        }
+
+
+
         private void OnTBV1WithErrorsClicked(object sender, EventArgs e)
         {
             HideMenuButtons();
-            this.TbvUiPage = new TbvUiView(new TBV1WithErrors());
+            this.TbvUiPage = new TbvUiPage(new TBV1WithErrors());
             Content.Add(this.TbvUiPage);          
         }
 
         private void OnTBV1Clicked(object sender, EventArgs e)
         {
             HideMenuButtons();
-            this.TbvUiPage = new TbvUiView(new TBV1());
+            this.TbvUiPage = new TbvUiPage(new TBV1());
             Content.Add(this.TbvUiPage);
         }
 
         private void OnTBV2Clicked(object sender, EventArgs e)
         {
             HideMenuButtons();
-            this.TbvUiPage = new TbvUiView(new TBV2());
+            this.TbvUiPage = new TbvUiPage(new TBV2());
             Content.Add(this.TbvUiPage);
         }
 
         private void OnTBV3Clicked(object sender, EventArgs e)
         {
             HideMenuButtons();
-            this.TbvUiPage = new TbvUiView(new TBV3());
+            this.TbvUiPage = new TbvUiPage(new TBV3());
             Content.Add(this.TbvUiPage);
         }
 
@@ -73,6 +90,7 @@ namespace Password_Phrase_Producer
             B3.IsVisible = false;
             B4.IsVisible = false;
             B5.IsVisible = false;
+            B6.IsVisible = false;
         }
 
         public void ShowMenuButtons()
@@ -83,9 +101,8 @@ namespace Password_Phrase_Producer
             B3.IsVisible = true;
             B4.IsVisible = true;
             B5.IsVisible = true;
+            B6.IsVisible = true;
         }
-
-
     }
 
 }

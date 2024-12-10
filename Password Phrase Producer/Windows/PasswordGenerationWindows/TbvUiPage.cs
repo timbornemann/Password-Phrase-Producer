@@ -2,7 +2,7 @@ using Password_Phrase_Producer.PasswordGenerationTechniques.TbvTechniques;
 
 namespace Password_Phrase_Producer.Windows.PasswordGenerationWindows;
 
-public partial class TbvUiView : ContentView
+public partial class TbvUiPage : ContentView
 {
     private Entry passwordEntry;
     private Entry code1Entry;
@@ -11,7 +11,7 @@ public partial class TbvUiView : ContentView
     private Entry resultEntry;
     Itbv tbv;
 
-    public TbvUiView(Itbv itbv)
+    public TbvUiPage(Itbv itbv)
     {
         tbv = itbv;
 
