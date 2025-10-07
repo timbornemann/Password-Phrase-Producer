@@ -1,0 +1,51 @@
+name: Build Android and Windows Packages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build MAUI Packages
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install MAUI workload
+        run: dotnet workload install maui --ignore-failed-sources
+        shell: pwsh
+
+      - name: Restore dependencies
+        run: dotnet restore "./Password Phrase Producer/Password Phrase Producer.sln"
+        shell: pwsh
+
+      - name: Publish Android APK
+        run: dotnet publish "./Password Phrase Producer/Password Phrase Producer.sln" -c Release -f net8.0-android
+        shell: pwsh
+
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: |
+            Password Phrase Producer\bin\Release\net8.0-android\publish\*.apk
+
+      - name: Publish Windows portable package
+        run: dotnet publish "./Password Phrase Producer/Password Phrase Producer.sln" -c Release -f net8.0-windows10.0.19041.0 -p:RuntimeIdentifier=win10-x64 -p:SelfContained=true -p:WindowsPackageType=None
+        shell: pwsh
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-portable
+          path: |
+            Password Phrase Producer\bin\Release\net8.0-windows10.0.19041.0\win10-x64\publish\**
