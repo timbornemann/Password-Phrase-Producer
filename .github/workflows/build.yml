@@ -96,7 +96,7 @@ jobs:
         with:
           name: android-apk
           path: |
-            Password Phrase Producer\bin\Release\net8.0-android\publish\*.apk
+            Password Phrase Producer\bin\Release\net8.0-android\publish\*-Signed.apk
 
       - name: Restore Windows signing certificate
         if: ${{ env.HAS_WINDOWS_CERTIFICATE == 'true' }}
