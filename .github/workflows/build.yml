@@ -123,7 +123,7 @@ jobs:
             -c Release `
             -f net8.0-windows10.0.19041.0 `
             -p:RuntimeIdentifier=win10-x64 `
-            -p:WindowsPackageType=msix `
+            -p:WindowsPackageType=MSIX `
             -p:ApplicationDisplayVersion=$env:APP_VERSION `
             -p:ApplicationVersion=$env:APP_BUILD `
             -p:PackageVersion=$env:APP_VERSION_WINDOWS `
