@@ -161,7 +161,7 @@ namespace PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques
                 _ => 0
             };
 
-            if (limit == 0) return null;
+            if (limit == 0) return Array.Empty<int[]>();
 
             var codeList = new int[(int)Math.Pow(limit, 3)][];
             int index = 0;
