@@ -4,7 +4,7 @@ using Password_Phrase_Producer.PasswordGenerationTechniques.HashBasedTechniques;
 
 namespace Password_Phrase_Producer.Windows.PasswordGenerationWindows;
 
-internal partial class HachBasedTechniquesUiPage : ContentView
+public partial class HachBasedTechniquesUiPage : ContentView
 {
     private readonly IHashBasedTechniques hashBasedTechnique;
 
