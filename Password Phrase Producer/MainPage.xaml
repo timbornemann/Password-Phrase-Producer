@@ -2,96 +2,47 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Password_Phrase_Producer.MainPage"
-             >
+             BackgroundColor="#1E1E1E">
 
-    
-
-    <VerticalStackLayout x:Name="Content" Padding="20" BackgroundColor="#1E1E1E">
-
+    <Grid RowDefinitions="Auto,*" Padding="20" RowSpacing="20">
         <Button Text="Menu"
-                BackgroundColor="White"
-                TextColor="Black"
-                CornerRadius="25"
-                FontSize="18"
-                HeightRequest="50"
-                Margin="5"
-                HorizontalOptions="FillAndExpand"
-                Clicked="OnMenuClicked"/>
+                Style="{StaticResource PrimaryActionButtonStyle}"
+                Command="{Binding ShowMenuCommand}"/>
 
+        <VerticalStackLayout Grid.Row="1" Spacing="20">
+            <Label Text="Wähle den Modus aus:"
+                   FontSize="24"
+                   HorizontalOptions="Center"
+                   TextColor="White"
+                   IsVisible="{Binding IsMenuVisible}"/>
 
-        <!-- Auswahlmenü -->
-        <Label Text="Wähle den Modus aus:"
-               TextColor="White"
-               FontSize="24"
-               HorizontalOptions="Center"
-               Margin="10"
-               x:Name="L1"/>
+            <CollectionView x:Name="ModeCollection"
+                            ItemsSource="{Binding ModeOptions}"
+                            SelectionMode="Single"
+                            IsVisible="{Binding IsMenuVisible}"
+                            SelectedItem="{Binding SelectedMode}"
+                            SelectionChangedCommand="{Binding SelectModeCommand}"
+                            SelectionChangedCommandParameter="{Binding Source={x:Reference ModeCollection}, Path=SelectedItem}">
+                <CollectionView.ItemsLayout>
+                    <GridItemsLayout Orientation="Vertical" Span="1" />
+                </CollectionView.ItemsLayout>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Frame Padding="15" Margin="0,0,0,15" HasShadow="False" BackgroundColor="#2A2A2A" CornerRadius="15">
+                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="12">
+                                <Label Text="{Binding Icon}" FontSize="24" VerticalOptions="Center" IsVisible="{Binding Icon}"/>
+                                <Label Text="{Binding Title}" Grid.Column="1" FontSize="20" FontAttributes="Bold"/>
+                                <Label Text="{Binding Description}" Grid.ColumnSpan="2" Grid.Row="1" FontSize="14" Opacity="0.8"/>
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
 
-        <Button Text="1 Word Password"
-        BackgroundColor="#4CAF50"
-        TextColor="White"
-        CornerRadius="25"
-        FontSize="18"
-        HeightRequest="50"
-        Margin="5"
-        HorizontalOptions="FillAndExpand"
-        Clicked="OneWordPasswordClicked"
-        x:Name="B6"/>
-        
-        <Button Text="Alternate Words"
-                BackgroundColor="#4CAF50"
-                TextColor="White"
-                CornerRadius="25"
-                FontSize="18"
-                HeightRequest="50"
-                Margin="5"
-                HorizontalOptions="FillAndExpand"
-                Clicked="OnAlternateWordsClicked"
-                x:Name="B1"/>
-
-        <Button Text="TBV1 With Errors"
-                BackgroundColor="#4CAF50"
-                TextColor="White"
-                CornerRadius="25"
-                FontSize="18"
-                HeightRequest="50"
-                Margin="5"
-                HorizontalOptions="FillAndExpand"
-                Clicked="OnTBV1WithErrorsClicked"
-                x:Name="B2"/>
-
-        <Button Text="TBV1"
-                BackgroundColor="#4CAF50"
-                TextColor="White"
-                CornerRadius="25"
-                FontSize="18"
-                HeightRequest="50"
-                Margin="5"
-                HorizontalOptions="FillAndExpand"
-                Clicked="OnTBV1Clicked"
-                x:Name="B3"/>
-
-        <Button Text="TBV2"
-                BackgroundColor="#4CAF50"
-                TextColor="White"
-                CornerRadius="25"
-                FontSize="18"
-                HeightRequest="50"
-                Margin="5"
-                HorizontalOptions="FillAndExpand"
-                Clicked="OnTBV2Clicked"
-                x:Name="B4"/>
-
-        <Button Text="TBV3"
-                BackgroundColor="#4CAF50"
-                TextColor="White"
-                CornerRadius="25"
-                FontSize="18"
-                HeightRequest="50"
-                Margin="5"
-                HorizontalOptions="FillAndExpand"
-                Clicked="OnTBV3Clicked"
-                x:Name="B5"/>
-    </VerticalStackLayout>
-
+            <ContentPresenter Content="{Binding CurrentContent}"
+                              IsVisible="{Binding IsContentVisible}"
+                              HorizontalOptions="FillAndExpand"
+                              VerticalOptions="FillAndExpand"/>
+        </VerticalStackLayout>
+    </Grid>
 </ContentPage>
