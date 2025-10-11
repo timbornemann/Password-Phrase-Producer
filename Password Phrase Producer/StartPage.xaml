@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:Password_Phrase_Producer"
+             x:Class="Password_Phrase_Producer.StartPage"
+             BackgroundColor="#121212"
+             Padding="0">
+    <ScrollView>
+        <VerticalStackLayout Spacing="24"
+                             Padding="24,48,24,36">
+            <VerticalStackLayout Spacing="8">
+                <Label Text="Password Phrase Producer"
+                       FontSize="32"
+                       TextColor="White"
+                       FontAttributes="Bold"/>
+                <Label Text="Wähle einen sicheren Generator aus oder entdecke neue Möglichkeiten deine Passphrasen zu erstellen."
+                       TextColor="#D0D0D0"
+                       FontSize="16"/>
+            </VerticalStackLayout>
+
+            <Border StrokeThickness="0"
+                    BackgroundColor="#1E1E1E"
+                    Padding="18">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="20" />
+                </Border.StrokeShape>
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Schnellstart"
+                           FontSize="20"
+                           TextColor="White"
+                           FontAttributes="Bold"/>
+                    <Label Text="Tippe auf eine Karte um den Modus zu öffnen."
+                           TextColor="#B0B0B0"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <CollectionView ItemsSource="{Binding ModeOptions}"
+                            SelectionMode="None">
+                <CollectionView.ItemsLayout>
+                    <VerticalGridItemsLayout Span="1" ItemSpacing="18"/>
+                </CollectionView.ItemsLayout>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="local:PasswordModeOption">
+                        <Border BackgroundColor="#1E1E1E"
+                                Padding="20"
+                                StrokeThickness="0">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="24" />
+                            </Border.StrokeShape>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding BindingContext.NavigateToModeCommand, Source={RelativeSource AncestorType={x:Type local:StartPage}}}"
+                                                     CommandParameter="{Binding}"/>
+                            </Border.GestureRecognizers>
+                            <Grid ColumnDefinitions="Auto,*"
+                                  RowDefinitions="Auto,Auto"
+                                  ColumnSpacing="18">
+                                <Frame Padding="14"
+                                       HasShadow="False"
+                                       BackgroundColor="#2D2D2D"
+                                       CornerRadius="18"
+                                       VerticalOptions="Start"
+                                       HeightRequest="56"
+                                       WidthRequest="56">
+                                    <Label Text="{Binding Icon}"
+                                           FontSize="26"
+                                           HorizontalOptions="Center"
+                                           VerticalOptions="Center"/>
+                                </Frame>
+                                <Label Grid.Column="1"
+                                       Text="{Binding Title}"
+                                       FontSize="20"
+                                       FontAttributes="Bold"
+                                       TextColor="White"/>
+                                <Label Grid.Column="1"
+                                       Grid.Row="1"
+                                       Text="{Binding Description}"
+                                       FontSize="14"
+                                       TextColor="#B0B0B0"
+                                       LineBreakMode="WordWrap"/>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
