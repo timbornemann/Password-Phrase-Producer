@@ -154,7 +154,7 @@ namespace PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques
         };
 
         private TBVHelper helper = new TBVHelper();
-        private string resultWithoutSpaces;
+        private string resultWithoutSpaces = string.Empty;
         public static bool IsCancelled { get; set; } = false;
 
 

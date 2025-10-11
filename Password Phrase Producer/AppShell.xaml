@@ -5,8 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:local="clr-namespace:Password_Phrase_Producer"
     Title="Password Phrase Producer"
-    FlyoutBackgroundColor="#1A1A1A"
-    FlyoutForegroundColor="White">
+    FlyoutBackgroundColor="#1A1A1A">
 
     <FlyoutItem Title="Startseite"
                 Route="home"

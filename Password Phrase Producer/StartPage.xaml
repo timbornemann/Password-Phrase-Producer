@@ -37,7 +37,7 @@
             <CollectionView ItemsSource="{Binding ModeOptions}"
                             SelectionMode="None">
                 <CollectionView.ItemsLayout>
-                    <VerticalGridItemsLayout Span="1" ItemSpacing="18"/>
+                    <GridItemsLayout Orientation="Vertical" Span="1" ItemSpacing="18"/>
                 </CollectionView.ItemsLayout>
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="local:PasswordModeOption">

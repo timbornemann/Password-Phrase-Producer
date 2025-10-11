@@ -28,10 +28,14 @@ public partial class ConcatenationTechniquesUiPage : ContentView
 
     private async void OnCopyClicked(object sender, EventArgs e)
     {
-        if (!string.IsNullOrWhiteSpace(resultEntry.Text))
+        if (!string.IsNullOrWhiteSpace(resultEntry?.Text))
         {
-            await Clipboard.Default.SetTextAsync(resultEntry.Text);
-            await Application.Current.MainPage.DisplayAlert("Info", "Password copied to clipboard", "OK");
+            await Clipboard.Default.SetTextAsync(resultEntry!.Text);
+            var mainPage = Application.Current?.MainPage;
+            if (mainPage is not null)
+            {
+                await mainPage.DisplayAlert("Info", "Password copied to clipboard", "OK");
+            }
         }
     }
 
@@ -48,7 +52,10 @@ public partial class ConcatenationTechniquesUiPage : ContentView
         }
 
         var result = concatenationTechnique.EncryptPassword(phrases);
-        resultEntry.Text = result;
+        if (resultEntry is not null)
+        {
+            resultEntry.Text = result;
+        }
     }
 
     private View CreatePhraseEntry()

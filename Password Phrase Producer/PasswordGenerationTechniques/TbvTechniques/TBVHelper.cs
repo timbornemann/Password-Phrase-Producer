@@ -26,7 +26,7 @@ namespace PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques
         {
             var result = new List<char>();
             var charactersList = inputString.ToList();
-            bool firstCode = true, secondCode = false, thirdCode = false;
+            bool firstCode = true, secondCode = false;
 
             while (charactersList.Count > 0)
             {
@@ -39,12 +39,13 @@ namespace PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques
                 else if (secondCode)
                 {
                     index = ValidateIndex(code2, charactersList.Count);
-                    secondCode = false; thirdCode = true;
+                    secondCode = false;
                 }
                 else
                 {
                     index = ValidateIndex(code3, charactersList.Count);
-                    thirdCode = false; firstCode = true;
+                    firstCode = true;
+                    secondCode = false;
                 }
 
                 result.Add(charactersList[index]);
