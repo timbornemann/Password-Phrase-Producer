@@ -2,30 +2,64 @@
 <ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Password_Phrase_Producer.Windows.PasswordGenerationWindows.ConcatenationTechniquesUiPage">
-    <VerticalStackLayout Padding="20" Spacing="15">
-        <ScrollView HeightRequest="250">
-            <VerticalStackLayout x:Name="phraseContainer" Spacing="10" />
-        </ScrollView>
+    <VerticalStackLayout Spacing="24">
+        <Border StrokeThickness="0"
+                Padding="18"
+                BackgroundColor="#1F2438">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="22" />
+            </Border.StrokeShape>
+            <VerticalStackLayout Spacing="14">
+                <Label Text="Passphrase-Bausteine"
+                       FontSize="18"
+                       FontAttributes="Bold"
+                       TextColor="White"/>
+                <Label Text="Füge beliebig viele Wörter oder Phrasen hinzu, die du kombinieren möchtest."
+                       TextColor="#BDC2E8"
+                       FontSize="14"
+                       LineBreakMode="WordWrap"/>
+                <Border StrokeThickness="0"
+                        BackgroundColor="#15192A"
+                        Padding="12">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="18" />
+                    </Border.StrokeShape>
+                    <ScrollView HeightRequest="240">
+                        <VerticalStackLayout x:Name="phraseContainer" Spacing="10" />
+                    </ScrollView>
+                </Border>
+                <Button Text="Eintrag hinzufügen"
+                        Style="{StaticResource PrimaryActionButtonStyle}"
+                        Clicked="OnAddNewTextField" />
+            </VerticalStackLayout>
+        </Border>
 
-        <Button Text="New Entry"
-                Style="{StaticResource PrimaryActionButtonStyle}"
-                Clicked="OnAddNewTextField" />
-
-        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-            <Entry x:Name="resultEntry"
-                   Placeholder="Result"
-                   Style="{StaticResource DarkEntryStyle}"
-                   IsReadOnly="True"
-                   Margin="0,5,0,5" />
-            <Button Grid.Column="1"
-                    Text="Copy"
-                    Style="{StaticResource PrimaryActionButtonStyle}"
-                    Clicked="OnCopyClicked"
-                    HorizontalOptions="End" />
-        </Grid>
-
-        <Button Text="Create"
-                Style="{StaticResource PrimaryActionButtonStyle}"
-                Clicked="OnCreateClicked" />
+        <Border StrokeThickness="0"
+                Padding="18"
+                BackgroundColor="#1F2438">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="22" />
+            </Border.StrokeShape>
+            <VerticalStackLayout Spacing="16">
+                <Label Text="Ergebnis"
+                       FontSize="18"
+                       FontAttributes="Bold"
+                       TextColor="White"/>
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <Entry x:Name="resultEntry"
+                           Placeholder="Generierte Passphrase"
+                           Style="{StaticResource DarkEntryStyle}"
+                           IsReadOnly="True" />
+                    <Button Grid.Column="1"
+                            Text="Kopieren"
+                            Style="{StaticResource PrimaryActionButtonStyle}"
+                            Clicked="OnCopyClicked"
+                            HorizontalOptions="End" />
+                </Grid>
+                <Button Text="Passphrase erzeugen"
+                        Style="{StaticResource PrimaryActionButtonStyle}"
+                        Clicked="OnCreateClicked" />
+            </VerticalStackLayout>
+        </Border>
     </VerticalStackLayout>
 </ContentView>
