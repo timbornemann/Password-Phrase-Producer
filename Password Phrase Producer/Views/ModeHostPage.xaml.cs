@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Maui.Controls;
 using PasswordModeOption = Password_Phrase_Producer.PasswordModeOption;
 
@@ -11,5 +12,10 @@ public partial class ModeHostPage : ContentPage
         BindingContext = option;
         Title = option.Title;
         ContentHost.Content = option.CreateView();
+    }
+
+    private async void OnBackClicked(object? sender, EventArgs e)
+    {
+        await Shell.Current.GoToAsync("//home");
     }
 }

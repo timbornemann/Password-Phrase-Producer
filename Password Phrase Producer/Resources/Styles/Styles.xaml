@@ -426,25 +426,31 @@
 
     <Style TargetType="Button" x:Key="PrimaryActionButtonStyle">
         <Setter Property="TextColor" Value="White" />
-        <Setter Property="BackgroundColor" Value="#4CAF50" />
-        <Setter Property="CornerRadius" Value="25" />
-        <Setter Property="FontSize" Value="18" />
-        <Setter Property="HeightRequest" Value="50" />
-        <Setter Property="Margin" Value="5" />
+        <Setter Property="BackgroundColor" Value="#6366F1" />
+        <Setter Property="CornerRadius" Value="22" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="HeightRequest" Value="52" />
+        <Setter Property="Margin" Value="0" />
         <Setter Property="HorizontalOptions" Value="FillAndExpand" />
         <Setter Property="VerticalOptions" Value="Center" />
-        <Setter Property="Padding" Value="20,10" />
+        <Setter Property="Padding" Value="22,14" />
+        <Setter Property="Shadow">
+            <Setter.Value>
+                <Shadow Brush="#33000000" Radius="12" Offset="0,6" />
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style TargetType="Entry" x:Key="DarkEntryStyle">
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
-        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#F2F2F2, Dark=#333333}" />
-        <Setter Property="PlaceholderColor" Value="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
-        <Setter Property="FontSize" Value="18" />
-        <Setter Property="Margin" Value="5" />
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#EEF1FF, Dark=#22263A}" />
+        <Setter Property="PlaceholderColor" Value="{AppThemeBinding Light=#7A7FA6, Dark=#9EA3CC}" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="Margin" Value="0" />
         <Setter Property="HorizontalOptions" Value="FillAndExpand" />
         <Setter Property="VerticalOptions" Value="Center" />
-        <Setter Property="HeightRequest" Value="50" />
+        <Setter Property="HeightRequest" Value="52" />
     </Style>
 
 </ResourceDictionary>
