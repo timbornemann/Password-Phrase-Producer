@@ -18,7 +18,7 @@ public partial class AppShell : Shell
             var shellContent = new ShellContent
             {
                 Title = mode.Title,
-                Route = mode.Route,
+                Route = mode.ContentRoute,
                 ContentTemplate = new DataTemplate(() => new ModeHostPage(mode))
             };
 

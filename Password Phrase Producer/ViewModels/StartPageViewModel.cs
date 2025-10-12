@@ -25,6 +25,6 @@ public class StartPageViewModel
             return;
         }
 
-        await Shell.Current.GoToAsync($"//{option.Route}");
+        await Shell.Current.GoToAsync($"//{option.Route}/{option.ContentRoute}");
     }
 }
