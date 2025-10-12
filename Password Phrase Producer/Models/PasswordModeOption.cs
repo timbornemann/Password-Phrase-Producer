@@ -12,6 +12,7 @@ public class PasswordModeOption
         Description = description;
         Icon = icon;
         Route = route;
+        ContentRoute = $"{route}-content";
         ContentFactory = contentFactory;
     }
 
@@ -22,6 +23,8 @@ public class PasswordModeOption
     public string Description { get; }
 
     public string Route { get; }
+
+    public string ContentRoute { get; }
 
     public string? Icon { get; }
 
