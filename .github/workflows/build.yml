@@ -97,7 +97,6 @@ jobs:
 
           dotnet publish "${{ env.PROJECT_PATH }}" `
             -c $env:CONFIGURATION `
-            --no-build `
             -f net8.0-android `
             -p:RunAnalyzers=false `
             -p:GenerateDocumentationFile=false `
@@ -140,7 +139,6 @@ jobs:
         run: |
           dotnet publish "${{ env.PROJECT_PATH }}" `
             -c $env:CONFIGURATION `
-            --no-build `
             -f net8.0-windows10.0.19041.0 `
             -p:RuntimeIdentifier=win10-x64 `
             -p:WindowsPackageType=None `
