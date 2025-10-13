@@ -9,6 +9,7 @@ on:
 env:
   DOTNET_VERSION: 8.0.x
   SOLUTION_PATH: ./Password Phrase Producer/Password Phrase Producer.sln
+  PROJECT_PATH: ./Password Phrase Producer/PasswordPhraseProducer.csproj
   VERSION_PREFIX: 1.0
   VERSION: 1.0.${{ github.run_number }}
   APP_BUILD: ${{ github.run_number }}
@@ -94,9 +95,8 @@ jobs:
             Write-Host "::warning::Android keystore not provided. APK will be unsigned."
           }
 
-          dotnet publish "${{ env.SOLUTION_PATH }}" `
+          dotnet publish "${{ env.PROJECT_PATH }}" `
             -c $env:CONFIGURATION `
-            --no-build `
             -f net8.0-android `
             -p:RunAnalyzers=false `
             -p:GenerateDocumentationFile=false `
@@ -137,9 +137,8 @@ jobs:
         if: ${{ matrix.target == 'windows' }}
         shell: pwsh
         run: |
-          dotnet publish "${{ env.SOLUTION_PATH }}" `
+          dotnet publish "${{ env.PROJECT_PATH }}" `
             -c $env:CONFIGURATION `
-            --no-build `
             -f net8.0-windows10.0.19041.0 `
             -p:RuntimeIdentifier=win10-x64 `
             -p:WindowsPackageType=None `
