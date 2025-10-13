@@ -21,25 +21,24 @@
                 <Entry x:Name="passwordEntry"
                        Placeholder="Password Phrase"
                        Style="{StaticResource DarkEntryStyle}" />
-                <Grid ColumnDefinitions="*,*"
-                      ColumnSpacing="12"
-                      RowSpacing="12">
+                <Label Text="Bitte gib alle drei numerischen Codes ein, um die TBV-Varianten korrekt zu nutzen."
+                       TextColor="#8F95C6"
+                       FontSize="13"
+                       LineBreakMode="WordWrap"/>
+                <VerticalStackLayout Spacing="12">
                     <Entry x:Name="code1Entry"
                            Placeholder="Code 1"
                            Keyboard="Numeric"
                            Style="{StaticResource DarkEntryStyle}" />
-                    <Entry Grid.Column="1"
-                           x:Name="code2Entry"
+                    <Entry x:Name="code2Entry"
                            Placeholder="Code 2"
                            Keyboard="Numeric"
                            Style="{StaticResource DarkEntryStyle}" />
-                    <Entry Grid.ColumnSpan="2"
-                           Grid.Row="1"
-                           x:Name="code3Entry"
-                           Placeholder="Code 3 (optional)"
+                    <Entry x:Name="code3Entry"
+                           Placeholder="Code 3"
                            Keyboard="Numeric"
                            Style="{StaticResource DarkEntryStyle}" />
-                </Grid>
+                </VerticalStackLayout>
             </VerticalStackLayout>
         </Border>
 
