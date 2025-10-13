@@ -62,7 +62,7 @@ jobs:
 
       - name: Restore MAUI workloads
         shell: pwsh
-        run: dotnet workload restore --ignore-failed-sources
+        run: dotnet workload restore "${{ env.SOLUTION_PATH }}" --ignore-failed-sources
 
       - name: Restore dependencies
         shell: pwsh
