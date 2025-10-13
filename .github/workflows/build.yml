@@ -23,7 +23,6 @@ jobs:
         target: [android, windows]
     env:
       CONFIGURATION: Release
-      ANDROID_KEYSTORE_PATH: '${{ runner.temp }}\android_signing.keystore'
       ARTIFACTS_DIR: '${{ github.workspace }}\artifacts'
     steps:
       - name: Checkout repository
@@ -71,7 +70,10 @@ jobs:
 
       - name: Build solution
         shell: pwsh
-        run: dotnet build "${{ env.SOLUTION_PATH }}" -c $env:CONFIGURATION -p:RunAnalyzers=false -p:GenerateDocumentationFile=false
+        run: |
+          dotnet build "${{ env.SOLUTION_PATH }}" -c $env:CONFIGURATION `
+            -p:RunAnalyzers=false `
+            -p:GenerateDocumentationFile=false
 
       - name: Publish Android APK
         if: ${{ matrix.target == 'android' }}
@@ -82,10 +84,11 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
+          $keystorePath = Join-Path $env:RUNNER_TEMP "android_signing.keystore"
           $signingArgs = ""
           if (-not [string]::IsNullOrEmpty($env:ANDROID_KEYSTORE_BASE64)) {
-            [IO.File]::WriteAllBytes($env:ANDROID_KEYSTORE_PATH, [Convert]::FromBase64String($env:ANDROID_KEYSTORE_BASE64))
-            $signingArgs = "-p:AndroidSigningKeyStore=$env:ANDROID_KEYSTORE_PATH -p:AndroidSigningStorePass=$env:ANDROID_KEYSTORE_PASSWORD -p:AndroidSigningKeyAlias=$env:ANDROID_KEY_ALIAS -p:AndroidSigningKeyPass=$env:ANDROID_KEY_PASSWORD"
+            [IO.File]::WriteAllBytes($keystorePath, [Convert]::FromBase64String($env:ANDROID_KEYSTORE_BASE64))
+            $signingArgs = "-p:AndroidSigningKeyStore=$keystorePath -p:AndroidSigningStorePass=$env:ANDROID_KEYSTORE_PASSWORD -p:AndroidSigningKeyAlias=$env:ANDROID_KEY_ALIAS -p:AndroidSigningKeyPass=$env:ANDROID_KEY_PASSWORD"
           }
           else {
             Write-Host "::warning::Android keystore not provided. APK will be unsigned."
