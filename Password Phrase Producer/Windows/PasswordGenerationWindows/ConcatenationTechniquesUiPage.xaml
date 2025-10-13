@@ -18,15 +18,18 @@
                        TextColor="#BDC2E8"
                        FontSize="14"
                        LineBreakMode="WordWrap"/>
+                <Label x:Name="phraseCountLabel"
+                       Text="Phrasen (0)"
+                       TextColor="#8F95C6"
+                       FontSize="13"/>
                 <Border StrokeThickness="0"
                         BackgroundColor="#15192A"
-                        Padding="12">
+                        Padding="16">
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="18" />
                     </Border.StrokeShape>
-                    <ScrollView HeightRequest="240">
-                        <VerticalStackLayout x:Name="phraseContainer" Spacing="10" />
-                    </ScrollView>
+                    <VerticalStackLayout x:Name="phraseContainer"
+                                          Spacing="14" />
                 </Border>
                 <Button Text="Eintrag hinzufügen"
                         Style="{StaticResource PrimaryActionButtonStyle}"

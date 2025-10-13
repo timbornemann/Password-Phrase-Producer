@@ -75,7 +75,7 @@
                         <Border Padding="0"
                                 StrokeThickness="0"
                                 Margin="0,0,0,6"
-                                HeightRequest="168">
+                                MinimumHeightRequest="168">
                             <Border.StrokeShape>
                                 <RoundRectangle CornerRadius="30" />
                             </Border.StrokeShape>
@@ -131,7 +131,7 @@
                                            FontSize="15"
                                            TextColor="#C8CBDF"
                                            LineBreakMode="WordWrap"
-                                           MaxLines="2"
+                                           MaxLines="3"
                                            VerticalTextAlignment="Center"/>
                                     <Border Grid.Column="1"
                                             WidthRequest="44"
