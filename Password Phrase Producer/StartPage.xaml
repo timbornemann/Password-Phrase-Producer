@@ -13,48 +13,53 @@
     </ContentPage.Background>
 
     <ScrollView>
-        <VerticalStackLayout Spacing="32"
+        <VerticalStackLayout Spacing="28"
                              Padding="24,48,24,40">
-            <Border StrokeThickness="0"
-                    Padding="18"
-                    BackgroundColor="#1E1E29"
-                    HeightRequest="120">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="24" />
-                </Border.StrokeShape>
-                <Border.Shadow>
-                    <Shadow Brush="#25000000" Radius="12" Offset="0,6" />
-                </Border.Shadow>
-                <VerticalStackLayout Spacing="6">
-                    <Label Text="Zuletzt benutzt"
-                           TextColor="#9DA3C4"
-                           FontSize="13"
-                           FontAttributes="Bold"/>
-                    <Label Text="Tippe eine Karte an, um sofort weiterzuarbeiten."
-                           TextColor="White"
-                           FontSize="15"
-                           LineBreakMode="WordWrap"/>
+            <Grid ColumnDefinitions="*,Auto"
+                  RowDefinitions="Auto"
+                  Padding="0,0,0,12">
+                <VerticalStackLayout Spacing="2"
+                                      VerticalOptions="Center">
+                    <Label Text="Modi auswählen"
+                           FontSize="26"
+                           FontAttributes="Bold"
+                           TextColor="White"/>
+                    <Label Text="Deine Modi im Überblick"
+                           FontSize="14"
+                           TextColor="#9EA3C4"/>
                 </VerticalStackLayout>
-            </Border>
-
-            <VerticalStackLayout Spacing="6">
-                <Label Text="Generatoren"
-                       FontSize="20"
-                       FontAttributes="Bold"
-                       TextColor="White"/>
-                <Label Text="Erkunde alle verfügbaren Modi und finde den idealen Ansatz für dein Passwort."
-                       TextColor="#C2C6E2"
-                       FontSize="15"
-                       LineBreakMode="WordWrap"/>
-            </VerticalStackLayout>
+                <Border Grid.Column="1"
+                        WidthRequest="52"
+                        HeightRequest="52"
+                        BackgroundColor="#1F2336"
+                        StrokeThickness="0"
+                        HorizontalOptions="End"
+                        VerticalOptions="Center">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="18" />
+                    </Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow Brush="#20000000" Radius="10" Offset="0,6" />
+                    </Border.Shadow>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnOpenMenuTapped" />
+                    </Border.GestureRecognizers>
+                    <Label Text="☰"
+                           FontSize="20"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center"
+                           TextColor="#CFD3FF"/>
+                </Border>
+            </Grid>
 
             <CollectionView ItemsSource="{Binding ModeOptions}"
                             SelectionMode="None"
-                            Margin="0,4,0,0">
+                            Margin="0,8,0,0"
+                            ItemSizingStrategy="MeasureAllItems">
                 <CollectionView.ItemsLayout>
                     <GridItemsLayout Orientation="Vertical"
-                                     VerticalItemSpacing="18"
-                                     HorizontalItemSpacing="18">
+                                     VerticalItemSpacing="22"
+                                     HorizontalItemSpacing="22">
                         <GridItemsLayout.Span>
                             <OnIdiom x:TypeArguments="x:Int32">
                                 <OnIdiom.Phone>1</OnIdiom.Phone>
@@ -66,45 +71,47 @@
                 </CollectionView.ItemsLayout>
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="local:PasswordModeOption">
-                        <Border Padding="22"
+                        <Border Padding="0"
                                 StrokeThickness="0"
-                                Margin="0,0,0,6">
+                                Margin="0,0,0,6"
+                                HeightRequest="168">
                             <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="26" />
+                                <RoundRectangle CornerRadius="30" />
                             </Border.StrokeShape>
                             <Border.Background>
                                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                    <GradientStop Color="#252941" Offset="0" />
-                                    <GradientStop Color="#1A1D2C" Offset="1" />
+                                    <GradientStop Color="#2D3252" Offset="0" />
+                                    <GradientStop Color="#1B1E30" Offset="1" />
                                 </LinearGradientBrush>
                             </Border.Background>
                             <Border.Shadow>
-                                <Shadow Brush="#25000000" Radius="14" Offset="0,8" />
+                                <Shadow Brush="#25000000" Radius="16" Offset="0,10" />
                             </Border.Shadow>
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer Command="{Binding BindingContext.NavigateToModeCommand, Source={RelativeSource AncestorType={x:Type local:StartPage}}}"
                                                      CommandParameter="{Binding}"/>
                             </Border.GestureRecognizers>
-                            <Grid ColumnDefinitions="Auto,*"
+                            <Grid Padding="26,24"
+                                  ColumnDefinitions="Auto,*"
                                   RowDefinitions="Auto,Auto"
-                                  ColumnSpacing="18"
-                                  RowSpacing="8">
-                                <Border Padding="12"
+                                  ColumnSpacing="24"
+                                  RowSpacing="14">
+                                <Border Padding="16"
                                         StrokeThickness="0"
-                                        WidthRequest="72"
-                                        HeightRequest="72"
+                                        WidthRequest="88"
+                                        HeightRequest="88"
                                         VerticalOptions="Start">
                                     <Border.StrokeShape>
-                                        <RoundRectangle CornerRadius="20" />
+                                        <RoundRectangle CornerRadius="26" />
                                     </Border.StrokeShape>
                                     <Border.Background>
                                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                            <GradientStop Color="#3C3F63" Offset="0" />
-                                            <GradientStop Color="#26293F" Offset="1" />
+                                            <GradientStop Color="#3E4266" Offset="0" />
+                                            <GradientStop Color="#272B43" Offset="1" />
                                         </LinearGradientBrush>
                                     </Border.Background>
                                     <Label Text="{Binding Icon}"
-                                           FontSize="24"
+                                           FontSize="32"
                                            HorizontalOptions="Center"
                                            VerticalOptions="Center"
                                            HorizontalTextAlignment="Center"
@@ -112,15 +119,36 @@
                                 </Border>
                                 <Label Grid.Column="1"
                                        Text="{Binding Title}"
-                                       FontSize="18"
+                                       FontSize="20"
                                        FontAttributes="Bold"
                                        TextColor="White"/>
-                                <Label Grid.Column="1"
-                                       Grid.Row="1"
-                                       Text="{Binding Description}"
-                                       FontSize="14"
-                                       TextColor="#C8CBDF"
-                                       LineBreakMode="WordWrap"/>
+                                <Grid Grid.Column="1"
+                                      Grid.Row="1"
+                                      ColumnDefinitions="*,Auto"
+                                      VerticalOptions="Center">
+                                    <Label Text="{Binding Description}"
+                                           FontSize="15"
+                                           TextColor="#C8CBDF"
+                                           LineBreakMode="WordWrap"
+                                           MaxLines="2"
+                                           VerticalTextAlignment="Center"/>
+                                    <Border Grid.Column="1"
+                                            WidthRequest="44"
+                                            HeightRequest="44"
+                                            BackgroundColor="#2F3452"
+                                            StrokeThickness="0"
+                                            HorizontalOptions="End"
+                                            VerticalOptions="Center">
+                                        <Border.StrokeShape>
+                                            <RoundRectangle CornerRadius="16" />
+                                        </Border.StrokeShape>
+                                        <Label Text="➜"
+                                               FontSize="20"
+                                               HorizontalOptions="Center"
+                                               VerticalOptions="Center"
+                                               TextColor="#D6DAFF"/>
+                                    </Border>
+                                </Grid>
                             </Grid>
                         </Border>
                     </DataTemplate>

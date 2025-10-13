@@ -14,8 +14,16 @@ public partial class ModeHostPage : ContentPage
         ContentHost.Content = option.CreateView();
     }
 
-    private async void OnBackClicked(object? sender, EventArgs e)
+    private async void OnBackTapped(object? sender, TappedEventArgs e)
     {
         await Shell.Current.GoToAsync("//home");
+    }
+
+    private void OnOpenMenuTapped(object? sender, TappedEventArgs e)
+    {
+        if (Shell.Current is not null)
+        {
+            Shell.Current.FlyoutIsPresented = true;
+        }
     }
 }
