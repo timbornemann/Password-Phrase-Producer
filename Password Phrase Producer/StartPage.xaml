@@ -3,7 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:Password_Phrase_Producer"
              x:Class="Password_Phrase_Producer.StartPage"
-             Padding="0">
+             Padding="0"
+             Shell.NavBarIsVisible="False">
     <ContentPage.Background>
         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
             <GradientStop Color="#121212" Offset="0" />

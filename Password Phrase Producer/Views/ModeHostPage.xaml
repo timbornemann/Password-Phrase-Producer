@@ -2,7 +2,8 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Password_Phrase_Producer.Views.ModeHostPage"
-             Padding="0">
+             Padding="0"
+             Shell.NavBarIsVisible="False">
     <ContentPage.Background>
         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
             <GradientStop Color="#101018" Offset="0" />
@@ -36,15 +37,12 @@
             </Border>
 
             <VerticalStackLayout Grid.Column="1"
-                                  Spacing="2"
+                                  Spacing="0"
                                   VerticalOptions="Center">
                 <Label Text="{Binding Title}"
                        FontSize="24"
                        FontAttributes="Bold"
                        TextColor="White"/>
-                <Label Text="Modusübersicht"
-                       FontSize="14"
-                       TextColor="#9EA3C4"/>
             </VerticalStackLayout>
 
             <Border Grid.Column="2"
