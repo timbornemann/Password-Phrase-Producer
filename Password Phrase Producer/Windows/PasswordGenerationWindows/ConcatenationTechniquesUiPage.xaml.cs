@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Maui.Graphics;
@@ -125,7 +126,7 @@ public partial class ConcatenationTechniquesUiPage : ContentView
         return grid;
     }
 
-    private static bool TryGetEntry(View container, out Entry? entry)
+    private static bool TryGetEntry(IView container, out Entry? entry)
     {
         switch (container)
         {
@@ -154,7 +155,7 @@ public partial class ConcatenationTechniquesUiPage : ContentView
 
                 entry = null;
                 return false;
-            case Border border when border.Content is View view:
+            case Border border when border.Content is IView view:
                 return TryGetEntry(view, out entry);
             default:
                 entry = null;
