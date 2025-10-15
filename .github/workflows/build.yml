@@ -61,12 +61,12 @@ jobs:
       - name: Restore Android dependencies
         if: ${{ matrix.target == 'android' }}
         shell: pwsh
-        run: dotnet restore "${{ env.PROJECT_PATH }}" -f net8.0-android
+        run: dotnet restore "${{ env.PROJECT_PATH }}" --framework net8.0-android
 
       - name: Restore Windows dependencies
         if: ${{ matrix.target == 'windows' }}
         shell: pwsh
-        run: dotnet restore "${{ env.PROJECT_PATH }}" -f net8.0-windows10.0.19041.0
+        run: dotnet restore "${{ env.PROJECT_PATH }}" --framework net8.0-windows10.0.19041.0
 
       - name: Publish Android APK
         if: ${{ matrix.target == 'android' }}
