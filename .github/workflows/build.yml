@@ -14,6 +14,8 @@ env:
   VERSION: 1.0.${{ github.run_number }}
   APP_BUILD: ${{ github.run_number }}
   WINDOWS_PACKAGE_VERSION: 1.0.${{ github.run_number }}.0
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+  NUGET_XMLDOC_MODE: skip
 
 permissions:
   contents: write
@@ -23,6 +25,7 @@ jobs:
     name: Build ${{ matrix.target }} package
     runs-on: windows-latest
     strategy:
+      fail-fast: false
       matrix:
         target: [android, windows]
     env:
@@ -37,27 +40,14 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
           cache: true
-          cache-dependency-path: |
-            **/packages.lock.json
-            **/*.csproj
 
       - name: Cache .NET workloads
         uses: actions/cache@v4
         with:
           path: C:\Users\runneradmin\.dotnet\workloads
-          key: ${{ runner.os }}-${{ matrix.target }}-dotnet-workloads-${{ hashFiles('**/*.csproj') }}
+          key: workloads-${{ runner.os }}-${{ env.DOTNET_VERSION }}-v1
           restore-keys: |
-            ${{ runner.os }}-dotnet-workloads-
-
-      - name: Cache additional NuGet data
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~\.nuget\packages
-            C:\Users\runneradmin\AppData\Local\NuGet\Cache
-          key: ${{ runner.os }}-${{ matrix.target }}-nuget-${{ hashFiles('**/packages.lock.json', '**/*.csproj') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-
+            workloads-${{ runner.os }}-${{ env.DOTNET_VERSION }}-
 
       - name: Prepare artifact staging directory
         shell: pwsh
@@ -68,16 +58,15 @@ jobs:
         shell: pwsh
         run: dotnet workload restore "${{ env.SOLUTION_PATH }}" --ignore-failed-sources
 
-      - name: Restore dependencies
+      - name: Restore Android dependencies
+        if: ${{ matrix.target == 'android' }}
         shell: pwsh
-        run: dotnet restore "${{ env.SOLUTION_PATH }}"
+        run: dotnet restore "${{ env.PROJECT_PATH }}" -f net8.0-android
 
-      - name: Build solution
+      - name: Restore Windows dependencies
+        if: ${{ matrix.target == 'windows' }}
         shell: pwsh
-        run: |
-          dotnet build "${{ env.SOLUTION_PATH }}" -c $env:CONFIGURATION `
-            -p:RunAnalyzers=false `
-            -p:GenerateDocumentationFile=false
+        run: dotnet restore "${{ env.PROJECT_PATH }}" -f net8.0-windows10.0.19041.0
 
       - name: Publish Android APK
         if: ${{ matrix.target == 'android' }}
@@ -101,6 +90,7 @@ jobs:
           dotnet publish "${{ env.PROJECT_PATH }}" `
             -c $env:CONFIGURATION `
             -f net8.0-android `
+            --no-restore `
             -p:RunAnalyzers=false `
             -p:GenerateDocumentationFile=false `
             -p:ApplicationDisplayVersion=${{ env.VERSION }} `
@@ -135,6 +125,7 @@ jobs:
           name: android-apk
           path: '${{ env.ARTIFACTS_DIR }}\Password-Phrase-Producer_${{ env.VERSION }}_android_signed.apk'
           if-no-files-found: error
+          compression-level: 0
 
       - name: Publish Windows portable build
         if: ${{ matrix.target == 'windows' }}
@@ -143,6 +134,7 @@ jobs:
           dotnet publish "${{ env.PROJECT_PATH }}" `
             -c $env:CONFIGURATION `
             -f net8.0-windows10.0.19041.0 `
+            --no-restore `
             -p:RuntimeIdentifier=win10-x64 `
             -p:WindowsPackageType=None `
             -p:RunAnalyzers=false `
@@ -175,6 +167,7 @@ jobs:
           name: windows-portable
           path: '${{ env.ARTIFACTS_DIR }}\Password-Phrase-Producer_${{ env.VERSION }}_windows_portable.zip'
           if-no-files-found: error
+          compression-level: 0
 
   release:
     name: Release artifacts
