@@ -6,103 +6,108 @@ on:
       - main
   workflow_dispatch:
 
-env:
-  DOTNET_VERSION: 8.0.x
-  SOLUTION_PATH: ./Password Phrase Producer/Password Phrase Producer.sln
-  PROJECT_PATH: ./Password Phrase Producer/PasswordPhraseProducer.csproj
-  VERSION_PREFIX: 1.0
-  VERSION: 1.0.${{ github.run_number }}
-  APP_BUILD: ${{ github.run_number }}
-  WINDOWS_PACKAGE_VERSION: 1.0.${{ github.run_number }}.0
-  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
-  NUGET_XMLDOC_MODE: skip
-
 permissions:
   contents: write
 
 jobs:
   build:
-    name: Build ${{ matrix.target }} package
+    name: Build MAUI Packages
     runs-on: windows-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        target: [android, windows]
-    env:
-      CONFIGURATION: Release
-      ARTIFACTS_DIR: '${{ github.workspace }}\artifacts'
+    outputs:
+      app-version: ${{ steps.compute_versions.outputs.app_version }}
     steps:
+      - name: Set signing file paths
+        shell: pwsh
+        run: |
+          $androidPath = [System.IO.Path]::Combine($env:RUNNER_TEMP, 'android_signing.keystore')
+          $windowsPath = [System.IO.Path]::Combine($env:RUNNER_TEMP, 'windows_signing_certificate.pfx')
+
+          "ANDROID_KEYSTORE_PATH=$androidPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "WINDOWS_CERTIFICATE_PATH=$windowsPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Detect available signing assets
+        shell: pwsh
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          WINDOWS_PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
+        run: |
+          $hasAndroidKeystore = -not [string]::IsNullOrEmpty($env:ANDROID_KEYSTORE_BASE64)
+          $hasWindowsCertificate = -not [string]::IsNullOrEmpty($env:WINDOWS_PFX_BASE64)
+
+          "HAS_ANDROID_KEYSTORE=$($hasAndroidKeystore.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "HAS_WINDOWS_CERTIFICATE=$($hasWindowsCertificate.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-          cache: true
+          dotnet-version: 8.0.x
 
-      - name: Cache .NET workloads
-        uses: actions/cache@v4
-        with:
-          path: C:\Users\runneradmin\.dotnet\workloads
-          key: workloads-${{ runner.os }}-${{ env.DOTNET_VERSION }}-v1
-          restore-keys: |
-            workloads-${{ runner.os }}-${{ env.DOTNET_VERSION }}-
+      - name: Install MAUI workload
+        run: dotnet workload install maui --ignore-failed-sources
+        shell: pwsh
 
-      - name: Prepare artifact staging directory
+      - name: Compute version numbers
+        id: compute_versions
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path $env:ARTIFACTS_DIR | Out-Null
+          $majorMinor = "1.0"
+          $build = "${{ github.run_number }}"
+          $appVersion = "$majorMinor.$build"
+          $windowsVersion = "$majorMinor.$build.0"
+          $releaseDir = Join-Path $env:RUNNER_TEMP 'release'
 
-      - name: Restore MAUI workloads
+          New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
+
+          "APP_MAJOR_MINOR=$majorMinor" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "APP_BUILD=$build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "APP_VERSION=$appVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "APP_VERSION_WINDOWS=$windowsVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "RELEASE_DIRECTORY=$releaseDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+          "app_version=$appVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Restore dependencies
+        run: dotnet restore "./Password Phrase Producer/Password Phrase Producer.sln"
         shell: pwsh
-        run: dotnet workload restore "${{ env.SOLUTION_PATH }}" --ignore-failed-sources
 
-      - name: Restore Android dependencies
-        if: ${{ matrix.target == 'android' }}
-        shell: pwsh
-        run: dotnet restore "${{ env.PROJECT_PATH }}" --framework net8.0-android
-
-      - name: Restore Windows dependencies
-        if: ${{ matrix.target == 'windows' }}
-        shell: pwsh
-        run: dotnet restore "${{ env.PROJECT_PATH }}" --framework net8.0-windows10.0.19041.0
-
-      - name: Publish Android APK
-        if: ${{ matrix.target == 'android' }}
+      - name: Restore Android signing keystore
+        if: ${{ env.HAS_ANDROID_KEYSTORE == 'true' }}
         shell: pwsh
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          [IO.File]::WriteAllBytes($env:ANDROID_KEYSTORE_PATH, [Convert]::FromBase64String($env:ANDROID_KEYSTORE_BASE64))
+
+      - name: Publish Android APK
+        shell: pwsh
+        env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          $keystorePath = Join-Path $env:RUNNER_TEMP "android_signing.keystore"
           $signingArgs = ""
-          if (-not [string]::IsNullOrEmpty($env:ANDROID_KEYSTORE_BASE64)) {
-            [IO.File]::WriteAllBytes($keystorePath, [Convert]::FromBase64String($env:ANDROID_KEYSTORE_BASE64))
-            $signingArgs = "-p:AndroidSigningKeyStore=$keystorePath -p:AndroidSigningStorePass=$env:ANDROID_KEYSTORE_PASSWORD -p:AndroidSigningKeyAlias=$env:ANDROID_KEY_ALIAS -p:AndroidSigningKeyPass=$env:ANDROID_KEY_PASSWORD"
+          if (Test-Path $env:ANDROID_KEYSTORE_PATH) {
+            $signingArgs = "-p:AndroidSigningKeyStore=$env:ANDROID_KEYSTORE_PATH -p:AndroidSigningStorePass=$env:ANDROID_KEYSTORE_PASSWORD -p:AndroidSigningKeyAlias=$env:ANDROID_KEY_ALIAS -p:AndroidSigningKeyPass=$env:ANDROID_KEY_PASSWORD"
           }
           else {
-            Write-Host "::warning::Android keystore not provided. APK will be unsigned."
+            Write-Host "::warning::Android keystore not provided. APK will be unsigned and cannot be installed or updated on devices."
           }
 
-          dotnet publish "${{ env.PROJECT_PATH }}" `
-            -c $env:CONFIGURATION `
+          dotnet publish "./Password Phrase Producer/Password Phrase Producer.sln" `
+            -c Release `
             -f net8.0-android `
-            --no-restore `
-            -p:RunAnalyzers=false `
-            -p:GenerateDocumentationFile=false `
-            -p:ApplicationDisplayVersion=${{ env.VERSION }} `
+            -p:ApplicationDisplayVersion=$env:APP_VERSION `
             -p:ApplicationVersion=$env:APP_BUILD `
             $signingArgs
 
       - name: Stage Android artifact
-        if: ${{ matrix.target == 'android' }}
         shell: pwsh
         run: |
           $workspace = "${{ github.workspace }}"
-          $publishDir = Join-Path $workspace "Password Phrase Producer\bin\$($env:CONFIGURATION)\net8.0-android\publish"
+          $publishDir = Join-Path $workspace "Password Phrase Producer\bin\Release\net8.0-android\publish"
           if (-not (Test-Path $publishDir)) {
             throw "Android publish directory not found."
           }
@@ -115,64 +120,75 @@ jobs:
             throw "APK file was not produced."
           }
 
-          $destination = Join-Path $env:ARTIFACTS_DIR "Password-Phrase-Producer_${{ env.VERSION }}_android_signed.apk"
+          $destination = Join-Path $env:RELEASE_DIRECTORY "Password-Phrase-Producer_$($env:APP_VERSION)_android_signed.apk"
           Copy-Item -Path $apk.FullName -Destination $destination -Force
 
       - name: Upload Android artifact
-        if: ${{ matrix.target == 'android' }}
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: '${{ env.ARTIFACTS_DIR }}\Password-Phrase-Producer_${{ env.VERSION }}_android_signed.apk'
-          if-no-files-found: error
-          compression-level: 0
+          path: '${{ env.RELEASE_DIRECTORY }}\\Password-Phrase-Producer_${{ env.APP_VERSION }}_android_signed.apk'
 
-      - name: Publish Windows portable build
-        if: ${{ matrix.target == 'windows' }}
+      - name: Restore Windows signing certificate
+        if: ${{ env.HAS_WINDOWS_CERTIFICATE == 'true' }}
         shell: pwsh
+        env:
+          WINDOWS_PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
         run: |
-          dotnet publish "${{ env.PROJECT_PATH }}" `
-            -c $env:CONFIGURATION `
-            -f net8.0-windows10.0.19041.0 `
-            --no-restore `
-            -p:RuntimeIdentifier=win10-x64 `
-            -p:WindowsPackageType=None `
-            -p:RunAnalyzers=false `
-            -p:GenerateDocumentationFile=false `
-            -p:ApplicationDisplayVersion=${{ env.VERSION }} `
-            -p:ApplicationVersion=$env:APP_BUILD `
-            -p:PackageVersion=${{ env.WINDOWS_PACKAGE_VERSION }}
+          [IO.File]::WriteAllBytes($env:WINDOWS_CERTIFICATE_PATH, [Convert]::FromBase64String($env:WINDOWS_PFX_BASE64))
 
-      - name: Create portable ZIP
-        if: ${{ matrix.target == 'windows' }}
+      - name: Publish Windows MSIX package
+        shell: pwsh
+        env:
+          WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
+        run: |
+          $signingArgs = "-p:AppxPackageSigningEnabled=false"
+          if (Test-Path $env:WINDOWS_CERTIFICATE_PATH) {
+            $signingArgs = "-p:AppxPackageSigningEnabled=true -p:PackageCertificateFile=$env:WINDOWS_CERTIFICATE_PATH -p:PackageCertificatePassword=$env:WINDOWS_PFX_PASSWORD"
+          }
+          else {
+            Write-Host "::warning::Windows certificate not provided. MSIX package will be unsigned and require manual trust before installation or updates."
+          }
+
+          dotnet publish "./Password Phrase Producer/Password Phrase Producer.sln" `
+            -c Release `
+            -f net8.0-windows10.0.19041.0 `
+            -p:RuntimeIdentifier=win10-x64 `
+            -p:WindowsPackageType=MSIX `
+            -p:ApplicationDisplayVersion=$env:APP_VERSION `
+            -p:ApplicationVersion=$env:APP_BUILD `
+            -p:PackageVersion=$env:APP_VERSION_WINDOWS `
+            $signingArgs
+
+      - name: Stage Windows artifact
         shell: pwsh
         run: |
           $workspace = "${{ github.workspace }}"
-          $publishDir = Join-Path $workspace "Password Phrase Producer\bin\$($env:CONFIGURATION)\net8.0-windows10.0.19041.0\win10-x64\publish"
-          if (-not (Test-Path $publishDir)) {
-            throw "Windows publish directory not found."
+          $packagesDir = Join-Path $workspace "Password Phrase Producer\bin\Release\net8.0-windows10.0.19041.0\win10-x64\AppPackages"
+          if (-not (Test-Path $packagesDir)) {
+            throw "Windows AppPackages directory not found."
           }
 
-          $zipPath = Join-Path $env:ARTIFACTS_DIR "Password-Phrase-Producer_${{ env.VERSION }}_windows_portable.zip"
-          if (Test-Path $zipPath) {
-            Remove-Item $zipPath -Force
+          $msix = Get-ChildItem -Path $packagesDir -Recurse -Filter "*.msix" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $msix) {
+            throw "MSIX package was not produced."
           }
 
-          Compress-Archive -Path "$publishDir\*" -DestinationPath $zipPath
+          $destination = Join-Path $env:RELEASE_DIRECTORY "Password-Phrase-Producer_$($env:APP_VERSION)_windows_x64.msix"
+          Copy-Item -Path $msix.FullName -Destination $destination -Force
 
       - name: Upload Windows artifact
-        if: ${{ matrix.target == 'windows' }}
         uses: actions/upload-artifact@v4
         with:
-          name: windows-portable
-          path: '${{ env.ARTIFACTS_DIR }}\Password-Phrase-Producer_${{ env.VERSION }}_windows_portable.zip'
-          if-no-files-found: error
-          compression-level: 0
+          name: windows-msix
+          path: '${{ env.RELEASE_DIRECTORY }}\\Password-Phrase-Producer_${{ env.APP_VERSION }}_windows_x64.msix'
 
   release:
     name: Release artifacts
     needs: build
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.build.outputs.app-version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -188,18 +204,16 @@ jobs:
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
-          name: windows-portable
+          name: windows-msix
           path: release-assets
 
       - name: Generate SHA256 checksums
         working-directory: release-assets
         run: |
-          sha256sum Password-Phrase-Producer_${VERSION}_android_signed.apk Password-Phrase-Producer_${VERSION}_windows_portable.zip > Password-Phrase-Producer_${VERSION}_SHA256.txt
+          sha256sum "Password-Phrase-Producer_${VERSION}_android_signed.apk" "Password-Phrase-Producer_${VERSION}_windows_x64.msix" > "Password-Phrase-Producer_${VERSION}_SHA256.txt"
 
       - name: Determine release metadata
         id: release_meta
-        env:
-          VERSION: ${{ env.VERSION }}
         run: |
           git fetch --tags --force
           base_tag="v${VERSION}"
@@ -221,5 +235,5 @@ jobs:
           prerelease: ${{ steps.release_meta.outputs.prerelease }}
           files: |
             release-assets/Password-Phrase-Producer_${{ env.VERSION }}_android_signed.apk
-            release-assets/Password-Phrase-Producer_${{ env.VERSION }}_windows_portable.zip
+            release-assets/Password-Phrase-Producer_${{ env.VERSION }}_windows_x64.msix
             release-assets/Password-Phrase-Producer_${{ env.VERSION }}_SHA256.txt
