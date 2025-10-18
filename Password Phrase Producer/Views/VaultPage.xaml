@@ -34,13 +34,11 @@
                                     <SwipeItem
                                         Text="Bearbeiten"
                                         BackgroundColor="#007AFF"
-                                        TextColor="White"
                                         Invoked="OnEditEntry"
                                         CommandParameter="{Binding .}" />
                                     <SwipeItem
                                         Text="Löschen"
                                         BackgroundColor="#FF3B30"
-                                        TextColor="White"
                                         Invoked="OnDeleteEntry"
                                         CommandParameter="{Binding .}" />
                                 </SwipeItems>
