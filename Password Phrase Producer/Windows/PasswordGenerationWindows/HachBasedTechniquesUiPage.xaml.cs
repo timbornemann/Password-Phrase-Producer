@@ -1,17 +1,22 @@
 using System;
 using Microsoft.Maui.Controls;
 using Password_Phrase_Producer.PasswordGenerationTechniques.HashBasedTechniques;
+using Password_Phrase_Producer.Services.EntropyAnalyzer;
 
 namespace Password_Phrase_Producer.Windows.PasswordGenerationWindows;
 
 public partial class HachBasedTechniquesUiPage : ContentView
 {
     private readonly IHashBasedTechniques hashBasedTechnique;
+    private readonly IPasswordEntropyAnalyzer entropyAnalyzer;
 
-    public HachBasedTechniquesUiPage(IHashBasedTechniques hashBasedTechnique)
+    public HachBasedTechniquesUiPage(IHashBasedTechniques hashBasedTechnique, IPasswordEntropyAnalyzer entropyAnalyzer)
     {
         InitializeComponent();
         this.hashBasedTechnique = hashBasedTechnique;
+        this.entropyAnalyzer = entropyAnalyzer;
+
+        analysisPanel?.Reset();
     }
 
     private void OnCreateClicked(object sender, EventArgs e)
@@ -25,6 +30,12 @@ public partial class HachBasedTechniquesUiPage : ContentView
             {
                 resultEntry.Text = result;
             }
+
+            if (analysisPanel is not null)
+            {
+                var analysis = entropyAnalyzer.Analyze(result);
+                analysisPanel.Update(analysis);
+            }
         }
         else
         {
@@ -32,6 +43,8 @@ public partial class HachBasedTechniquesUiPage : ContentView
             {
                 resultEntry.Text = string.Empty;
             }
+
+            analysisPanel?.Reset();
         }
     }
 

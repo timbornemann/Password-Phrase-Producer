@@ -5,18 +5,23 @@ using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Maui.Graphics;
 using Password_Phrase_Producer.PasswordGenerationTechniques.ConcatenationTechniques;
+using Password_Phrase_Producer.Services.EntropyAnalyzer;
 
 namespace Password_Phrase_Producer.Windows.PasswordGenerationWindows;
 
 public partial class ConcatenationTechniquesUiPage : ContentView
 {
     private readonly IConcatenationTechnique concatenationTechnique;
+    private readonly IPasswordEntropyAnalyzer entropyAnalyzer;
     private const int InitialEntryCount = 4;
 
-    public ConcatenationTechniquesUiPage(IConcatenationTechnique concatenationTechnique)
+    public ConcatenationTechniquesUiPage(IConcatenationTechnique concatenationTechnique, IPasswordEntropyAnalyzer entropyAnalyzer)
     {
         InitializeComponent();
         this.concatenationTechnique = concatenationTechnique;
+        this.entropyAnalyzer = entropyAnalyzer;
+
+        analysisPanel?.Reset();
 
         for (int i = 0; i < InitialEntryCount; i++)
         {
@@ -58,9 +63,27 @@ public partial class ConcatenationTechniquesUiPage : ContentView
         }
 
         var result = concatenationTechnique.EncryptPassword(phrases);
+
+        if (string.IsNullOrWhiteSpace(result))
+        {
+            if (resultEntry is not null)
+            {
+                resultEntry.Text = string.Empty;
+            }
+
+            analysisPanel?.Reset();
+            return;
+        }
+
         if (resultEntry is not null)
         {
             resultEntry.Text = result;
+        }
+
+        if (analysisPanel is not null)
+        {
+            var analysis = entropyAnalyzer.Analyze(result);
+            analysisPanel.Update(analysis);
         }
     }
 
