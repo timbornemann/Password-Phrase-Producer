@@ -1,17 +1,22 @@
 using System;
 using Microsoft.Maui.Controls;
 using Password_Phrase_Producer.PasswordGenerationTechniques.TbvTechniques;
+using Password_Phrase_Producer.Services.EntropyAnalyzer;
 
 namespace Password_Phrase_Producer.Windows.PasswordGenerationWindows;
 
 public partial class TbvUiPage : ContentView
 {
     private readonly Itbv tbv;
+    private readonly IPasswordEntropyAnalyzer entropyAnalyzer;
 
-    public TbvUiPage(Itbv itbv)
+    public TbvUiPage(Itbv itbv, IPasswordEntropyAnalyzer entropyAnalyzer)
     {
         InitializeComponent();
         tbv = itbv;
+        this.entropyAnalyzer = entropyAnalyzer;
+
+        analysisPanel?.Reset();
     }
 
     private void OnCreateClicked(object sender, EventArgs e)
@@ -35,6 +40,12 @@ public partial class TbvUiPage : ContentView
             {
                 resultEntry.Text = result;
             }
+
+            if (analysisPanel is not null)
+            {
+                var analysis = entropyAnalyzer.Analyze(result);
+                analysisPanel.Update(analysis);
+            }
         }
         else
         {
@@ -42,6 +53,8 @@ public partial class TbvUiPage : ContentView
             {
                 resultEntry.Text = string.Empty;
             }
+
+            analysisPanel?.Reset();
         }
     }
 
