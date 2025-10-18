@@ -264,7 +264,7 @@ public class PasswordVaultService
         var cipher = new byte[data.Length];
         var tag = new byte[16];
 
-        using var aes = new AesGcm(key);
+        using var aes = new AesGcm(key, tag.Length);
         aes.Encrypt(nonce, data, cipher, tag);
 
         var result = new byte[nonce.Length + cipher.Length + tag.Length];
@@ -282,12 +282,18 @@ public class PasswordVaultService
         }
 
         var key = await GetKeyAsync(cancellationToken).ConfigureAwait(false);
-        var nonce = data.AsSpan(0, 12);
-        var tag = data.AsSpan(data.Length - 16, 16);
-        var cipher = data.AsSpan(12, data.Length - 28);
+
+        var nonce = new byte[12];
+        var tag = new byte[16];
+        var cipher = new byte[data.Length - 28];
+
+        Buffer.BlockCopy(data, 0, nonce, 0, nonce.Length);
+        Buffer.BlockCopy(data, nonce.Length, cipher, 0, cipher.Length);
+        Buffer.BlockCopy(data, nonce.Length + cipher.Length, tag, 0, tag.Length);
+
         var plain = new byte[cipher.Length];
 
-        using var aes = new AesGcm(key);
+        using var aes = new AesGcm(key, tag.Length);
         aes.Decrypt(nonce, cipher, tag, plain);
         return plain;
     }
