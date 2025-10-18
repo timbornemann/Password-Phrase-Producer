@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="Password_Phrase_Producer.Views.VaultPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:models="clr-namespace:Password_Phrase_Producer.Models"
+    Title="Tresor">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Neu" Priority="0" Order="Primary" Clicked="OnAddEntryClicked" />
+        <ToolbarItem Text="Sync" Priority="1" Order="Secondary" Clicked="OnSyncOptionsClicked" />
+    </ContentPage.ToolbarItems>
+
+    <ContentPage.Content>
+        <Grid Padding="16" RowDefinitions="Auto,*">
+            <Label
+                Margin="0,0,0,8"
+                FontSize="14"
+                Text="Verwalte deine gespeicherten Zugangsdaten. Streiche nach links, um Einträge zu bearbeiten oder zu löschen." />
+            <CollectionView
+                x:Name="VaultCollectionView"
+                Grid.Row="1"
+                ItemsSource="{Binding Entries}"
+                SelectionMode="None">
+                <CollectionView.EmptyView>
+                    <StackLayout Padding="24" HorizontalOptions="Center" VerticalOptions="Center">
+                        <Label Text="Noch keine Einträge gespeichert." FontAttributes="Italic" />
+                    </StackLayout>
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:PasswordVaultEntry">
+                        <SwipeView>
+                            <SwipeView.RightItems>
+                                <SwipeItems Mode="Execute">
+                                    <SwipeItem
+                                        Text="Bearbeiten"
+                                        BackgroundColor="#007AFF"
+                                        TextColor="White"
+                                        Invoked="OnEditEntry"
+                                        CommandParameter="{Binding .}" />
+                                    <SwipeItem
+                                        Text="Löschen"
+                                        BackgroundColor="#FF3B30"
+                                        TextColor="White"
+                                        Invoked="OnDeleteEntry"
+                                        CommandParameter="{Binding .}" />
+                                </SwipeItems>
+                            </SwipeView.RightItems>
+                            <Frame Margin="0,0,0,12" Padding="12" BorderColor="#303030" BackgroundColor="#1E1E1E" CornerRadius="10">
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="{Binding Label}" FontAttributes="Bold" FontSize="18" />
+                                    <Label Text="{Binding DisplayCategory}" FontSize="13" TextColor="#AAAAAA" />
+                                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" RowSpacing="4" Margin="0,6,0,0">
+                                        <Label Grid.Row="0" Grid.Column="0" Text="Benutzer" FontAttributes="Bold" />
+                                        <Label Grid.Row="0" Grid.Column="1" Text="{Binding Username}" LineBreakMode="TailTruncation" />
+                                        <Label Grid.Row="1" Grid.Column="0" Text="Passwort" FontAttributes="Bold" />
+                                        <Label Grid.Row="1" Grid.Column="1" Text="{Binding Password}" LineBreakMode="TailTruncation" />
+                                        <Label Grid.Row="2" Grid.Column="0" Text="URL" FontAttributes="Bold" />
+                                        <Label
+                                            Grid.Row="2"
+                                            Grid.Column="1"
+                                            Text="{Binding Url}"
+                                            TextColor="#4DA3FF"
+                                            TextDecorations="Underline">
+                                            <Label.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnOpenUrl" CommandParameter="{Binding Url}" />
+                                            </Label.GestureRecognizers>
+                                        </Label>
+                                    </Grid>
+                                    <Label Text="{Binding Notes}" LineBreakMode="WordWrap" />
+                                    <Label Text="{Binding FreeText}" LineBreakMode="WordWrap" />
+                                    <Label
+                                        FontSize="11"
+                                        Text="{Binding ModifiedAt, StringFormat='Geändert: {0:G}'}"
+                                        TextColor="#888888" />
+                                </VerticalStackLayout>
+                            </Frame>
+                        </SwipeView>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Grid>
+    </ContentPage.Content>
+</ContentPage>

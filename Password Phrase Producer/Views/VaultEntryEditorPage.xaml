@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="Password_Phrase_Producer.Views.VaultEntryEditorPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:models="clr-namespace:Password_Phrase_Producer.Models"
+    Title="Tresor-Eintrag">
+    <ContentPage.Content>
+        <ScrollView>
+            <VerticalStackLayout Padding="24" Spacing="12">
+                <Entry Placeholder="Bezeichnung" Text="{Binding Label}" />
+                <Entry Placeholder="Kategorie" Text="{Binding Category}" />
+                <Entry Placeholder="Benutzername" Text="{Binding Username}" />
+                <Entry Placeholder="Passwort" Text="{Binding Password}" IsPassword="True" />
+                <Entry Placeholder="URL" Text="{Binding Url}" Keyboard="Url" />
+                <Editor Placeholder="Notizen" AutoSize="TextChanges" Text="{Binding Notes}" />
+                <Editor Placeholder="Freies Textfeld" AutoSize="TextChanges" Text="{Binding FreeText}" />
+                <Label Text="Änderungsdatum" FontAttributes="Bold" />
+                <Label Text="{Binding ModifiedAt, StringFormat='{0:G}'}" />
+                <HorizontalStackLayout Spacing="12" Margin="0,12,0,0">
+                    <Button Text="Speichern" Clicked="OnSaveClicked" HorizontalOptions="FillAndExpand" />
+                    <Button Text="Abbrechen" Clicked="OnCancelClicked" HorizontalOptions="FillAndExpand" />
+                </HorizontalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+    </ContentPage.Content>
+</ContentPage>
