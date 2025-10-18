@@ -4,6 +4,7 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:local="clr-namespace:Password_Phrase_Producer"
+    xmlns:views="clr-namespace:Password_Phrase_Producer.Views"
     Title="Password Phrase Producer"
     FlyoutBackgroundColor="#1A1A1A">
 
@@ -13,6 +14,14 @@
         <ShellContent
             Title="Startseite"
             ContentTemplate="{DataTemplate local:StartPage}" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Tresor"
+                Route="vault"
+                FlyoutDisplayOptions="AsSingleItem">
+        <ShellContent
+            Title="Tresor"
+            ContentTemplate="{DataTemplate views:VaultPage}" />
     </FlyoutItem>
 
 </Shell>
