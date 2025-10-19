@@ -117,6 +117,57 @@ public class PasswordVaultService
         return true;
     }
 
+    public async Task ChangeMasterPasswordAsync(string newPassword, bool enableBiometrics, CancellationToken cancellationToken = default)
+    {
+        EnsureUnlocked();
+        ArgumentException.ThrowIfNullOrWhiteSpace(newPassword);
+
+        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+
+            var newSalt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
+            var newKey = DeriveKey(newPassword, newSalt);
+            var newVerifier = CreateVerifier(newKey);
+
+            var previousKey = _encryptionKey;
+            _encryptionKey = newKey;
+
+            try
+            {
+                await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                _encryptionKey = previousKey;
+                Array.Clear(newKey);
+                throw;
+            }
+
+            await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, Convert.ToBase64String(newSalt)).ConfigureAwait(false);
+            await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, Convert.ToBase64String(newVerifier)).ConfigureAwait(false);
+
+            if (enableBiometrics)
+            {
+                await SecureStorage.Default.SetAsync(BiometricKeyStorageKey, Convert.ToBase64String(newKey)).ConfigureAwait(false);
+            }
+            else
+            {
+                SecureStorage.Default.Remove(BiometricKeyStorageKey);
+            }
+
+            if (previousKey is not null)
+            {
+                Array.Clear(previousKey);
+            }
+        }
+        finally
+        {
+            _syncLock.Release();
+        }
+    }
+
     public async Task<bool> TryUnlockWithStoredKeyAsync(CancellationToken cancellationToken = default)
     {
         var storedKeyBase64 = await SecureStorage.Default.GetAsync(BiometricKeyStorageKey).ConfigureAwait(false);

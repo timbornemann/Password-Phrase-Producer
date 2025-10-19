@@ -98,7 +98,8 @@ public partial class VaultPage : ContentPage
             "Backup exportieren",
             "Backup importieren",
             "Verschlüsselten Tresor exportieren",
-            "Verschlüsselten Tresor importieren");
+            "Verschlüsselten Tresor importieren",
+            "Master-Passwort ändern");
 
         try
         {
@@ -116,6 +117,9 @@ public partial class VaultPage : ContentPage
                     break;
                 case "Verschlüsselten Tresor importieren":
                     await ImportEncryptedAsync();
+                    break;
+                case "Master-Passwort ändern":
+                    await ChangeMasterPasswordAsync();
                     break;
             }
         }
@@ -220,5 +224,66 @@ public partial class VaultPage : ContentPage
 
         await using var stream = await file.OpenReadAsync();
         await _viewModel.ImportEncryptedVaultAsync(stream);
+    }
+
+    private async Task ChangeMasterPasswordAsync()
+    {
+        var newPassword = await DisplayPromptAsync(
+            "Master-Passwort ändern",
+            "Bitte gib das neue Master-Passwort ein.",
+            accept: "Weiter",
+            cancel: "Abbrechen",
+            keyboard: Keyboard.Text,
+            isPassword: true);
+
+        if (newPassword is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(newPassword))
+        {
+            await DisplayAlert("Fehler", "Das Master-Passwort darf nicht leer sein.", "OK");
+            return;
+        }
+
+        var confirmPassword = await DisplayPromptAsync(
+            "Master-Passwort bestätigen",
+            "Bitte gib das neue Master-Passwort erneut ein.",
+            accept: "Ändern",
+            cancel: "Abbrechen",
+            keyboard: Keyboard.Text,
+            isPassword: true);
+
+        if (confirmPassword is null)
+        {
+            return;
+        }
+
+        if (!string.Equals(newPassword, confirmPassword, StringComparison.Ordinal))
+        {
+            await DisplayAlert("Fehler", "Die Passwörter stimmen nicht überein.", "OK");
+            return;
+        }
+
+        bool enableBiometric = _viewModel.EnableBiometric;
+        if (_viewModel.CanUseBiometric)
+        {
+            enableBiometric = await DisplayAlert(
+                "Biometrische Anmeldung",
+                "Soll die biometrische Anmeldung weiterhin verfügbar sein?",
+                "Ja",
+                "Nein");
+        }
+
+        try
+        {
+            await _viewModel.ChangeMasterPasswordAsync(newPassword, enableBiometric);
+            await DisplayAlert("Erfolg", "Das Master-Passwort wurde aktualisiert.", "OK");
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Fehler", $"Das Master-Passwort konnte nicht geändert werden: {ex.Message}", "OK");
+        }
     }
 }
