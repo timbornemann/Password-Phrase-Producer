@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -211,6 +212,16 @@ public class VaultPageViewModel : INotifyPropertyChanged
         }
 
         await _vaultService.DeleteEntryAsync(entry.Id, cancellationToken);
+    }
+
+    public async Task ChangeMasterPasswordAsync(string newPassword, bool enableBiometric, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(newPassword);
+
+        await _vaultService.ChangeMasterPasswordAsync(newPassword, enableBiometric && CanUseBiometric, cancellationToken);
+
+        EnableBiometric = enableBiometric && CanUseBiometric;
+        IsBiometricConfigured = EnableBiometric;
     }
 
     public Task<byte[]> CreateBackupAsync(CancellationToken cancellationToken = default)
