@@ -4,6 +4,7 @@ using System.Threading;
 using CommunityToolkit.Maui.Storage;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.ApplicationModel.DataTransfer;
 using Microsoft.Maui.Storage;
 using Password_Phrase_Producer.Models;
 using Password_Phrase_Producer.ViewModels;
@@ -33,38 +34,26 @@ public partial class VaultPage : ContentPage
         _viewModel.Deactivate();
     }
 
-    private async void OnAddEntryClicked(object? sender, EventArgs e)
+    private async void OnAddEntryClicked(object? sender, TappedEventArgs e)
     {
         var entry = new PasswordVaultEntry();
-        var result = await VaultEntryEditorPage.ShowAsync(Navigation, entry, "Neuer Tresor-Eintrag");
-        if (result is null)
-        {
-            return;
-        }
-
-        await _viewModel.SaveEntryAsync(result);
+        await ShowEditorAsync(entry, "Neuer Tresor-Eintrag");
     }
 
-    private async void OnEditEntry(object? sender, EventArgs e)
+    private async void OnEditEntryTapped(object? sender, TappedEventArgs e)
     {
-        if (sender is not SwipeItem swipeItem || swipeItem.CommandParameter is not PasswordVaultEntry entry)
+        if (e.Parameter is not PasswordVaultEntry entry)
         {
             return;
         }
 
         var editable = entry.Clone();
-        var result = await VaultEntryEditorPage.ShowAsync(Navigation, editable, "Eintrag bearbeiten");
-        if (result is null)
-        {
-            return;
-        }
-
-        await _viewModel.SaveEntryAsync(result);
+        await ShowEditorAsync(editable, "Eintrag bearbeiten");
     }
 
-    private async void OnDeleteEntry(object? sender, EventArgs e)
+    private async void OnDeleteEntryTapped(object? sender, TappedEventArgs e)
     {
-        if (sender is not SwipeItem swipeItem || swipeItem.CommandParameter is not PasswordVaultEntry entry)
+        if (e.Parameter is not PasswordVaultEntry entry)
         {
             return;
         }
@@ -103,7 +92,7 @@ public partial class VaultPage : ContentPage
         }
     }
 
-    private async void OnSyncOptionsClicked(object? sender, EventArgs e)
+    private async void OnSyncOptionsClicked(object? sender, TappedEventArgs e)
     {
         var selection = await DisplayActionSheet("Tresor synchronisieren", "Abbrechen", null,
             "Backup exportieren",
@@ -132,6 +121,41 @@ public partial class VaultPage : ContentPage
         catch (Exception ex)
         {
             await DisplayAlert("Fehler", ex.Message, "OK");
+        }
+    }
+
+    private async Task ShowEditorAsync(PasswordVaultEntry entry, string title)
+    {
+        var result = await VaultEntryEditorPage.ShowAsync(Navigation, entry, title);
+        if (result is null)
+        {
+            return;
+        }
+
+        await _viewModel.SaveEntryAsync(result);
+    }
+
+    private async void OnCopyPasswordTapped(object? sender, TappedEventArgs e)
+    {
+        if (e.Parameter is not PasswordVaultEntry entry)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(entry.Password))
+        {
+            return;
+        }
+
+        await Clipboard.Default.SetTextAsync(entry.Password);
+        await DisplayAlert("Kopiert", "Das Passwort wurde in die Zwischenablage kopiert.", "OK");
+    }
+
+    private void OnOpenMenuTapped(object? sender, TappedEventArgs e)
+    {
+        if (Shell.Current is not null)
+        {
+            Shell.Current.FlyoutIsPresented = true;
         }
     }
 
