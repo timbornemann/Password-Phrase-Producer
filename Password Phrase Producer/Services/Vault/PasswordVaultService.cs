@@ -19,11 +19,15 @@ public static class VaultMessages
 
 public class PasswordVaultService
 {
-    private const string KeyStorageKey = "PasswordVaultEncryptionKey";
     private const string VaultFileName = "vault.json.enc";
+    private const string PasswordSaltStorageKey = "PasswordVaultMasterPasswordSalt";
+    private const string PasswordVerifierStorageKey = "PasswordVaultMasterPasswordVerifier";
+    private const string BiometricKeyStorageKey = "PasswordVaultBiometricKey";
+    private const int KeySizeBytes = 32;
+    private const int SaltSizeBytes = 16;
+    private const int Pbkdf2Iterations = 200_000;
 
     private readonly SemaphoreSlim _syncLock = new(1, 1);
-    private readonly SemaphoreSlim _keyLock = new(1, 1);
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -38,13 +42,127 @@ public class PasswordVaultService
         _vaultFilePath = Path.Combine(FileSystem.AppDataDirectory, VaultFileName);
     }
 
-    public async Task EnsureInitializedAsync(CancellationToken cancellationToken = default)
+    public bool IsUnlocked => _encryptionKey is not null;
+
+    public async Task<bool> HasMasterPasswordAsync(CancellationToken cancellationToken = default)
     {
-        _ = await GetKeyAsync(cancellationToken).ConfigureAwait(false);
+        var salt = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false);
+        return !string.IsNullOrEmpty(salt);
+    }
+
+    public async Task<bool> HasBiometricKeyAsync(CancellationToken cancellationToken = default)
+    {
+        var stored = await SecureStorage.Default.GetAsync(BiometricKeyStorageKey).ConfigureAwait(false);
+        return !string.IsNullOrEmpty(stored);
+    }
+
+    public void Lock()
+    {
+        if (_encryptionKey is null)
+        {
+            return;
+        }
+
+        Array.Clear(_encryptionKey);
+        _encryptionKey = null;
+    }
+
+    public async Task SetMasterPasswordAsync(string password, bool enableBiometrics, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(password);
+
+        var salt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
+        var key = DeriveKey(password, salt);
+        var verifier = CreateVerifier(key);
+
+        await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, Convert.ToBase64String(salt)).ConfigureAwait(false);
+        await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, Convert.ToBase64String(verifier)).ConfigureAwait(false);
+
+        _encryptionKey = key;
+
+        if (enableBiometrics)
+        {
+            await SecureStorage.Default.SetAsync(BiometricKeyStorageKey, Convert.ToBase64String(key)).ConfigureAwait(false);
+        }
+        else
+        {
+            SecureStorage.Default.Remove(BiometricKeyStorageKey);
+        }
+    }
+
+    public async Task<bool> UnlockAsync(string password, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(password);
+
+        var saltBase64 = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false);
+        var verifierBase64 = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey).ConfigureAwait(false);
+
+        if (string.IsNullOrEmpty(saltBase64) || string.IsNullOrEmpty(verifierBase64))
+        {
+            return false;
+        }
+
+        var salt = Convert.FromBase64String(saltBase64);
+        var key = DeriveKey(password, salt);
+        var expectedVerifier = Convert.FromBase64String(verifierBase64);
+        var actualVerifier = CreateVerifier(key);
+
+        if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
+        {
+            Array.Clear(key);
+            return false;
+        }
+
+        _encryptionKey = key;
+        return true;
+    }
+
+    public async Task<bool> TryUnlockWithStoredKeyAsync(CancellationToken cancellationToken = default)
+    {
+        var storedKeyBase64 = await SecureStorage.Default.GetAsync(BiometricKeyStorageKey).ConfigureAwait(false);
+        var verifierBase64 = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey).ConfigureAwait(false);
+
+        if (string.IsNullOrEmpty(storedKeyBase64) || string.IsNullOrEmpty(verifierBase64))
+        {
+            return false;
+        }
+
+        var key = Convert.FromBase64String(storedKeyBase64);
+        var expectedVerifier = Convert.FromBase64String(verifierBase64);
+        var actualVerifier = CreateVerifier(key);
+
+        if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
+        {
+            SecureStorage.Default.Remove(BiometricKeyStorageKey);
+            Array.Clear(key);
+            return false;
+        }
+
+        _encryptionKey = key;
+        return true;
+    }
+
+    public async Task SetBiometricUnlockAsync(bool enabled, CancellationToken cancellationToken = default)
+    {
+        if (!IsUnlocked)
+        {
+            throw new InvalidOperationException("Der Tresor ist gesperrt.");
+        }
+
+        if (enabled)
+        {
+            await SecureStorage.Default.SetAsync(BiometricKeyStorageKey, Convert.ToBase64String(_encryptionKey!)).ConfigureAwait(false);
+        }
+        else
+        {
+            SecureStorage.Default.Remove(BiometricKeyStorageKey);
+        }
     }
 
     public async Task<IReadOnlyList<PasswordVaultEntry>> GetEntriesAsync(CancellationToken cancellationToken = default)
     {
+        EnsureUnlocked();
+
         await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -63,6 +181,7 @@ public class PasswordVaultService
     public async Task AddOrUpdateEntryAsync(PasswordVaultEntry entry, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(entry);
+        EnsureUnlocked();
 
         await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -98,6 +217,8 @@ public class PasswordVaultService
 
     public async Task DeleteEntryAsync(Guid entryId, CancellationToken cancellationToken = default)
     {
+        EnsureUnlocked();
+
         await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -119,16 +240,23 @@ public class PasswordVaultService
 
     public async Task<byte[]> CreateBackupAsync(CancellationToken cancellationToken = default)
     {
+        EnsureUnlocked();
+
         await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             var encryptedPayload = await ReadEncryptedFileAsync(cancellationToken).ConfigureAwait(false);
-            var key = await GetKeyAsync(cancellationToken).ConfigureAwait(false);
+            var salt = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false)
+                       ?? throw new InvalidOperationException("Kein Master-Passwort konfiguriert.");
+            var verifier = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey).ConfigureAwait(false)
+                          ?? throw new InvalidOperationException("Kein Master-Passwort konfiguriert.");
 
             var backup = new PasswordVaultBackupDto
             {
-                EncryptionKey = Convert.ToBase64String(key),
                 CipherText = Convert.ToBase64String(encryptedPayload),
+                PasswordSalt = salt,
+                PasswordVerifier = verifier,
+                Pbkdf2Iterations = Pbkdf2Iterations,
                 CreatedAt = DateTimeOffset.UtcNow
             };
 
@@ -150,10 +278,17 @@ public class PasswordVaultService
         var dto = JsonSerializer.Deserialize<PasswordVaultBackupDto>(json, _jsonOptions)
                   ?? throw new InvalidOperationException("Ungültiges Backup-Format.");
 
-        var key = Convert.FromBase64String(dto.EncryptionKey);
         var cipher = Convert.FromBase64String(dto.CipherText);
 
-        await SetKeyAsync(key, cancellationToken).ConfigureAwait(false);
+        if (dto.Pbkdf2Iterations != Pbkdf2Iterations)
+        {
+            throw new InvalidOperationException("Das Backup wurde mit einer nicht unterstützten Schlüsselableitung erstellt.");
+        }
+
+        await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, dto.PasswordSalt).ConfigureAwait(false);
+        await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, dto.PasswordVerifier).ConfigureAwait(false);
+        SecureStorage.Default.Remove(BiometricKeyStorageKey);
+        _encryptionKey = null;
 
         await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -171,6 +306,8 @@ public class PasswordVaultService
 
     public async Task<byte[]> ExportEncryptedVaultAsync(CancellationToken cancellationToken = default)
     {
+        EnsureUnlocked();
+
         await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -185,6 +322,7 @@ public class PasswordVaultService
     public async Task ImportEncryptedVaultAsync(Stream encryptedStream, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(encryptedStream);
+        EnsureUnlocked();
 
         using var memoryStream = new MemoryStream();
         await encryptedStream.CopyToAsync(memoryStream, cancellationToken).ConfigureAwait(false);
@@ -259,7 +397,7 @@ public class PasswordVaultService
 
     private async Task<byte[]> EncryptAsync(byte[] data, CancellationToken cancellationToken)
     {
-        var key = await GetKeyAsync(cancellationToken).ConfigureAwait(false);
+        var key = GetUnlockedKey();
         var nonce = RandomNumberGenerator.GetBytes(12);
         var cipher = new byte[data.Length];
         var tag = new byte[16];
@@ -281,7 +419,7 @@ public class PasswordVaultService
             return Array.Empty<byte>();
         }
 
-        var key = await GetKeyAsync(cancellationToken).ConfigureAwait(false);
+        var key = GetUnlockedKey();
 
         var nonce = new byte[12];
         var tag = new byte[16];
@@ -308,50 +446,33 @@ public class PasswordVaultService
         return await File.ReadAllBytesAsync(_vaultFilePath, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<byte[]> GetKeyAsync(CancellationToken cancellationToken)
+    private byte[] GetUnlockedKey()
     {
-        if (_encryptionKey is not null)
+        if (_encryptionKey is null)
         {
-            return _encryptionKey;
+            throw new InvalidOperationException("Der Tresor ist gesperrt.");
         }
 
-        await _keyLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            if (_encryptionKey is null)
-            {
-                var storedKey = await SecureStorage.Default.GetAsync(KeyStorageKey).ConfigureAwait(false);
-                if (!string.IsNullOrEmpty(storedKey))
-                {
-                    _encryptionKey = Convert.FromBase64String(storedKey);
-                }
-                else
-                {
-                    var keyBytes = RandomNumberGenerator.GetBytes(32);
-                    await SecureStorage.Default.SetAsync(KeyStorageKey, Convert.ToBase64String(keyBytes)).ConfigureAwait(false);
-                    _encryptionKey = keyBytes;
-                }
-            }
+        return _encryptionKey;
+    }
 
-            return _encryptionKey;
-        }
-        finally
+    private void EnsureUnlocked()
+    {
+        if (!IsUnlocked)
         {
-            _keyLock.Release();
+            throw new InvalidOperationException("Der Tresor ist gesperrt.");
         }
     }
 
-    private async Task SetKeyAsync(byte[] key, CancellationToken cancellationToken)
+    private static byte[] DeriveKey(string password, byte[] salt)
     {
-        await _keyLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            _encryptionKey = key;
-            await SecureStorage.Default.SetAsync(KeyStorageKey, Convert.ToBase64String(key)).ConfigureAwait(false);
-        }
-        finally
-        {
-            _keyLock.Release();
-        }
+        using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Pbkdf2Iterations, HashAlgorithmName.SHA256);
+        return pbkdf2.GetBytes(KeySizeBytes);
+    }
+
+    private static byte[] CreateVerifier(byte[] key)
+    {
+        using var sha = SHA256.Create();
+        return sha.ComputeHash(key);
     }
 }
