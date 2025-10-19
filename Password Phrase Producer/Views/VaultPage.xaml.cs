@@ -109,6 +109,7 @@ public partial class VaultPage : ContentPage
                     break;
                 case "Backup importieren":
                     await ImportBackupAsync();
+                    await _viewModel.EnsureAccessStateAsync();
                     break;
                 case "Verschlüsselten Tresor exportieren":
                     await ExportEncryptedAsync();
@@ -121,6 +122,14 @@ public partial class VaultPage : ContentPage
         catch (Exception ex)
         {
             await DisplayAlert("Fehler", ex.Message, "OK");
+        }
+    }
+
+    private async void OnBackTapped(object? sender, TappedEventArgs e)
+    {
+        if (Shell.Current is not null)
+        {
+            await Shell.Current.GoToAsync("//home");
         }
     }
 

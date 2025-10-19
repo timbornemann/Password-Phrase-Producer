@@ -1,5 +1,6 @@
 using CommunityToolkit.Maui;
 using Microsoft.Extensions.Logging;
+using Password_Phrase_Producer.Services.Security;
 using Password_Phrase_Producer.Services.Vault;
 using Password_Phrase_Producer.ViewModels;
 using Password_Phrase_Producer.Views;
@@ -25,15 +26,11 @@ public static class MauiProgram
 #endif
 
         builder.Services.AddSingleton<PasswordVaultService>();
+        builder.Services.AddSingleton<IBiometricAuthenticationService, BiometricAuthenticationService>();
         builder.Services.AddTransient<VaultPageViewModel>();
         builder.Services.AddTransient<VaultPage>();
         builder.Services.AddTransient<VaultEntryEditorPage>();
 
-        var app = builder.Build();
-
-        var vaultService = app.Services.GetService<PasswordVaultService>();
-        vaultService?.EnsureInitializedAsync().GetAwaiter().GetResult();
-
-        return app;
+        return builder.Build();
     }
 }
