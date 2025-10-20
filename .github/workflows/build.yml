@@ -43,7 +43,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 9.0.x
 
       - name: Install MAUI workload
         run: dotnet workload install maui --ignore-failed-sources
@@ -98,7 +98,7 @@ jobs:
 
           dotnet publish "./Password Phrase Producer/Password Phrase Producer.sln" `
             -c Release `
-            -f net8.0-android `
+            -f net9.0-android `
             -p:ApplicationDisplayVersion=$env:APP_VERSION `
             -p:ApplicationVersion=$env:APP_BUILD `
             $signingArgs
@@ -107,7 +107,7 @@ jobs:
         shell: pwsh
         run: |
           $workspace = "${{ github.workspace }}"
-          $publishDir = Join-Path $workspace "Password Phrase Producer\bin\Release\net8.0-android\publish"
+          $publishDir = Join-Path $workspace "Password Phrase Producer\bin\Release\net9.0-android\publish"
           if (-not (Test-Path $publishDir)) {
             throw "Android publish directory not found."
           }
@@ -152,7 +152,7 @@ jobs:
 
           dotnet publish "./Password Phrase Producer/Password Phrase Producer.sln" `
             -c Release `
-            -f net8.0-windows10.0.19041.0 `
+            -f net9.0-windows10.0.19041.0 `
             -p:RuntimeIdentifier=win10-x64 `
             -p:WindowsPackageType=MSIX `
             -p:ApplicationDisplayVersion=$env:APP_VERSION `
@@ -164,7 +164,7 @@ jobs:
         shell: pwsh
         run: |
           $workspace = "${{ github.workspace }}"
-          $packagesDir = Join-Path $workspace "Password Phrase Producer\bin\Release\net8.0-windows10.0.19041.0\win10-x64\AppPackages"
+          $packagesDir = Join-Path $workspace "Password Phrase Producer\bin\Release\net9.0-windows10.0.19041.0\win10-x64\AppPackages"
           if (-not (Test-Path $packagesDir)) {
             throw "Windows AppPackages directory not found."
           }
