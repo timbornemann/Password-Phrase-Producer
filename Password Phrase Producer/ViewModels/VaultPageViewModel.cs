@@ -30,6 +30,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
     private string _password = string.Empty;
     private string _confirmPassword = string.Empty;
     private string? _unlockError;
+    private bool _hasAttemptedAutoBiometric;
 
     public VaultPageViewModel(PasswordVaultService vaultService, IBiometricAuthenticationService biometricAuthenticationService)
     {
@@ -167,6 +168,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
 
         _vaultService.Lock();
         IsUnlocked = false;
+        _hasAttemptedAutoBiometric = false;
         MainThread.BeginInvokeOnMainThread(() => Entries.Clear());
     }
 
@@ -248,6 +250,12 @@ public class VaultPageViewModel : INotifyPropertyChanged
         if (!IsUnlocked)
         {
             MainThread.BeginInvokeOnMainThread(Entries.Clear);
+
+            if (CanUseBiometric && IsBiometricConfigured && !_hasAttemptedAutoBiometric)
+            {
+                _hasAttemptedAutoBiometric = true;
+                await UnlockWithBiometricAsync(cancellationToken).ConfigureAwait(false);
+            }
         }
     }
 
@@ -351,6 +359,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
         UnlockError = null;
         IsUnlocked = true;
         IsNewVault = false;
+        _hasAttemptedAutoBiometric = false;
         await ReloadAsync(cancellationToken);
     }
 

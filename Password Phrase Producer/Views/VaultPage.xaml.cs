@@ -16,6 +16,7 @@ namespace Password_Phrase_Producer.Views;
 public partial class VaultPage : ContentPage
 {
     private readonly VaultPageViewModel _viewModel;
+    private int _modalDepth;
 
     public VaultPage(VaultPageViewModel viewModel)
     {
@@ -26,6 +27,12 @@ public partial class VaultPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+
+        if (_modalDepth > 0)
+        {
+            return;
+        }
+
         _viewModel.Activate();
         await _viewModel.InitializeAsync();
     }
@@ -33,6 +40,12 @@ public partial class VaultPage : ContentPage
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
+
+        if (_modalDepth > 0)
+        {
+            return;
+        }
+
         _viewModel.Deactivate();
     }
 
@@ -141,13 +154,21 @@ public partial class VaultPage : ContentPage
 
     private async Task ShowEditorAsync(PasswordVaultEntry entry, string title)
     {
-        var result = await VaultEntryEditorPage.ShowAsync(Navigation, entry, title);
-        if (result is null)
+        BeginModalInteraction();
+        try
         {
-            return;
-        }
+            var result = await VaultEntryEditorPage.ShowAsync(Navigation, entry, title);
+            if (result is null)
+            {
+                return;
+            }
 
-        await _viewModel.SaveEntryAsync(result);
+            await _viewModel.SaveEntryAsync(result);
+        }
+        finally
+        {
+            EndModalInteraction();
+        }
     }
 
     private async void OnCopyPasswordTapped(object? sender, TappedEventArgs e)
@@ -306,14 +327,33 @@ public partial class VaultPage : ContentPage
 
         var promptPage = new PasswordPromptPage(title, message, accept, cancel);
 
-        await navigation.PushModalAsync(promptPage);
-        var result = await promptPage.WaitForResultAsync();
-
-        if (navigation.ModalStack.Contains(promptPage))
+        BeginModalInteraction();
+        try
         {
-            await navigation.PopModalAsync();
-        }
+            await navigation.PushModalAsync(promptPage);
+            var result = await promptPage.WaitForResultAsync();
 
-        return result;
+            if (navigation.ModalStack.Contains(promptPage))
+            {
+                await navigation.PopModalAsync();
+            }
+
+            return result;
+        }
+        finally
+        {
+            EndModalInteraction();
+        }
+    }
+
+    private void BeginModalInteraction()
+        => _modalDepth++;
+
+    private void EndModalInteraction()
+    {
+        if (_modalDepth > 0)
+        {
+            _modalDepth--;
+        }
     }
 }

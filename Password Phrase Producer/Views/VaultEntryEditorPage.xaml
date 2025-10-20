@@ -3,25 +3,229 @@
     x:Class="Password_Phrase_Producer.Views.VaultEntryEditorPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:models="clr-namespace:Password_Phrase_Producer.Models"
-    Title="Tresor-Eintrag">
-    <ContentPage.Content>
-        <ScrollView>
-            <VerticalStackLayout Padding="24" Spacing="12">
-                <Entry Placeholder="Bezeichnung" Text="{Binding Label}" />
-                <Entry Placeholder="Kategorie" Text="{Binding Category}" />
-                <Entry Placeholder="Benutzername" Text="{Binding Username}" />
-                <Entry Placeholder="Passwort" Text="{Binding Password}" IsPassword="True" />
-                <Entry Placeholder="URL" Text="{Binding Url}" Keyboard="Url" />
-                <Editor Placeholder="Notizen" AutoSize="TextChanges" Text="{Binding Notes}" />
-                <Editor Placeholder="Freies Textfeld" AutoSize="TextChanges" Text="{Binding FreeText}" />
-                <Label Text="Änderungsdatum" FontAttributes="Bold" />
-                <Label Text="{Binding ModifiedAt, StringFormat='{0:G}'}" />
-                <HorizontalStackLayout Spacing="12" Margin="0,12,0,0">
-                    <Button Text="Speichern" Clicked="OnSaveClicked" HorizontalOptions="FillAndExpand" />
-                    <Button Text="Abbrechen" Clicked="OnCancelClicked" HorizontalOptions="FillAndExpand" />
-                </HorizontalStackLayout>
+    Shell.NavBarIsVisible="False">
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <Color x:Key="CardBackgroundColor">#1B2036</Color>
+            <Color x:Key="InputBackgroundColor">#20253D</Color>
+            <Color x:Key="AccentColor">#5465FF</Color>
+            <Color x:Key="SecondaryButtonColor">#2A2F4A</Color>
+            <Style TargetType="Label" x:Key="FieldLabelStyle">
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="FontAttributes" Value="Bold" />
+                <Setter Property="TextColor" Value="#C7CCF1" />
+            </Style>
+            <Style TargetType="Entry" x:Key="InputEntryStyle">
+                <Setter Property="BackgroundColor" Value="Transparent" />
+                <Setter Property="TextColor" Value="#F5F6FF" />
+                <Setter Property="PlaceholderColor" Value="#7C83AF" />
+                <Setter Property="FontSize" Value="16" />
+            </Style>
+            <Style TargetType="Editor" x:Key="InputEditorStyle">
+                <Setter Property="BackgroundColor" Value="Transparent" />
+                <Setter Property="TextColor" Value="#F5F6FF" />
+                <Setter Property="PlaceholderColor" Value="#7C83AF" />
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="AutoSize" Value="TextChanges" />
+            </Style>
+            <Style TargetType="Button" x:Key="PrimaryButtonStyle">
+                <Setter Property="BackgroundColor" Value="{StaticResource AccentColor}" />
+                <Setter Property="TextColor" Value="White" />
+                <Setter Property="FontAttributes" Value="Bold" />
+                <Setter Property="FontSize" Value="16" />
+                <Setter Property="CornerRadius" Value="18" />
+                <Setter Property="Padding" Value="0,16" />
+            </Style>
+            <Style TargetType="Button" x:Key="SecondaryButtonStyle" BasedOn="{StaticResource PrimaryButtonStyle}">
+                <Setter Property="BackgroundColor" Value="{StaticResource SecondaryButtonColor}" />
+                <Setter Property="TextColor" Value="#D9DFFF" />
+            </Style>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+    <ContentPage.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#101018" Offset="0" />
+            <GradientStop Color="#141426" Offset="0.6" />
+            <GradientStop Color="#0F111A" Offset="1" />
+        </LinearGradientBrush>
+    </ContentPage.Background>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid
+            Padding="24,48,24,24"
+            ColumnDefinitions="*,Auto"
+            Grid.Row="0"
+            VerticalOptions="Start">
+            <VerticalStackLayout Spacing="4">
+                <Label
+                    Text="Tresor-Eintrag"
+                    FontSize="28"
+                    FontAttributes="Bold"
+                    TextColor="White" />
+                <Label
+                    Text="Pflege deine Zugangsdaten sicher und strukturiert."
+                    FontSize="14"
+                    TextColor="#AEB5DA" />
+            </VerticalStackLayout>
+
+            <Border
+                Grid.Column="1"
+                WidthRequest="48"
+                HeightRequest="48"
+                BackgroundColor="#1F2338"
+                StrokeThickness="0"
+                HorizontalOptions="End"
+                VerticalOptions="Center">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="16" />
+                </Border.StrokeShape>
+                <Border.Shadow>
+                    <Shadow Brush="#20000000" Radius="12" Offset="0,8" />
+                </Border.Shadow>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnCloseTapped" />
+                </Border.GestureRecognizers>
+                <Label
+                    Text="✕"
+                    FontSize="18"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"
+                    TextColor="#D0D4FF" />
+            </Border>
+        </Grid>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="24,0,24,32" Spacing="18">
+                <Border
+                    BackgroundColor="{StaticResource CardBackgroundColor}"
+                    StrokeThickness="0"
+                    Padding="24">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="28" />
+                    </Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow Brush="#25000000" Radius="18" Offset="0,12" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Bezeichnung" Style="{StaticResource FieldLabelStyle}" />
+                        <Border
+                            BackgroundColor="{StaticResource InputBackgroundColor}"
+                            StrokeThickness="0"
+                            Padding="14,12"
+                            Margin="0,6,0,18">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="16" />
+                            </Border.StrokeShape>
+                            <Entry Style="{StaticResource InputEntryStyle}" Placeholder="z. B. E-Mail" Text="{Binding Label}" />
+                        </Border>
+
+                        <Label Text="Kategorie" Style="{StaticResource FieldLabelStyle}" />
+                        <Border
+                            BackgroundColor="{StaticResource InputBackgroundColor}"
+                            StrokeThickness="0"
+                            Padding="14,12"
+                            Margin="0,6,0,18">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="16" />
+                            </Border.StrokeShape>
+                            <Entry Style="{StaticResource InputEntryStyle}" Placeholder="Ordner oder Gruppe" Text="{Binding Category}" />
+                        </Border>
+
+                        <Label Text="Benutzername" Style="{StaticResource FieldLabelStyle}" />
+                        <Border
+                            BackgroundColor="{StaticResource InputBackgroundColor}"
+                            StrokeThickness="0"
+                            Padding="14,12"
+                            Margin="0,6,0,18">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="16" />
+                            </Border.StrokeShape>
+                            <Entry Style="{StaticResource InputEntryStyle}" Placeholder="Login oder Nutzername" Text="{Binding Username}" />
+                        </Border>
+
+                        <Label Text="Passwort" Style="{StaticResource FieldLabelStyle}" />
+                        <Border
+                            BackgroundColor="{StaticResource InputBackgroundColor}"
+                            StrokeThickness="0"
+                            Padding="14,12"
+                            Margin="0,6,0,18">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="16" />
+                            </Border.StrokeShape>
+                            <Entry
+                                Style="{StaticResource InputEntryStyle}"
+                                Placeholder="Sicheres Passwort"
+                                Text="{Binding Password}"
+                                IsPassword="True" />
+                        </Border>
+
+                        <Label Text="URL" Style="{StaticResource FieldLabelStyle}" />
+                        <Border
+                            BackgroundColor="{StaticResource InputBackgroundColor}"
+                            StrokeThickness="0"
+                            Padding="14,12"
+                            Margin="0,6,0,18">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="16" />
+                            </Border.StrokeShape>
+                            <Entry
+                                Style="{StaticResource InputEntryStyle}"
+                                Placeholder="https://"
+                                Text="{Binding Url}"
+                                Keyboard="Url" />
+                        </Border>
+
+                        <Label Text="Notizen" Style="{StaticResource FieldLabelStyle}" />
+                        <Border
+                            BackgroundColor="{StaticResource InputBackgroundColor}"
+                            StrokeThickness="0"
+                            Padding="14,12"
+                            Margin="0,6,0,18">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="18" />
+                            </Border.StrokeShape>
+                            <Editor Style="{StaticResource InputEditorStyle}" Placeholder="Zusätzliche Informationen" Text="{Binding Notes}" />
+                        </Border>
+
+                        <Label Text="Freies Textfeld" Style="{StaticResource FieldLabelStyle}" />
+                        <Border
+                            BackgroundColor="{StaticResource InputBackgroundColor}"
+                            StrokeThickness="0"
+                            Padding="14,12"
+                            Margin="0,6,0,18">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="18" />
+                            </Border.StrokeShape>
+                            <Editor Style="{StaticResource InputEditorStyle}" Placeholder="Individuelle Inhalte" Text="{Binding FreeText}" />
+                        </Border>
+
+                        <Label Text="Zuletzt geändert" Style="{StaticResource FieldLabelStyle}" />
+                        <Label
+                            Text="{Binding ModifiedAt, StringFormat='{0:G}'}"
+                            FontSize="13"
+                            TextColor="#9AA2CC" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="16" Margin="0,12,0,0">
+                    <Button
+                        Grid.Column="0"
+                        Text="Abbrechen"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Clicked="OnCancelClicked" />
+                    <Button
+                        Grid.Column="1"
+                        Text="Speichern"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Clicked="OnSaveClicked" />
+                </Grid>
             </VerticalStackLayout>
         </ScrollView>
-    </ContentPage.Content>
+    </Grid>
 </ContentPage>

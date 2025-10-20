@@ -41,6 +41,9 @@ public partial class VaultEntryEditorPage : ContentPage
         await CloseAsync().ConfigureAwait(false);
     }
 
+    private void OnCloseTapped(object? sender, TappedEventArgs e)
+        => OnCancelClicked(sender, EventArgs.Empty);
+
     protected override bool OnBackButtonPressed()
     {
         if (!_resultSource.Task.IsCompleted)
