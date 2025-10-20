@@ -174,6 +174,17 @@ public partial class VaultPage : ContentPage
         }
     }
 
+    private async void OnChangePasswordTapped(object? sender, TappedEventArgs e)
+    {
+        if (!_viewModel.IsUnlocked)
+        {
+            await DisplayAlert("Tresor gesperrt", "Bitte entsperre den Tresor, bevor du das Master-Passwort ändern kannst.", "OK");
+            return;
+        }
+
+        await ChangeMasterPasswordAsync();
+    }
+
     private async Task ExportBackupAsync()
     {
         var backupBytes = await _viewModel.CreateBackupAsync();

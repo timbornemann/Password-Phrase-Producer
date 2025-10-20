@@ -92,7 +92,7 @@
                     </Border>
                 </Grid>
 
-                <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="14">
+                <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="14">
                     <Border
                         StrokeThickness="0"
                         BackgroundColor="#3B4AD1"
@@ -158,6 +158,31 @@
                         </Border.GestureRecognizers>
                         <Label
                             Text="⟳"
+                            FontSize="20"
+                            HorizontalOptions="Center"
+                            VerticalOptions="Center"
+                            TextColor="#CFD3FF" />
+                    </Border>
+
+                    <Border
+                        Grid.Column="2"
+                        WidthRequest="52"
+                        HeightRequest="52"
+                        BackgroundColor="#1F2338"
+                        StrokeThickness="0"
+                        HorizontalOptions="End"
+                        VerticalOptions="Center">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="18" />
+                        </Border.StrokeShape>
+                        <Border.Shadow>
+                            <Shadow Brush="#1A000000" Radius="12" Offset="0,8" />
+                        </Border.Shadow>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnChangePasswordTapped" />
+                        </Border.GestureRecognizers>
+                        <Label
+                            Text="🔑"
                             FontSize="20"
                             HorizontalOptions="Center"
                             VerticalOptions="Center"
@@ -537,7 +562,7 @@
                             TextColor="#D7DBF7"
                             BorderColor="#3B4AD1"
                             BorderWidth="1"
-                            IsVisible="{Binding IsBiometricConfigured}" />
+                            IsVisible="{Binding CanUseBiometric}" />
                     </VerticalStackLayout>
                 </VerticalStackLayout>
             </ScrollView>
