@@ -158,15 +158,6 @@
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Tapped="OnVaultActionsTapped" />
                         </Border.GestureRecognizers>
-                        <Border.ContextFlyout>
-                            <MenuFlyout>
-                                <MenuFlyoutItem Text="Backup exportieren" Clicked="OnExportBackupClicked" />
-                                <MenuFlyoutItem Text="Backup importieren" Clicked="OnImportBackupClicked" />
-                                <MenuFlyoutItem Text="Verschlüsselten Tresor exportieren" Clicked="OnExportEncryptedClicked" />
-                                <MenuFlyoutItem Text="Verschlüsselten Tresor importieren" Clicked="OnImportEncryptedClicked" />
-                                <MenuFlyoutItem Text="Master-Passwort ändern" Clicked="OnChangePasswordMenuItemClicked" />
-                            </MenuFlyout>
-                        </Border.ContextFlyout>
                         <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
                             <Label
                                 Text="☰"
