@@ -7,6 +7,10 @@ using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.ApplicationModel.DataTransfer;
 using Microsoft.Maui.Storage;
+#if WINDOWS
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+#endif
 using Password_Phrase_Producer.Models;
 using Password_Phrase_Producer.ViewModels;
 using Password_Phrase_Producer.Views.Dialogs;
@@ -17,11 +21,17 @@ public partial class VaultPage : ContentPage
 {
     private readonly VaultPageViewModel _viewModel;
     private int _modalDepth;
+#if WINDOWS
+    private readonly MenuFlyout _vaultActionsFlyout;
+#endif
 
     public VaultPage(VaultPageViewModel viewModel)
     {
         InitializeComponent();
         BindingContext = _viewModel = viewModel;
+#if WINDOWS
+        _vaultActionsFlyout = CreateVaultActionsFlyout();
+#endif
     }
 
     protected override async void OnAppearing()
@@ -173,7 +183,8 @@ public partial class VaultPage : ContentPage
 #if WINDOWS
         if (sender is Element element && element.Handler?.PlatformView is Microsoft.UI.Xaml.FrameworkElement frameworkElement)
         {
-            Microsoft.UI.Xaml.Controls.FlyoutBase.ShowAttachedFlyout(frameworkElement);
+            FlyoutBase.SetAttachedFlyout(frameworkElement, _vaultActionsFlyout);
+            FlyoutBase.ShowAttachedFlyout(frameworkElement);
         }
 #else
         const string exportBackup = "Backup exportieren";
@@ -212,6 +223,26 @@ public partial class VaultPage : ContentPage
         }
 #endif
     }
+
+#if WINDOWS
+    private MenuFlyout CreateVaultActionsFlyout()
+    {
+        var flyout = new MenuFlyout();
+        flyout.Items.Add(CreateMenuFlyoutItem("Backup exportieren", () => OnExportBackupClicked(this, EventArgs.Empty)));
+        flyout.Items.Add(CreateMenuFlyoutItem("Backup importieren", () => OnImportBackupClicked(this, EventArgs.Empty)));
+        flyout.Items.Add(CreateMenuFlyoutItem("Verschlüsselten Tresor exportieren", () => OnExportEncryptedClicked(this, EventArgs.Empty)));
+        flyout.Items.Add(CreateMenuFlyoutItem("Verschlüsselten Tresor importieren", () => OnImportEncryptedClicked(this, EventArgs.Empty)));
+        flyout.Items.Add(CreateMenuFlyoutItem("Master-Passwort ändern", () => OnChangePasswordMenuItemClicked(this, EventArgs.Empty)));
+        return flyout;
+    }
+
+    private static MenuFlyoutItem CreateMenuFlyoutItem(string text, Action onClick)
+    {
+        var item = new MenuFlyoutItem { Text = text };
+        item.Click += (_, _) => onClick();
+        return item;
+    }
+#endif
 
     private async void OnExportBackupClicked(object? sender, EventArgs e)
         => await ExecuteVaultActionAsync(ExportBackupAsync);
