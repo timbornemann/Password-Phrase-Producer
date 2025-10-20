@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage
     x:Class="Password_Phrase_Producer.Views.VaultEntryEditorPage"
+    x:Name="EditorPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Shell.NavBarIsVisible="False">
@@ -134,8 +135,44 @@
                             <Border.StrokeShape>
                                 <RoundRectangle CornerRadius="16" />
                             </Border.StrokeShape>
-                            <Entry Style="{StaticResource InputEntryStyle}" Placeholder="Ordner oder Gruppe" Text="{Binding Category}" />
+                            <Entry
+                                x:Name="CategoryEntry"
+                                Style="{StaticResource InputEntryStyle}"
+                                Placeholder="Ordner oder Gruppe"
+                                Text="{Binding Category}"
+                                TextChanged="OnCategoryTextChanged"
+                                Focused="OnCategoryEntryFocused"
+                                Unfocused="OnCategoryEntryUnfocused" />
                         </Border>
+                        <FlexLayout
+                            x:Name="CategorySuggestionsView"
+                            Direction="Row"
+                            Wrap="Wrap"
+                            AlignItems="Center"
+                            Margin="0,-10,0,10"
+                            BindableLayout.ItemsSource="{Binding Source={x:Reference EditorPage}, Path=CategorySuggestions}"
+                            IsVisible="False">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate>
+                                    <Border
+                                        Margin="0,6,10,0"
+                                        Padding="12,6"
+                                        BackgroundColor="#2A2F4A"
+                                        StrokeThickness="0">
+                                        <Border.StrokeShape>
+                                            <RoundRectangle CornerRadius="14" />
+                                        </Border.StrokeShape>
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnCategorySuggestionTapped" CommandParameter="{Binding .}" />
+                                        </Border.GestureRecognizers>
+                                        <Label
+                                            Text="{Binding .}"
+                                            FontSize="12"
+                                            TextColor="#CFD3FF" />
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </FlexLayout>
 
                         <Label Text="Benutzername" Style="{StaticResource FieldLabelStyle}" />
                         <Border

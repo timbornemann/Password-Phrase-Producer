@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:converters="clr-namespace:Password_Phrase_Producer.Converters"
     xmlns:models="clr-namespace:Password_Phrase_Producer.Models"
+    xmlns:viewmodels="clr-namespace:Password_Phrase_Producer.ViewModels"
     Padding="0"
     Shell.NavBarIsVisible="False">
     <ContentPage.Resources>
@@ -30,6 +31,7 @@
                 RowDefinitions="Auto,Auto">
                 <Grid
                     ColumnDefinitions="Auto,*,Auto"
+                    ColumnSpacing="20"
                     VerticalOptions="Start">
                     <Border
                         WidthRequest="52"
@@ -92,8 +94,9 @@
                     </Border>
                 </Grid>
 
-                <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="14">
+                <Grid Grid.Row="1" RowDefinitions="Auto,Auto" RowSpacing="16">
                     <Border
+                        Grid.Row="0"
                         StrokeThickness="0"
                         BackgroundColor="#3B4AD1"
                         Padding="18,14"
@@ -139,55 +142,104 @@
                         </Border.GestureRecognizers>
                     </Border>
 
-                    <Border
-                        Grid.Column="1"
-                        WidthRequest="52"
-                        HeightRequest="52"
-                        BackgroundColor="#1F2338"
-                        StrokeThickness="0"
-                        HorizontalOptions="End"
-                        VerticalOptions="Center">
-                        <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="18" />
-                        </Border.StrokeShape>
-                        <Border.Shadow>
-                            <Shadow Brush="#1A000000" Radius="12" Offset="0,8" />
-                        </Border.Shadow>
-                        <Border.GestureRecognizers>
-                            <TapGestureRecognizer Tapped="OnSyncOptionsClicked" />
-                        </Border.GestureRecognizers>
-                        <Label
-                            Text="⟳"
-                            FontSize="20"
-                            HorizontalOptions="Center"
-                            VerticalOptions="Center"
-                            TextColor="#CFD3FF" />
-                    </Border>
+                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="14">
+                        <Border
+                            BackgroundColor="#1F2338"
+                            StrokeThickness="0"
+                            Padding="16,12"
+                            HorizontalOptions="Fill"
+                            VerticalOptions="Center">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="20" />
+                            </Border.StrokeShape>
+                            <Border.Shadow>
+                                <Shadow Brush="#1A000000" Radius="12" Offset="0,8" />
+                            </Border.Shadow>
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                                <Label
+                                    Text="🔍"
+                                    FontSize="16"
+                                    VerticalOptions="Center"
+                                    TextColor="#CFD3FF" />
+                                <Entry
+                                    Grid.Column="1"
+                                    Text="{Binding SearchQuery}"
+                                    Placeholder="Suche im Tresor"
+                                    PlaceholderColor="#7F85B2"
+                                    TextColor="White"
+                                    BackgroundColor="Transparent"
+                                    ClearButtonVisibility="WhileEditing" />
+                            </Grid>
+                        </Border>
 
-                    <Border
-                        Grid.Column="2"
-                        WidthRequest="52"
-                        HeightRequest="52"
-                        BackgroundColor="#1F2338"
-                        StrokeThickness="0"
-                        HorizontalOptions="End"
-                        VerticalOptions="Center">
-                        <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="18" />
-                        </Border.StrokeShape>
-                        <Border.Shadow>
-                            <Shadow Brush="#1A000000" Radius="12" Offset="0,8" />
-                        </Border.Shadow>
-                        <Border.GestureRecognizers>
-                            <TapGestureRecognizer Tapped="OnChangePasswordTapped" />
-                        </Border.GestureRecognizers>
-                        <Label
-                            Text="🔑"
-                            FontSize="20"
+                        <Border
+                            Grid.Column="1"
+                            BackgroundColor="#1F2338"
+                            StrokeThickness="0"
+                            Padding="14,10"
                             HorizontalOptions="Center"
-                            VerticalOptions="Center"
-                            TextColor="#CFD3FF" />
-                    </Border>
+                            VerticalOptions="Center">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="20" />
+                            </Border.StrokeShape>
+                            <Border.Shadow>
+                                <Shadow Brush="#1A000000" Radius="12" Offset="0,8" />
+                            </Border.Shadow>
+                            <Picker
+                                ItemsSource="{Binding CategoryFilterOptions}"
+                                SelectedItem="{Binding SelectedCategory}"
+                                Title="Kategorie wählen"
+                                FontSize="14"
+                                TextColor="#E0E4FF"
+                                TitleColor="#7F85B2" />
+                        </Border>
+
+                        <HorizontalStackLayout Grid.Column="2" Spacing="12" HorizontalOptions="End" VerticalOptions="Center">
+                            <Border
+                                WidthRequest="52"
+                                HeightRequest="52"
+                                BackgroundColor="#1F2338"
+                                StrokeThickness="0">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="18" />
+                                </Border.StrokeShape>
+                                <Border.Shadow>
+                                    <Shadow Brush="#1A000000" Radius="12" Offset="0,8" />
+                                </Border.Shadow>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnSyncOptionsClicked" />
+                                </Border.GestureRecognizers>
+                                <Label
+                                    Text="⟳"
+                                    FontSize="20"
+                                    HorizontalOptions="Center"
+                                    VerticalOptions="Center"
+                                    TextColor="#CFD3FF" />
+                            </Border>
+
+                            <Border
+                                WidthRequest="52"
+                                HeightRequest="52"
+                                BackgroundColor="#1F2338"
+                                StrokeThickness="0">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="18" />
+                                </Border.StrokeShape>
+                                <Border.Shadow>
+                                    <Shadow Brush="#1A000000" Radius="12" Offset="0,8" />
+                                </Border.Shadow>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnChangePasswordTapped" />
+                                </Border.GestureRecognizers>
+                                <Label
+                                    Text="🔑"
+                                    FontSize="20"
+                                    HorizontalOptions="Center"
+                                    VerticalOptions="Center"
+                                    TextColor="#CFD3FF" />
+                            </Border>
+                        </HorizontalStackLayout>
+                    </Grid>
                 </Grid>
             </Grid>
 
@@ -195,11 +247,22 @@
                 x:Name="VaultCollectionView"
                 Grid.Row="1"
                 Margin="24,0,24,24"
-                ItemsSource="{Binding Entries}"
+                ItemsSource="{Binding EntryGroups}"
                 SelectionMode="None"
                 ItemSizingStrategy="MeasureAllItems"
                 VerticalOptions="FillAndExpand"
-                VerticalScrollBarVisibility="Never">
+                VerticalScrollBarVisibility="Never"
+                IsGrouped="True">
+            <CollectionView.GroupHeaderTemplate>
+                <DataTemplate x:DataType="viewmodels:VaultEntryGroup">
+                    <Label
+                        Text="{Binding Category}"
+                        FontSize="18"
+                        FontAttributes="Bold"
+                        TextColor="#D8DCFF"
+                        Margin="0,24,0,12" />
+                </DataTemplate>
+            </CollectionView.GroupHeaderTemplate>
             <CollectionView.EmptyView>
                 <VerticalStackLayout
                     Padding="32"
@@ -350,14 +413,47 @@
                                     TextColor="#A8ACCD"
                                     FontAttributes="Bold"
                                     VerticalOptions="Center" />
-                                <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <Grid Grid.Column="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
                                     <Label
-                                        Text="{Binding Password, Converter={StaticResource PasswordMaskConverter}}"
                                         FontSize="15"
                                         TextColor="#ECEFFF"
-                                        LineBreakMode="TailTruncation" />
+                                        LineBreakMode="NoWrap">
+                                        <Label.Triggers>
+                                            <DataTrigger TargetType="Label" Binding="{Binding IsPasswordVisible}" Value="True">
+                                                <Setter Property="Text" Value="{Binding Password}" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Label" Binding="{Binding IsPasswordVisible}" Value="False">
+                                                <Setter Property="Text" Value="{Binding Password, Converter={StaticResource PasswordMaskConverter}}" />
+                                            </DataTrigger>
+                                        </Label.Triggers>
+                                    </Label>
                                     <Border
                                         Grid.Column="1"
+                                        Padding="10,4"
+                                        BackgroundColor="#2C3352"
+                                        StrokeThickness="0"
+                                        VerticalOptions="Center">
+                                        <Border.StrokeShape>
+                                            <RoundRectangle CornerRadius="14" />
+                                        </Border.StrokeShape>
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Tapped="OnTogglePasswordVisibilityTapped"
+                                                CommandParameter="{Binding .}" />
+                                        </Border.GestureRecognizers>
+                                        <Label
+                                            FontSize="12"
+                                            TextColor="#CED4FF"
+                                            Text="Anzeigen">
+                                            <Label.Triggers>
+                                                <DataTrigger TargetType="Label" Binding="{Binding IsPasswordVisible}" Value="True">
+                                                    <Setter Property="Text" Value="Verbergen" />
+                                                </DataTrigger>
+                                            </Label.Triggers>
+                                        </Label>
+                                    </Border>
+                                    <Border
+                                        Grid.Column="2"
                                         Padding="10,4"
                                         BackgroundColor="#2C3352"
                                         StrokeThickness="0"
@@ -435,7 +531,7 @@
                                 </Label>
 
                                 <Label
-                                    Text="{Binding ModifiedAt, StringFormat='Geändert: {0:G}'}"
+                                    Text="{Binding LocalModifiedAt, StringFormat='Geändert: {0:G}'}"
                                     FontSize="11"
                                     TextColor="#8E93BA"
                                     HorizontalOptions="End" />
