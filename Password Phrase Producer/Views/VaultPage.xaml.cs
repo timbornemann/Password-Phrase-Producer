@@ -168,12 +168,49 @@ public partial class VaultPage : ContentPage
         }
     }
 
-    private void OnVaultActionsTapped(object? sender, TappedEventArgs e)
+    private async void OnVaultActionsTapped(object? sender, TappedEventArgs e)
     {
-        if (sender is Element element)
+#if WINDOWS
+        if (sender is Element element && element.Handler?.PlatformView is Microsoft.UI.Xaml.FrameworkElement frameworkElement)
         {
-            FlyoutBase.ShowAttachedFlyout(element);
+            Microsoft.UI.Xaml.Controls.FlyoutBase.ShowAttachedFlyout(frameworkElement);
         }
+#else
+        const string exportBackup = "Backup exportieren";
+        const string importBackup = "Backup importieren";
+        const string exportEncrypted = "Verschlüsselten Tresor exportieren";
+        const string importEncrypted = "Verschlüsselten Tresor importieren";
+        const string changePassword = "Master-Passwort ändern";
+
+        var selection = await DisplayActionSheet(
+            "Aktionen",
+            "Abbrechen",
+            null,
+            exportBackup,
+            importBackup,
+            exportEncrypted,
+            importEncrypted,
+            changePassword);
+
+        switch (selection)
+        {
+            case exportBackup:
+                OnExportBackupClicked(sender, EventArgs.Empty);
+                break;
+            case importBackup:
+                OnImportBackupClicked(sender, EventArgs.Empty);
+                break;
+            case exportEncrypted:
+                OnExportEncryptedClicked(sender, EventArgs.Empty);
+                break;
+            case importEncrypted:
+                OnImportEncryptedClicked(sender, EventArgs.Empty);
+                break;
+            case changePassword:
+                OnChangePasswordMenuItemClicked(sender, EventArgs.Empty);
+                break;
+        }
+#endif
     }
 
     private async void OnExportBackupClicked(object? sender, EventArgs e)
