@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using CommunityToolkit.Maui.Storage;
 using Microsoft.Maui.ApplicationModel;
@@ -8,6 +9,7 @@ using Microsoft.Maui.ApplicationModel.DataTransfer;
 using Microsoft.Maui.Storage;
 using Password_Phrase_Producer.Models;
 using Password_Phrase_Producer.ViewModels;
+using Password_Phrase_Producer.Views.Dialogs;
 
 namespace Password_Phrase_Producer.Views;
 
@@ -228,13 +230,11 @@ public partial class VaultPage : ContentPage
 
     private async Task ChangeMasterPasswordAsync()
     {
-        var newPassword = await DisplayPromptAsync(
+        var newPassword = await DisplayPasswordPromptAsync(
             "Master-Passwort ändern",
             "Bitte gib das neue Master-Passwort ein.",
-            accept: "Weiter",
-            cancel: "Abbrechen",
-            keyboard: Keyboard.Text,
-            isPassword: true);
+            "Weiter",
+            "Abbrechen");
 
         if (newPassword is null)
         {
@@ -247,13 +247,11 @@ public partial class VaultPage : ContentPage
             return;
         }
 
-        var confirmPassword = await DisplayPromptAsync(
+        var confirmPassword = await DisplayPasswordPromptAsync(
             "Master-Passwort bestätigen",
             "Bitte gib das neue Master-Passwort erneut ein.",
-            accept: "Ändern",
-            cancel: "Abbrechen",
-            keyboard: Keyboard.Text,
-            isPassword: true);
+            "Ändern",
+            "Abbrechen");
 
         if (confirmPassword is null)
         {
@@ -286,4 +284,26 @@ public partial class VaultPage : ContentPage
             await DisplayAlert("Fehler", $"Das Master-Passwort konnte nicht geändert werden: {ex.Message}", "OK");
         }
     }
+
+    private async Task<string?> DisplayPasswordPromptAsync(string title, string message, string accept, string cancel)
+    {
+        var navigation = Navigation ?? Application.Current?.MainPage?.Navigation;
+        if (navigation is null)
+        {
+            throw new InvalidOperationException("Keine Navigationsinstanz verfügbar, um den Passwortdialog zu öffnen.");
+        }
+
+        var promptPage = new PasswordPromptPage(title, message, accept, cancel);
+
+        await navigation.PushModalAsync(promptPage);
+        var result = await promptPage.WaitForResultAsync();
+
+        if (navigation.ModalStack.Contains(promptPage))
+        {
+            await navigation.PopModalAsync();
+        }
+
+        return result;
+    }
+}
 }
