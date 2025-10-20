@@ -157,7 +157,7 @@ public partial class VaultPage : ContentPage
         BeginModalInteraction();
         try
         {
-            var result = await VaultEntryEditorPage.ShowAsync(Navigation, entry, title);
+            var result = await VaultEntryEditorPage.ShowAsync(Navigation, entry, title, _viewModel.AvailableCategories);
             if (result is null)
             {
                 return;
@@ -185,6 +185,16 @@ public partial class VaultPage : ContentPage
 
         await Clipboard.Default.SetTextAsync(entry.Password);
         await DisplayAlert("Kopiert", "Das Passwort wurde in die Zwischenablage kopiert.", "OK");
+    }
+
+    private void OnTogglePasswordVisibilityTapped(object? sender, TappedEventArgs e)
+    {
+        if (e.Parameter is not PasswordVaultEntry entry)
+        {
+            return;
+        }
+
+        entry.IsPasswordVisible = !entry.IsPasswordVisible;
     }
 
     private void OnOpenMenuTapped(object? sender, TappedEventArgs e)

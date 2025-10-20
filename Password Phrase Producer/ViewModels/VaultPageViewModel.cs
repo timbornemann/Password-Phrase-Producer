@@ -31,12 +31,19 @@ public class VaultPageViewModel : INotifyPropertyChanged
     private string _confirmPassword = string.Empty;
     private string? _unlockError;
     private bool _hasAttemptedAutoBiometric;
+    private string _searchQuery = string.Empty;
+    private string _selectedCategory = AllCategoriesFilter;
+    private readonly List<PasswordVaultEntry> _allEntries = new();
+    private readonly List<string> _availableCategories = new();
+
+    private const string AllCategoriesFilter = "Alle Kategorien";
 
     public VaultPageViewModel(PasswordVaultService vaultService, IBiometricAuthenticationService biometricAuthenticationService)
     {
         _vaultService = vaultService;
         _biometricAuthenticationService = biometricAuthenticationService;
-        Entries = new ObservableCollection<PasswordVaultEntry>();
+        EntryGroups = new ObservableCollection<VaultEntryGroup>();
+        CategoryFilterOptions = new ObservableCollection<string> { AllCategoriesFilter };
 
         UnlockCommand = new Command(async () => await UnlockAsync(), () => !IsBusy);
         UnlockWithBiometricCommand = new Command(async () => await UnlockWithBiometricAsync(), () => !IsBusy && CanUseBiometric && IsBiometricConfigured);
@@ -44,7 +51,35 @@ public class VaultPageViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public ObservableCollection<PasswordVaultEntry> Entries { get; }
+    public ObservableCollection<VaultEntryGroup> EntryGroups { get; }
+
+    public ObservableCollection<string> CategoryFilterOptions { get; }
+
+    public IReadOnlyList<string> AvailableCategories => _availableCategories;
+
+    public string SearchQuery
+    {
+        get => _searchQuery;
+        set
+        {
+            if (SetProperty(ref _searchQuery, value))
+            {
+                ApplyFilters();
+            }
+        }
+    }
+
+    public string SelectedCategory
+    {
+        get => _selectedCategory;
+        set
+        {
+            if (SetProperty(ref _selectedCategory, value))
+            {
+                ApplyFilters();
+            }
+        }
+    }
 
     public bool IsBusy
     {
@@ -169,7 +204,16 @@ public class VaultPageViewModel : INotifyPropertyChanged
         _vaultService.Lock();
         IsUnlocked = false;
         _hasAttemptedAutoBiometric = false;
-        MainThread.BeginInvokeOnMainThread(() => Entries.Clear());
+        _allEntries.Clear();
+        _availableCategories.Clear();
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            EntryGroups.Clear();
+            CategoryFilterOptions.Clear();
+            CategoryFilterOptions.Add(AllCategoriesFilter);
+            _selectedCategory = AllCategoriesFilter;
+            OnPropertyChanged(nameof(SelectedCategory));
+        });
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -249,7 +293,16 @@ public class VaultPageViewModel : INotifyPropertyChanged
 
         if (!IsUnlocked)
         {
-            MainThread.BeginInvokeOnMainThread(Entries.Clear);
+            _allEntries.Clear();
+            _availableCategories.Clear();
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                EntryGroups.Clear();
+                CategoryFilterOptions.Clear();
+                CategoryFilterOptions.Add(AllCategoriesFilter);
+                _selectedCategory = AllCategoriesFilter;
+                OnPropertyChanged(nameof(SelectedCategory));
+            });
 
             if (CanUseBiometric && IsBiometricConfigured && !_hasAttemptedAutoBiometric)
             {
@@ -370,13 +423,18 @@ public class VaultPageViewModel : INotifyPropertyChanged
             .ThenBy(e => e.Label, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
 
+        foreach (var entry in ordered)
+        {
+            entry.IsPasswordVisible = false;
+        }
+
+        _allEntries.Clear();
+        _allEntries.AddRange(ordered);
+
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            Entries.Clear();
-            foreach (var entry in ordered)
-            {
-                Entries.Add(entry);
-            }
+            UpdateCategoryFiltersOnMainThread();
+            ApplyFiltersOnMainThread();
         });
     }
 
@@ -406,6 +464,73 @@ public class VaultPageViewModel : INotifyPropertyChanged
         if (UnlockWithBiometricCommand is Command biometricCommand)
         {
             MainThread.BeginInvokeOnMainThread(biometricCommand.ChangeCanExecute);
+        }
+    }
+
+    private void ApplyFilters()
+        => MainThread.BeginInvokeOnMainThread(ApplyFiltersOnMainThread);
+
+    private void ApplyFiltersOnMainThread()
+    {
+        var query = SearchQuery?.Trim();
+        var selectedCategory = SelectedCategory;
+
+        IEnumerable<PasswordVaultEntry> filtered = _allEntries;
+
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            filtered = filtered.Where(entry =>
+                entry.Label.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
+                entry.Username.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
+                entry.Url.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
+                entry.Notes.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
+                entry.FreeText.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
+                entry.DisplayCategory.Contains(query, StringComparison.CurrentCultureIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(selectedCategory) &&
+            !string.Equals(selectedCategory, AllCategoriesFilter, StringComparison.CurrentCultureIgnoreCase))
+        {
+            filtered = filtered.Where(entry => string.Equals(entry.DisplayCategory, selectedCategory, StringComparison.CurrentCultureIgnoreCase));
+        }
+
+        var grouped = filtered
+            .GroupBy(entry => entry.DisplayCategory, StringComparer.CurrentCultureIgnoreCase)
+            .OrderBy(group => group.Key, StringComparer.CurrentCultureIgnoreCase)
+            .Select(group => new VaultEntryGroup(group.Key, group.OrderBy(entry => entry.Label, StringComparer.CurrentCultureIgnoreCase)));
+
+        EntryGroups.Clear();
+        foreach (var group in grouped)
+        {
+            EntryGroups.Add(group);
+        }
+    }
+
+    private void UpdateCategoryFiltersOnMainThread()
+    {
+        var categories = _allEntries
+            .Select(entry => entry.DisplayCategory)
+            .Distinct(StringComparer.CurrentCultureIgnoreCase)
+            .OrderBy(category => category, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        _availableCategories.Clear();
+        _availableCategories.AddRange(categories);
+
+        CategoryFilterOptions.Clear();
+        CategoryFilterOptions.Add(AllCategoriesFilter);
+
+        foreach (var category in categories)
+        {
+            CategoryFilterOptions.Add(category);
+        }
+
+        var hasSelectedCategory = categories.Any(category => string.Equals(category, SelectedCategory, StringComparison.CurrentCultureIgnoreCase));
+        if (string.IsNullOrWhiteSpace(SelectedCategory) ||
+            (!string.Equals(SelectedCategory, AllCategoriesFilter, StringComparison.CurrentCultureIgnoreCase) && !hasSelectedCategory))
+        {
+            _selectedCategory = AllCategoriesFilter;
+            OnPropertyChanged(nameof(SelectedCategory));
         }
     }
 
