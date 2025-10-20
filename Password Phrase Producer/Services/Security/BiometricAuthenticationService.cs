@@ -51,11 +51,16 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
             return false;
         }
 
+        if (activity is not AndroidX.Fragment.App.FragmentActivity fragmentActivity)
+        {
+            return false;
+        }
+
         var callback = new AndroidBiometricAuthCallback();
         await Microsoft.Maui.ApplicationModel.MainThread.InvokeOnMainThreadAsync(() =>
         {
-            var executor = AndroidX.Core.Content.ContextCompat.GetMainExecutor(activity);
-            var prompt = new AndroidX.Biometric.BiometricPrompt(activity, executor, callback);
+            var executor = AndroidX.Core.Content.ContextCompat.GetMainExecutor(fragmentActivity);
+            var prompt = new AndroidX.Biometric.BiometricPrompt(fragmentActivity, executor, callback);
             callback.SetPrompt(prompt);
 
             var promptInfoBuilder = new AndroidX.Biometric.BiometricPrompt.PromptInfo.Builder()
