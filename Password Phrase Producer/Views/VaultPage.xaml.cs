@@ -22,7 +22,7 @@ public partial class VaultPage : ContentPage
     private readonly VaultPageViewModel _viewModel;
     private int _modalDepth;
 #if WINDOWS
-    private readonly MenuFlyout _vaultActionsFlyout;
+    private readonly Microsoft.UI.Xaml.Controls.MenuFlyout _vaultActionsFlyout;
 #endif
 
     public VaultPage(VaultPageViewModel viewModel)
@@ -225,9 +225,9 @@ public partial class VaultPage : ContentPage
     }
 
 #if WINDOWS
-    private MenuFlyout CreateVaultActionsFlyout()
+    private Microsoft.UI.Xaml.Controls.MenuFlyout CreateVaultActionsFlyout()
     {
-        var flyout = new MenuFlyout();
+        var flyout = new Microsoft.UI.Xaml.Controls.MenuFlyout();
         flyout.Items.Add(CreateMenuFlyoutItem("Backup exportieren", () => OnExportBackupClicked(this, EventArgs.Empty)));
         flyout.Items.Add(CreateMenuFlyoutItem("Backup importieren", () => OnImportBackupClicked(this, EventArgs.Empty)));
         flyout.Items.Add(CreateMenuFlyoutItem("Verschlüsselten Tresor exportieren", () => OnExportEncryptedClicked(this, EventArgs.Empty)));
@@ -236,9 +236,9 @@ public partial class VaultPage : ContentPage
         return flyout;
     }
 
-    private static MenuFlyoutItem CreateMenuFlyoutItem(string text, Action onClick)
+    private static Microsoft.UI.Xaml.Controls.MenuFlyoutItem CreateMenuFlyoutItem(string text, Action onClick)
     {
-        var item = new MenuFlyoutItem { Text = text };
+        var item = new Microsoft.UI.Xaml.Controls.MenuFlyoutItem { Text = text };
         item.Click += (_, _) => onClick();
         return item;
     }
