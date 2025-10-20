@@ -306,4 +306,3 @@ public partial class VaultPage : ContentPage
         return result;
     }
 }
-}
