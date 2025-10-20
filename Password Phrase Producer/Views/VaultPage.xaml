@@ -142,54 +142,50 @@
                             </Border.GestureRecognizers>
                         </Border>
 
-                        <Border
-                            Grid.Column="1"
-                            Padding="0"
-                            StrokeThickness="0"
-                            BackgroundColor="#1F2338"
-                            HorizontalOptions="End"
-                            VerticalOptions="Center">
-                            <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="20" />
-                            </Border.StrokeShape>
-                            <Border.Shadow>
-                                <Shadow Brush="#1A000000" Radius="12" Offset="0,8" />
-                            </Border.Shadow>
-                            <Button
-                                Padding="18,12"
-                                BackgroundColor="Transparent"
-                                TextColor="#E0E4FF"
-                                FontAttributes="Bold">
-                                <Button.Content>
-                                    <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
-                                        <Label
-                                            Text="☰"
-                                            FontSize="18"
-                                            VerticalOptions="Center"
-                                            TextColor="#CFD3FF" />
-                                        <Label
-                                            Text="Aktionen"
-                                            FontSize="16"
-                                            VerticalOptions="Center"
-                                            TextColor="#E0E4FF" />
-                                        <Label
-                                            Text="▾"
-                                            FontSize="14"
-                                            VerticalOptions="Center"
-                                            TextColor="#727AA7" />
-                                    </HorizontalStackLayout>
-                                </Button.Content>
-                                <Button.Flyout>
-                                    <MenuFlyout>
-                                        <MenuFlyoutItem Text="Backup exportieren" Clicked="OnExportBackupClicked" />
-                                        <MenuFlyoutItem Text="Backup importieren" Clicked="OnImportBackupClicked" />
-                                        <MenuFlyoutItem Text="Verschlüsselten Tresor exportieren" Clicked="OnExportEncryptedClicked" />
-                                        <MenuFlyoutItem Text="Verschlüsselten Tresor importieren" Clicked="OnImportEncryptedClicked" />
-                                        <MenuFlyoutItem Text="Master-Passwort ändern" Clicked="OnChangePasswordMenuItemClicked" />
-                                    </MenuFlyout>
-                                </Button.Flyout>
-                            </Button>
-                        </Border>
+                    <Border
+                        Grid.Column="1"
+                        Padding="18,12"
+                        StrokeThickness="0"
+                        BackgroundColor="#1F2338"
+                        HorizontalOptions="End"
+                        VerticalOptions="Center">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="20" />
+                        </Border.StrokeShape>
+                        <Border.Shadow>
+                            <Shadow Brush="#1A000000" Radius="12" Offset="0,8" />
+                        </Border.Shadow>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnVaultActionsTapped" />
+                        </Border.GestureRecognizers>
+                        <Border.ContextFlyout>
+                            <MenuFlyout>
+                                <MenuFlyoutItem Text="Backup exportieren" Clicked="OnExportBackupClicked" />
+                                <MenuFlyoutItem Text="Backup importieren" Clicked="OnImportBackupClicked" />
+                                <MenuFlyoutItem Text="Verschlüsselten Tresor exportieren" Clicked="OnExportEncryptedClicked" />
+                                <MenuFlyoutItem Text="Verschlüsselten Tresor importieren" Clicked="OnImportEncryptedClicked" />
+                                <MenuFlyoutItem Text="Master-Passwort ändern" Clicked="OnChangePasswordMenuItemClicked" />
+                            </MenuFlyout>
+                        </Border.ContextFlyout>
+                        <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
+                            <Label
+                                Text="☰"
+                                FontSize="18"
+                                VerticalOptions="Center"
+                                TextColor="#CFD3FF" />
+                            <Label
+                                Text="Aktionen"
+                                FontSize="16"
+                                FontAttributes="Bold"
+                                VerticalOptions="Center"
+                                TextColor="#E0E4FF" />
+                            <Label
+                                Text="▾"
+                                FontSize="14"
+                                VerticalOptions="Center"
+                                TextColor="#727AA7" />
+                        </HorizontalStackLayout>
+                    </Border>
                     </Grid>
 
                     <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="14">
