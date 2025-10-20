@@ -12,7 +12,8 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
     public async Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)
     {
         var status = await PluginBiometricService.Default
-            .GetAuthenticationStatusAsync(cancellationToken: cancellationToken)
+            .GetAuthenticationStatusAsync()
+            .WaitAsync(cancellationToken)
             .ConfigureAwait(false);
 
         return IsAvailable(status);
