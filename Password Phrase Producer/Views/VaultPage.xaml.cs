@@ -168,6 +168,14 @@ public partial class VaultPage : ContentPage
         }
     }
 
+    private void OnVaultActionsTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is Element element)
+        {
+            FlyoutBase.ShowAttachedFlyout(element);
+        }
+    }
+
     private async void OnExportBackupClicked(object? sender, EventArgs e)
         => await ExecuteVaultActionAsync(ExportBackupAsync);
 
