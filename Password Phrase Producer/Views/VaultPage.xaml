@@ -95,54 +95,104 @@
                 </Grid>
 
                 <Grid Grid.Row="1" RowDefinitions="Auto,Auto" RowSpacing="16">
-                    <Border
-                        Grid.Row="0"
-                        StrokeThickness="0"
-                        BackgroundColor="#3B4AD1"
-                        Padding="18,14"
-                        HorizontalOptions="Start"
-                        VerticalOptions="Center">
-                        <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="22" />
-                        </Border.StrokeShape>
-                        <Border.Shadow>
-                            <Shadow Brush="#30000000" Radius="18" Offset="0,10" />
-                        </Border.Shadow>
-                        <HorizontalStackLayout Spacing="14" VerticalOptions="Center">
-                            <Border
-                                WidthRequest="44"
-                                HeightRequest="44"
-                                BackgroundColor="#5465FF"
-                                StrokeThickness="0"
-                                VerticalOptions="Center">
-                                <Border.StrokeShape>
-                                    <RoundRectangle CornerRadius="16" />
-                                </Border.StrokeShape>
-                                <Label
-                                    Text="＋"
-                                    FontSize="22"
-                                    HorizontalOptions="Center"
-                                    VerticalOptions="Center"
-                                    TextColor="White" />
-                            </Border>
-                            <VerticalStackLayout Spacing="0" VerticalOptions="Center">
-                                <Label
-                                    Text="Neuer Eintrag"
-                                    FontSize="18"
-                                    FontAttributes="Bold"
-                                    TextColor="White" />
-                                <Label
-                                    Text="Manuell hinzufügen"
-                                    FontSize="13"
-                                    TextColor="#E3E6FF" />
-                            </VerticalStackLayout>
-                        </HorizontalStackLayout>
-                        <Border.GestureRecognizers>
-                            <TapGestureRecognizer Tapped="OnAddEntryClicked" />
-                        </Border.GestureRecognizers>
-                    </Border>
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="14">
+                        <Border
+                            StrokeThickness="0"
+                            BackgroundColor="#3B4AD1"
+                            Padding="16,14"
+                            HorizontalOptions="Fill"
+                            VerticalOptions="Center">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="22" />
+                            </Border.StrokeShape>
+                            <Border.Shadow>
+                                <Shadow Brush="#30000000" Radius="18" Offset="0,10" />
+                            </Border.Shadow>
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14" VerticalOptions="Center">
+                                <Border
+                                    WidthRequest="44"
+                                    HeightRequest="44"
+                                    BackgroundColor="#5465FF"
+                                    StrokeThickness="0"
+                                    VerticalOptions="Center">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="16" />
+                                    </Border.StrokeShape>
+                                    <Label
+                                        Text="＋"
+                                        FontSize="22"
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center"
+                                        TextColor="White" />
+                                </Border>
+                                <VerticalStackLayout Spacing="2" VerticalOptions="Center">
+                                    <Label
+                                        Text="Neuer Eintrag"
+                                        FontSize="18"
+                                        FontAttributes="Bold"
+                                        TextColor="White" />
+                                    <Label
+                                        Text="Manuell hinzufügen"
+                                        FontSize="13"
+                                        TextColor="#E3E6FF" />
+                                </VerticalStackLayout>
+                            </Grid>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnAddEntryClicked" />
+                            </Border.GestureRecognizers>
+                        </Border>
 
-                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="14">
+                        <Border
+                            Grid.Column="1"
+                            Padding="0"
+                            StrokeThickness="0"
+                            BackgroundColor="#1F2338"
+                            HorizontalOptions="End"
+                            VerticalOptions="Center">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="20" />
+                            </Border.StrokeShape>
+                            <Border.Shadow>
+                                <Shadow Brush="#1A000000" Radius="12" Offset="0,8" />
+                            </Border.Shadow>
+                            <Button
+                                Padding="18,12"
+                                BackgroundColor="Transparent"
+                                TextColor="#E0E4FF"
+                                FontAttributes="Bold">
+                                <Button.Content>
+                                    <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
+                                        <Label
+                                            Text="☰"
+                                            FontSize="18"
+                                            VerticalOptions="Center"
+                                            TextColor="#CFD3FF" />
+                                        <Label
+                                            Text="Aktionen"
+                                            FontSize="16"
+                                            VerticalOptions="Center"
+                                            TextColor="#E0E4FF" />
+                                        <Label
+                                            Text="▾"
+                                            FontSize="14"
+                                            VerticalOptions="Center"
+                                            TextColor="#727AA7" />
+                                    </HorizontalStackLayout>
+                                </Button.Content>
+                                <Button.Flyout>
+                                    <MenuFlyout>
+                                        <MenuFlyoutItem Text="Backup exportieren" Clicked="OnExportBackupClicked" />
+                                        <MenuFlyoutItem Text="Backup importieren" Clicked="OnImportBackupClicked" />
+                                        <MenuFlyoutItem Text="Verschlüsselten Tresor exportieren" Clicked="OnExportEncryptedClicked" />
+                                        <MenuFlyoutItem Text="Verschlüsselten Tresor importieren" Clicked="OnImportEncryptedClicked" />
+                                        <MenuFlyoutItem Text="Master-Passwort ändern" Clicked="OnChangePasswordMenuItemClicked" />
+                                    </MenuFlyout>
+                                </Button.Flyout>
+                            </Button>
+                        </Border>
+                    </Grid>
+
+                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="14">
                         <Border
                             BackgroundColor="#1F2338"
                             StrokeThickness="0"
@@ -177,7 +227,7 @@
                             BackgroundColor="#1F2338"
                             StrokeThickness="0"
                             Padding="14,10"
-                            HorizontalOptions="Center"
+                            HorizontalOptions="End"
                             VerticalOptions="Center">
                             <Border.StrokeShape>
                                 <RoundRectangle CornerRadius="20" />
@@ -193,52 +243,6 @@
                                 TextColor="#E0E4FF"
                                 TitleColor="#7F85B2" />
                         </Border>
-
-                        <HorizontalStackLayout Grid.Column="2" Spacing="12" HorizontalOptions="End" VerticalOptions="Center">
-                            <Border
-                                WidthRequest="52"
-                                HeightRequest="52"
-                                BackgroundColor="#1F2338"
-                                StrokeThickness="0">
-                                <Border.StrokeShape>
-                                    <RoundRectangle CornerRadius="18" />
-                                </Border.StrokeShape>
-                                <Border.Shadow>
-                                    <Shadow Brush="#1A000000" Radius="12" Offset="0,8" />
-                                </Border.Shadow>
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Tapped="OnSyncOptionsClicked" />
-                                </Border.GestureRecognizers>
-                                <Label
-                                    Text="⟳"
-                                    FontSize="20"
-                                    HorizontalOptions="Center"
-                                    VerticalOptions="Center"
-                                    TextColor="#CFD3FF" />
-                            </Border>
-
-                            <Border
-                                WidthRequest="52"
-                                HeightRequest="52"
-                                BackgroundColor="#1F2338"
-                                StrokeThickness="0">
-                                <Border.StrokeShape>
-                                    <RoundRectangle CornerRadius="18" />
-                                </Border.StrokeShape>
-                                <Border.Shadow>
-                                    <Shadow Brush="#1A000000" Radius="12" Offset="0,8" />
-                                </Border.Shadow>
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Tapped="OnChangePasswordTapped" />
-                                </Border.GestureRecognizers>
-                                <Label
-                                    Text="🔑"
-                                    FontSize="20"
-                                    HorizontalOptions="Center"
-                                    VerticalOptions="Center"
-                                    TextColor="#CFD3FF" />
-                            </Border>
-                        </HorizontalStackLayout>
                     </Grid>
                 </Grid>
             </Grid>

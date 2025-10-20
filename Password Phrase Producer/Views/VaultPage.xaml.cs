@@ -107,43 +107,6 @@ public partial class VaultPage : ContentPage
         }
     }
 
-    private async void OnSyncOptionsClicked(object? sender, TappedEventArgs e)
-    {
-        var selection = await DisplayActionSheet("Tresor synchronisieren", "Abbrechen", null,
-            "Backup exportieren",
-            "Backup importieren",
-            "Verschlüsselten Tresor exportieren",
-            "Verschlüsselten Tresor importieren",
-            "Master-Passwort ändern");
-
-        try
-        {
-            switch (selection)
-            {
-                case "Backup exportieren":
-                    await ExportBackupAsync();
-                    break;
-                case "Backup importieren":
-                    await ImportBackupAsync();
-                    await _viewModel.EnsureAccessStateAsync();
-                    break;
-                case "Verschlüsselten Tresor exportieren":
-                    await ExportEncryptedAsync();
-                    break;
-                case "Verschlüsselten Tresor importieren":
-                    await ImportEncryptedAsync();
-                    break;
-                case "Master-Passwort ändern":
-                    await ChangeMasterPasswordAsync();
-                    break;
-            }
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlert("Fehler", ex.Message, "OK");
-        }
-    }
-
     private async void OnBackTapped(object? sender, TappedEventArgs e)
     {
         if (Shell.Current is not null)
@@ -205,7 +168,23 @@ public partial class VaultPage : ContentPage
         }
     }
 
-    private async void OnChangePasswordTapped(object? sender, TappedEventArgs e)
+    private async void OnExportBackupClicked(object? sender, EventArgs e)
+        => await ExecuteVaultActionAsync(ExportBackupAsync);
+
+    private async void OnImportBackupClicked(object? sender, EventArgs e)
+        => await ExecuteVaultActionAsync(async () =>
+        {
+            await ImportBackupAsync();
+            await _viewModel.EnsureAccessStateAsync();
+        });
+
+    private async void OnExportEncryptedClicked(object? sender, EventArgs e)
+        => await ExecuteVaultActionAsync(ExportEncryptedAsync);
+
+    private async void OnImportEncryptedClicked(object? sender, EventArgs e)
+        => await ExecuteVaultActionAsync(ImportEncryptedAsync);
+
+    private async void OnChangePasswordMenuItemClicked(object? sender, EventArgs e)
     {
         if (!_viewModel.IsUnlocked)
         {
@@ -213,7 +192,7 @@ public partial class VaultPage : ContentPage
             return;
         }
 
-        await ChangeMasterPasswordAsync();
+        await ExecuteVaultActionAsync(ChangeMasterPasswordAsync);
     }
 
     private async Task ExportBackupAsync()
@@ -364,6 +343,18 @@ public partial class VaultPage : ContentPage
         if (_modalDepth > 0)
         {
             _modalDepth--;
+        }
+    }
+
+    private async Task ExecuteVaultActionAsync(Func<Task> action)
+    {
+        try
+        {
+            await action();
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Fehler", ex.Message, "OK");
         }
     }
 }
