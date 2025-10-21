@@ -34,10 +34,16 @@ public partial class VaultEntryEditorPage : ContentPage
 
     public ObservableCollection<string> CategorySuggestions { get; }
 
-    public static async Task<PasswordVaultEntry?> ShowAsync(INavigation navigation, PasswordVaultEntry entry, string title, IEnumerable<string> availableCategories)
+    public static async Task<PasswordVaultEntry?> ShowAsync(INavigation? navigation, PasswordVaultEntry entry, string title, IEnumerable<string> availableCategories)
     {
         var page = new VaultEntryEditorPage(entry, title, availableCategories);
-        await navigation.PushModalAsync(page);
+        var navigationHost = navigation ?? Application.Current?.MainPage?.Navigation;
+        if (navigationHost is null)
+        {
+            throw new InvalidOperationException("Kein Navigationsstack verfügbar.");
+        }
+
+        await navigationHost.PushModalAsync(page);
         return await page.Result.ConfigureAwait(false);
     }
 
