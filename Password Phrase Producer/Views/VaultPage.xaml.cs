@@ -62,6 +62,12 @@ public partial class VaultPage : ContentPage
 
     private async void OnAddEntryClicked(object? sender, TappedEventArgs e)
     {
+        if (!_viewModel.IsUnlocked)
+        {
+            await DisplayAlert("Tresor gesperrt", "Bitte entsperre den Tresor, bevor du neue Einträge hinzufügst.", "OK");
+            return;
+        }
+
         var entry = new PasswordVaultEntry();
         await ShowEditorAsync(entry, "Neuer Tresor-Eintrag");
     }
@@ -131,13 +137,30 @@ public partial class VaultPage : ContentPage
         BeginModalInteraction();
         try
         {
-            var result = await VaultEntryEditorPage.ShowAsync(Navigation, entry, title, _viewModel.AvailableCategories);
+            PasswordVaultEntry? result;
+            try
+            {
+                result = await VaultEntryEditorPage.ShowAsync(Navigation, entry, title, _viewModel.AvailableCategories);
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("Fehler", $"Der Editor konnte nicht geöffnet werden: {ex.Message}", "OK");
+                return;
+            }
+
             if (result is null)
             {
                 return;
             }
 
-            await _viewModel.SaveEntryAsync(result);
+            try
+            {
+                await _viewModel.SaveEntryAsync(result);
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("Fehler", $"Der Eintrag konnte nicht gespeichert werden: {ex.Message}", "OK");
+            }
         }
         finally
         {
