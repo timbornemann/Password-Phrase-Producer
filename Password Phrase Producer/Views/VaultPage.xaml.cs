@@ -183,8 +183,8 @@ public partial class VaultPage : ContentPage
 #if WINDOWS
         if (sender is Element element && element.Handler?.PlatformView is Microsoft.UI.Xaml.FrameworkElement frameworkElement)
         {
-            FlyoutBase.SetAttachedFlyout(frameworkElement, _vaultActionsFlyout);
-            FlyoutBase.ShowAttachedFlyout(frameworkElement);
+            Microsoft.UI.Xaml.Controls.FlyoutBase.SetAttachedFlyout(frameworkElement, _vaultActionsFlyout);
+            Microsoft.UI.Xaml.Controls.FlyoutBase.ShowAttachedFlyout(frameworkElement);
         }
 #else
         const string exportBackup = "Backup exportieren";
@@ -384,7 +384,7 @@ public partial class VaultPage : ContentPage
 
     private async Task<string?> DisplayPasswordPromptAsync(string title, string message, string accept, string cancel)
     {
-        var navigation = Navigation ?? Application.Current?.MainPage?.Navigation;
+        var navigation = Navigation ?? Microsoft.Maui.Controls.Application.Current?.MainPage?.Navigation;
         if (navigation is null)
         {
             throw new InvalidOperationException("Keine Navigationsinstanz verfügbar, um den Passwortdialog zu öffnen.");
