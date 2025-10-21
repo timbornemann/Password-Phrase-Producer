@@ -37,7 +37,9 @@ public partial class VaultEntryEditorPage : ContentPage
     public static async Task<PasswordVaultEntry?> ShowAsync(INavigation? navigation, PasswordVaultEntry entry, string title, IEnumerable<string> availableCategories)
     {
         var page = new VaultEntryEditorPage(entry, title, availableCategories);
-        var navigationHost = navigation ?? Application.Current?.MainPage?.Navigation;
+        var navigationHost = Shell.Current?.Navigation
+            ?? navigation
+            ?? Application.Current?.MainPage?.Navigation;
         if (navigationHost is null)
         {
             throw new InvalidOperationException("Kein Navigationsstack verfügbar.");
@@ -143,9 +145,18 @@ public partial class VaultEntryEditorPage : ContentPage
 
     private async Task CloseAsync()
     {
-        if (Navigation.ModalStack.Contains(this))
+        var navigationHost = Shell.Current?.Navigation
+            ?? Navigation
+            ?? Application.Current?.MainPage?.Navigation;
+
+        if (navigationHost is null)
         {
-            await Navigation.PopModalAsync().ConfigureAwait(false);
+            return;
+        }
+
+        if (navigationHost.ModalStack.Contains(this))
+        {
+            await navigationHost.PopModalAsync().ConfigureAwait(false);
         }
     }
 }
