@@ -68,14 +68,20 @@ public partial class VaultEntryEditorPage : ContentPage
         => OnCancelClicked(sender, EventArgs.Empty);
 
     private void OnCategoryTextChanged(object? sender, TextChangedEventArgs e)
-        => UpdateCategorySuggestions(e.NewTextValue, CategoryEntry.IsFocused);
+    {
+        var isFocused = CategoryEntry?.IsFocused ?? false;
+        UpdateCategorySuggestions(e.NewTextValue, isFocused);
+    }
 
     private void OnCategoryEntryFocused(object? sender, FocusEventArgs e)
-        => UpdateCategorySuggestions(CategoryEntry.Text, true);
+        => UpdateCategorySuggestions(CategoryEntry?.Text, true);
 
     private void OnCategoryEntryUnfocused(object? sender, FocusEventArgs e)
     {
-        CategorySuggestionsView.IsVisible = false;
+        if (CategorySuggestionsView is not null)
+        {
+            CategorySuggestionsView.IsVisible = false;
+        }
     }
 
     private void OnCategorySuggestionTapped(object? sender, TappedEventArgs e)
@@ -95,7 +101,10 @@ public partial class VaultEntryEditorPage : ContentPage
         if (_availableCategories.Count == 0)
         {
             CategorySuggestions.Clear();
-            CategorySuggestionsView.IsVisible = false;
+            if (CategorySuggestionsView is not null)
+            {
+                CategorySuggestionsView.IsVisible = false;
+            }
             return;
         }
 
@@ -116,7 +125,10 @@ public partial class VaultEntryEditorPage : ContentPage
             CategorySuggestions.Add(suggestion);
         }
 
-        CategorySuggestionsView.IsVisible = showSuggestions && CategorySuggestions.Count > 0;
+        if (CategorySuggestionsView is not null)
+        {
+            CategorySuggestionsView.IsVisible = showSuggestions && CategorySuggestions.Count > 0;
+        }
     }
 
     protected override bool OnBackButtonPressed()
