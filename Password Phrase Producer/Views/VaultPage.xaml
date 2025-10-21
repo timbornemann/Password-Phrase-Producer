@@ -125,7 +125,7 @@
                                         VerticalOptions="Center"
                                         TextColor="White" />
                                 </Border>
-                                <VerticalStackLayout Spacing="2" VerticalOptions="Center">
+                                <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
                                     <Label
                                         Text="Neuer Eintrag"
                                         FontSize="18"
