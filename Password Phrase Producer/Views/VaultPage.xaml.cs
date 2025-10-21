@@ -10,7 +10,7 @@ using Microsoft.Maui.Storage;
 #if WINDOWS
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
+using WinUIFlyoutBase = Microsoft.UI.Xaml.Controls.Primitives.FlyoutBase;
 #endif
 using Password_Phrase_Producer.Models;
 using Password_Phrase_Producer.ViewModels;
@@ -184,8 +184,8 @@ public partial class VaultPage : ContentPage
 #if WINDOWS
         if (sender is Element element && element.Handler?.PlatformView is Microsoft.UI.Xaml.FrameworkElement frameworkElement)
         {
-            FlyoutBase.SetAttachedFlyout(frameworkElement, _vaultActionsFlyout);
-            FlyoutBase.ShowAttachedFlyout(frameworkElement);
+            WinUIFlyoutBase.SetAttachedFlyout(frameworkElement, _vaultActionsFlyout);
+            WinUIFlyoutBase.ShowAttachedFlyout(frameworkElement);
         }
 #else
         const string exportBackup = "Backup exportieren";
