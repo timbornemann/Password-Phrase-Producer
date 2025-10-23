@@ -148,33 +148,16 @@ public partial class VaultPage : ContentPage
             {
                 Debug.WriteLine($"[VaultPage] Editor konnte nicht geöffnet werden: {ex}");
 
-                var messageBuilder = new StringBuilder();
-                messageBuilder.AppendLine("Der Editor konnte nicht geöffnet werden.");
-                messageBuilder.AppendLine();
-                messageBuilder.AppendLine("Details:");
-                messageBuilder.Append("• ").AppendLine(ex.Message);
-
-                if (ex.InnerException is not null)
-                {
-                    messageBuilder.Append("• Innere Ausnahme: ")
-                        .Append(ex.InnerException.GetType().Name)
-                        .Append(": ")
-                        .AppendLine(ex.InnerException.Message);
-                }
-
-                messageBuilder.AppendLine();
-                messageBuilder.AppendLine("Geprüfte Navigationsquellen:");
-                messageBuilder.AppendLine("• Shell.Current.Navigation");
-                messageBuilder.AppendLine("• Übergebener Navigationsparameter");
-                messageBuilder.AppendLine("• Application.Current.MainPage.Navigation");
-
-                await DisplayAlert("Editor nicht verfügbar", messageBuilder.ToString(), "OK");
+                var message = BuildEditorErrorMessage("Der Editor konnte nicht geöffnet werden.", ex);
+                await DisplayAlert("Editor nicht verfügbar", message, "OK");
                 return;
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[VaultPage] Unerwarteter Fehler beim Öffnen des Editors: {ex}");
-                await DisplayAlert("Fehler", $"Beim Öffnen des Editors ist ein unerwarteter Fehler aufgetreten: {ex.Message}", "OK");
+
+                var message = BuildEditorErrorMessage("Beim Öffnen des Editors ist ein unerwarteter Fehler aufgetreten.", ex);
+                await DisplayAlert("Fehler", message, "OK");
                 return;
             }
 
@@ -196,6 +179,63 @@ public partial class VaultPage : ContentPage
         {
             EndModalInteraction();
         }
+    }
+
+    private static string BuildEditorErrorMessage(string headline, Exception exception)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine(headline);
+        builder.AppendLine();
+        builder.Append("Fehlertyp: ")
+            .AppendLine(exception.GetType().FullName);
+        builder.Append("Fehlermeldung: ")
+            .AppendLine(exception.Message);
+
+        if (exception.InnerException is not null)
+        {
+            builder.AppendLine()
+                .AppendLine("Innere Ausnahme:")
+                .AppendLine(exception.InnerException.ToString());
+        }
+
+        if (exception.Data is { Count: > 0 } && exception.Data.Contains("NavigationDiagnostics"))
+        {
+            if (exception.Data["NavigationDiagnostics"] is string diagnostics && !string.IsNullOrWhiteSpace(diagnostics))
+            {
+                builder.AppendLine()
+                    .AppendLine("Navigationsdiagnose:")
+                    .AppendLine(diagnostics);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(exception.StackTrace))
+        {
+            builder.AppendLine()
+                .AppendLine("Stacktrace:")
+                .AppendLine(TrimStackTrace(exception.StackTrace));
+        }
+
+        return builder.ToString();
+    }
+
+    private static string TrimStackTrace(string? stackTrace)
+    {
+        if (string.IsNullOrWhiteSpace(stackTrace))
+        {
+            return string.Empty;
+        }
+
+        var lines = stackTrace.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        const int maxLines = 12;
+
+        if (lines.Length <= maxLines)
+        {
+            return string.Join(Environment.NewLine, lines);
+        }
+
+        var trimmed = lines.Take(maxLines).ToList();
+        trimmed.Add("…");
+        return string.Join(Environment.NewLine, trimmed);
     }
 
     private async void OnCopyPasswordTapped(object? sender, TappedEventArgs e)
