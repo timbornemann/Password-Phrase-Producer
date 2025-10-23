@@ -20,19 +20,12 @@ public partial class VaultEntryEditorPage : ContentPage
     {
         ArgumentNullException.ThrowIfNull(entry);
 
+        _availableCategories = NormalizeCategories(availableCategories);
+        CategorySuggestions = new ObservableCollection<string>();
+
         InitializeComponent();
         BindingContext = entry;
         Title = title;
-
-        _availableCategories = availableCategories?
-            .Where(category => !string.IsNullOrWhiteSpace(category))
-            .Select(category => category.Trim())
-            .Distinct(StringComparer.CurrentCultureIgnoreCase)
-            .OrderBy(category => category, StringComparer.CurrentCultureIgnoreCase)
-            .ToList()
-            ?? new List<string>();
-
-        CategorySuggestions = new ObservableCollection<string>();
         UpdateCategorySuggestions(entry.Category, false);
     }
 
@@ -73,6 +66,21 @@ public partial class VaultEntryEditorPage : ContentPage
         }
 
         return await page.Result.ConfigureAwait(false);
+    }
+
+    private static List<string> NormalizeCategories(IEnumerable<string>? availableCategories)
+    {
+        if (availableCategories is null)
+        {
+            return new List<string>();
+        }
+
+        return availableCategories
+            .Where(category => !string.IsNullOrWhiteSpace(category))
+            .Select(category => category.Trim())
+            .Distinct(StringComparer.CurrentCultureIgnoreCase)
+            .OrderBy(category => category, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
     }
 
     private async void OnSaveClicked(object? sender, EventArgs e)
