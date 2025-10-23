@@ -299,7 +299,7 @@ public partial class VaultEntryEditorPage : ContentPage
         return (resolved, finalDiagnostics);
     }
 
-    private static IEnumerable<(string Description, Func<INavigation?>> GetNavigationCandidates(INavigation? navigation)
+    private static IEnumerable<(string Description, Func<INavigation?> Resolver)> GetNavigationCandidates(INavigation? navigation)
     {
         yield return ("Shell.Current.CurrentPage.Navigation", () => Shell.Current?.CurrentPage?.Navigation);
         yield return ("Shell.Current.Navigation", () => Shell.Current?.Navigation);
