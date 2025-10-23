@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.ApplicationModel;
 using Password_Phrase_Producer.Models;
@@ -13,6 +14,7 @@ public partial class VaultEntryEditorPage : ContentPage
 {
     private readonly TaskCompletionSource<PasswordVaultEntry?> _resultSource = new();
     private readonly List<string> _availableCategories;
+    private Page? _modalHost;
 
     public VaultEntryEditorPage(PasswordVaultEntry entry, string title, IEnumerable<string> availableCategories)
     {
@@ -43,74 +45,31 @@ public partial class VaultEntryEditorPage : ContentPage
         ArgumentNullException.ThrowIfNull(entry);
 
         var page = new VaultEntryEditorPage(entry, title, availableCategories);
-        var diagnostics = new List<string>();
-        INavigation? navigationHost = null;
-
-        if (Shell.Current is null)
-        {
-            diagnostics.Add("Shell.Current ist null.");
-        }
-        else if (Shell.Current.Navigation is null)
-        {
-            diagnostics.Add("Shell.Current.Navigation ist null.");
-        }
-        else
-        {
-            navigationHost = Shell.Current.Navigation;
-        }
-
-        if (navigationHost is null)
-        {
-            if (navigation is not null)
-            {
-                navigationHost = navigation;
-            }
-            else
-            {
-                diagnostics.Add("Der übergebene Navigationsparameter war null.");
-            }
-        }
-
-        if (navigationHost is null)
-        {
-            if (Application.Current?.MainPage is null)
-            {
-                diagnostics.Add("Application.Current.MainPage ist null.");
-            }
-            else if (Application.Current.MainPage.Navigation is null)
-            {
-                diagnostics.Add("Application.Current.MainPage.Navigation ist null.");
-            }
-            else
-            {
-                navigationHost = Application.Current.MainPage.Navigation;
-            }
-        }
-
-        if (navigationHost is null)
-        {
-            var detail = diagnostics.Count == 0
-                ? "Keine zusätzlichen Diagnosedetails verfügbar."
-                : string.Join(" ", diagnostics);
-            throw new InvalidOperationException($"Kein Navigationsstack verfügbar, um den Tresor-Editor zu öffnen. Diagnose: {detail}");
-        }
+        var (navigationHost, diagnostics) = ResolveNavigationHost(navigation);
+        var modalHost = page.CreateModalHost();
 
         try
         {
             if (MainThread.IsMainThread)
             {
-                await navigationHost.PushModalAsync(page);
+                await navigationHost.PushModalAsync(modalHost);
             }
             else
             {
-                await MainThread.InvokeOnMainThreadAsync(() => navigationHost.PushModalAsync(page));
+                await MainThread.InvokeOnMainThreadAsync(() => navigationHost.PushModalAsync(modalHost));
             }
+        }
+        catch (NullReferenceException ex)
+        {
+            var message = $"Beim Öffnen des Tresor-Editors trat eine NullReferenceException im Navigationssystem auf.";
+            Debug.WriteLine($"[VaultEntryEditorPage] {message}\n{ex}");
+            throw CreateNavigationException(message, diagnostics, navigationHost, ex);
         }
         catch (Exception ex)
         {
             var message = $"PushModalAsync für den Tresor-Editor ist fehlgeschlagen ({navigationHost.GetType().FullName}). Grund: {ex.Message}";
             Debug.WriteLine($"[VaultEntryEditorPage] {message}\n{ex}");
-            throw new InvalidOperationException(message, ex);
+            throw CreateNavigationException(message, diagnostics, navigationHost, ex);
         }
 
         return await page.Result.ConfigureAwait(false);
@@ -230,9 +189,32 @@ public partial class VaultEntryEditorPage : ContentPage
 
         async Task PopAsync()
         {
-            if (navigationHost.ModalStack.Contains(this))
+            var target = _modalHost ?? (Page)this;
+
+            if (!navigationHost.ModalStack.Contains(target) && target is NavigationPage navigationPage)
+            {
+                var containedPage = navigationPage.NavigationStack.FirstOrDefault();
+                if (containedPage == this && navigationHost.ModalStack.Contains(navigationPage))
+                {
+                    target = navigationPage;
+                }
+            }
+
+            if (!navigationHost.ModalStack.Contains(target))
+            {
+                return;
+            }
+
+            if (!ReferenceEquals(navigationHost.ModalStack.LastOrDefault(), target))
+            {
+                Debug.WriteLine("[VaultEntryEditorPage] Das zu schließende Modal befindet sich nicht oben auf dem Stack. Abbruch, um unerwartete Navigation zu vermeiden.");
+                return;
+            }
+
+            if (navigationHost.ModalStack.Contains(target))
             {
                 await navigationHost.PopModalAsync().ConfigureAwait(false);
+                _modalHost = null;
             }
         }
 
@@ -251,5 +233,180 @@ public partial class VaultEntryEditorPage : ContentPage
         {
             Debug.WriteLine($"[VaultEntryEditorPage] Fehler beim Schließen des Editors: {ex}");
         }
+    }
+
+    private Page CreateModalHost()
+    {
+        NavigationPage.SetHasNavigationBar(this, false);
+        NavigationPage.SetBackButtonTitle(this, string.Empty);
+
+        var navigationPage = new NavigationPage(this)
+        {
+            Title = Title
+        };
+
+        _modalHost = navigationPage;
+        return navigationPage;
+    }
+
+    private static (INavigation Host, string Diagnostics) ResolveNavigationHost(INavigation? navigation)
+    {
+        var candidateLog = new StringBuilder();
+        INavigation? resolved = null;
+
+        foreach (var candidate in GetNavigationCandidates(navigation))
+        {
+            INavigation? value = null;
+            Exception? error = null;
+
+            try
+            {
+                value = candidate.Resolver();
+            }
+            catch (Exception ex)
+            {
+                error = ex;
+            }
+
+            candidateLog.Append("• ")
+                .Append(candidate.Description)
+                .Append(": ")
+                .AppendLine(value is null ? "null" : value.GetType().FullName);
+
+            if (error is not null)
+            {
+                candidateLog.Append("    Ausnahme: ")
+                    .Append(error.GetType().FullName)
+                    .Append(": ")
+                    .AppendLine(error.Message);
+            }
+
+            if (resolved is null && value is not null)
+            {
+                resolved = value;
+            }
+        }
+
+        if (resolved is null)
+        {
+            var diagnostics = candidateLog.ToString();
+            const string message = "Kein Navigationsstack verfügbar, um den Tresor-Editor zu öffnen.";
+
+            throw CreateNavigationException(message, diagnostics, resolved, null);
+        }
+
+        var finalDiagnostics = BuildNavigationDiagnostics(resolved, navigation, candidateLog.ToString());
+        return (resolved, finalDiagnostics);
+    }
+
+    private static IEnumerable<(string Description, Func<INavigation?>> GetNavigationCandidates(INavigation? navigation)
+    {
+        yield return ("Shell.Current.CurrentPage.Navigation", () => Shell.Current?.CurrentPage?.Navigation);
+        yield return ("Shell.Current.Navigation", () => Shell.Current?.Navigation);
+        yield return ("Übergebene Navigation", () => navigation);
+        yield return ("Application.Current.MainPage.Navigation", () => Application.Current?.MainPage?.Navigation);
+    }
+
+    private static string BuildNavigationDiagnostics(INavigation navigationHost, INavigation? requestedNavigation, string candidateLog)
+    {
+        var builder = new StringBuilder();
+
+        if (!string.IsNullOrWhiteSpace(candidateLog))
+        {
+            builder.AppendLine("Untersuchte Navigationsquellen:")
+                .Append(candidateLog);
+        }
+
+        builder.AppendLine("Verwendeter Navigator:")
+            .Append("• Typ: ")
+            .AppendLine(navigationHost.GetType().FullName);
+
+        AppendNavigationStackInfo("NavigationStack", () => navigationHost.NavigationStack, builder);
+        AppendNavigationStackInfo("ModalStack", () => navigationHost.ModalStack, builder);
+
+        builder.AppendLine()
+            .AppendLine("Shell-Zustand:");
+
+        if (Shell.Current is null)
+        {
+            builder.AppendLine("• Shell.Current: null");
+        }
+        else
+        {
+            builder.Append("• Shell.Current: ")
+                .AppendLine(Shell.Current.GetType().FullName);
+            builder.Append("• Shell.Current.CurrentPage: ")
+                .AppendLine(Shell.Current.CurrentPage is null ? "null" : Shell.Current.CurrentPage.GetType().FullName);
+            builder.Append("• Shell.Current.Navigation: ")
+                .AppendLine(Shell.Current.Navigation is null ? "null" : Shell.Current.Navigation.GetType().FullName);
+        }
+
+        builder.AppendLine()
+            .AppendLine("Application-Zustand:");
+
+        builder.Append("• Application.Current: ")
+            .AppendLine(Application.Current is null ? "null" : Application.Current.GetType().FullName);
+
+        builder.Append("• Application.Current.MainPage: ")
+            .AppendLine(Application.Current?.MainPage is null ? "null" : Application.Current.MainPage.GetType().FullName);
+
+        builder.Append("• Angeforderter Navigator: ")
+            .AppendLine(requestedNavigation is null ? "null" : requestedNavigation.GetType().FullName);
+
+        return builder.ToString();
+    }
+
+    private static void AppendNavigationStackInfo(string name, Func<IReadOnlyList<Page>> stackAccessor, StringBuilder builder)
+    {
+        try
+        {
+            var stack = stackAccessor();
+            builder.Append("• ")
+                .Append(name)
+                .Append(": Anzahl=")
+                .Append(stack.Count)
+                .AppendLine(stack.Count > 0
+                    ? $", Top={stack[^1].GetType().FullName}"
+                    : ", leer");
+        }
+        catch (Exception ex)
+        {
+            builder.Append("• ")
+                .Append(name)
+                .Append(": Fehler beim Abrufen: ")
+                .Append(ex.GetType().FullName)
+                .Append(": ")
+                .AppendLine(ex.Message);
+        }
+    }
+
+    private static InvalidOperationException CreateNavigationException(string message, string diagnostics, INavigation? navigationHost, Exception? inner)
+    {
+        var detailedMessage = new StringBuilder(message);
+        if (!string.IsNullOrWhiteSpace(diagnostics))
+        {
+            detailedMessage.AppendLine()
+                .AppendLine()
+                .AppendLine("Diagnosedetails:")
+                .Append(diagnostics);
+        }
+
+        if (navigationHost is not null)
+        {
+            detailedMessage.AppendLine()
+                .Append("Verwendeter Navigator: ")
+                .AppendLine(navigationHost.GetType().FullName);
+        }
+
+        var exception = inner is not null
+            ? new InvalidOperationException(detailedMessage.ToString(), inner)
+            : new InvalidOperationException(detailedMessage.ToString());
+
+        if (!string.IsNullOrWhiteSpace(diagnostics))
+        {
+            exception.Data["NavigationDiagnostics"] = diagnostics;
+        }
+
+        return exception;
     }
 }
