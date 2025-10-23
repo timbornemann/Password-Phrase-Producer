@@ -331,31 +331,16 @@ public partial class VaultEntryEditorPage : ContentPage
         builder.AppendLine()
             .AppendLine("Shell-Zustand:");
 
-        if (Shell.Current is null)
-        {
-            builder.AppendLine("• Shell.Current: null");
-        }
-        else
-        {
-            builder.Append("• Shell.Current: ")
-                .AppendLine(Shell.Current.GetType().FullName);
-            builder.Append("• Shell.Current.CurrentPage: ")
-                .AppendLine(Shell.Current.CurrentPage is null ? "null" : Shell.Current.CurrentPage.GetType().FullName);
-            builder.Append("• Shell.Current.Navigation: ")
-                .AppendLine(Shell.Current.Navigation is null ? "null" : Shell.Current.Navigation.GetType().FullName);
-        }
+        AppendStateValue(builder, "Shell.Current", () => Shell.Current);
+        AppendStateValue(builder, "Shell.Current.CurrentPage", () => Shell.Current?.CurrentPage);
+        AppendStateValue(builder, "Shell.Current.Navigation", () => Shell.Current?.Navigation);
 
         builder.AppendLine()
             .AppendLine("Application-Zustand:");
 
-        builder.Append("• Application.Current: ")
-            .AppendLine(Application.Current is null ? "null" : Application.Current.GetType().FullName);
-
-        builder.Append("• Application.Current.MainPage: ")
-            .AppendLine(Application.Current?.MainPage is null ? "null" : Application.Current.MainPage.GetType().FullName);
-
-        builder.Append("• Angeforderter Navigator: ")
-            .AppendLine(requestedNavigation is null ? "null" : requestedNavigation.GetType().FullName);
+        AppendStateValue(builder, "Application.Current", () => Application.Current);
+        AppendStateValue(builder, "Application.Current.MainPage", () => Application.Current?.MainPage);
+        AppendStateValue(builder, "Angeforderter Navigator", () => requestedNavigation);
 
         return builder.ToString();
     }
@@ -412,5 +397,33 @@ public partial class VaultEntryEditorPage : ContentPage
         }
 
         return exception;
+    }
+
+    private static void AppendStateValue(StringBuilder builder, string label, Func<object?> valueAccessor)
+    {
+        try
+        {
+            var value = valueAccessor();
+            var description = value switch
+            {
+                null => "null",
+                Type type => type.FullName ?? type.Name,
+                _ => value.GetType().FullName ?? value.ToString() ?? string.Empty
+            };
+
+            builder.Append("• ")
+                .Append(label)
+                .Append(": ")
+                .AppendLine(description);
+        }
+        catch (Exception ex)
+        {
+            builder.Append("• ")
+                .Append(label)
+                .Append(": Fehler beim Abrufen: ")
+                .Append(ex.GetType().FullName)
+                .Append(": ")
+                .AppendLine(ex.Message);
+        }
     }
 }
