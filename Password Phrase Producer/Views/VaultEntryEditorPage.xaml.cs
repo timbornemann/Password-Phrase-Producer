@@ -193,7 +193,11 @@ public partial class VaultEntryEditorPage : ContentPage
 
             if (!navigationHost.ModalStack.Contains(target) && target is NavigationPage navigationPage)
             {
-                var containedPage = navigationPage.NavigationStack.FirstOrDefault();
+                var containedPage = navigationPage.Navigation?
+                    .NavigationStack
+                    .FirstOrDefault();
+
+                containedPage ??= navigationPage.CurrentPage;
                 if (containedPage == this && navigationHost.ModalStack.Contains(navigationPage))
                 {
                     target = navigationPage;
