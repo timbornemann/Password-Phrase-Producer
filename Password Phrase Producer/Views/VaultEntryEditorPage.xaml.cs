@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.ApplicationModel;
 using Password_Phrase_Producer.Models;
 
 namespace Password_Phrase_Producer.Views;
@@ -14,6 +16,8 @@ public partial class VaultEntryEditorPage : ContentPage
 
     public VaultEntryEditorPage(PasswordVaultEntry entry, string title, IEnumerable<string> availableCategories)
     {
+        ArgumentNullException.ThrowIfNull(entry);
+
         InitializeComponent();
         BindingContext = entry;
         Title = title;
@@ -36,16 +40,79 @@ public partial class VaultEntryEditorPage : ContentPage
 
     public static async Task<PasswordVaultEntry?> ShowAsync(INavigation? navigation, PasswordVaultEntry entry, string title, IEnumerable<string> availableCategories)
     {
+        ArgumentNullException.ThrowIfNull(entry);
+
         var page = new VaultEntryEditorPage(entry, title, availableCategories);
-        var navigationHost = Shell.Current?.Navigation
-            ?? navigation
-            ?? Application.Current?.MainPage?.Navigation;
-        if (navigationHost is null)
+        var diagnostics = new List<string>();
+        INavigation? navigationHost = null;
+
+        if (Shell.Current is null)
         {
-            throw new InvalidOperationException("Kein Navigationsstack verfügbar.");
+            diagnostics.Add("Shell.Current ist null.");
+        }
+        else if (Shell.Current.Navigation is null)
+        {
+            diagnostics.Add("Shell.Current.Navigation ist null.");
+        }
+        else
+        {
+            navigationHost = Shell.Current.Navigation;
         }
 
-        await navigationHost.PushModalAsync(page);
+        if (navigationHost is null)
+        {
+            if (navigation is not null)
+            {
+                navigationHost = navigation;
+            }
+            else
+            {
+                diagnostics.Add("Der übergebene Navigationsparameter war null.");
+            }
+        }
+
+        if (navigationHost is null)
+        {
+            if (Application.Current?.MainPage is null)
+            {
+                diagnostics.Add("Application.Current.MainPage ist null.");
+            }
+            else if (Application.Current.MainPage.Navigation is null)
+            {
+                diagnostics.Add("Application.Current.MainPage.Navigation ist null.");
+            }
+            else
+            {
+                navigationHost = Application.Current.MainPage.Navigation;
+            }
+        }
+
+        if (navigationHost is null)
+        {
+            var detail = diagnostics.Count == 0
+                ? "Keine zusätzlichen Diagnosedetails verfügbar."
+                : string.Join(" ", diagnostics);
+            throw new InvalidOperationException($"Kein Navigationsstack verfügbar, um den Tresor-Editor zu öffnen. Diagnose: {detail}");
+        }
+
+        try
+        {
+            if (MainThread.IsMainThread)
+            {
+                await navigationHost.PushModalAsync(page);
+            }
+            else
+            {
+                await MainThread.InvokeOnMainThreadAsync(() => navigationHost.PushModalAsync(page));
+            }
+        }
+        catch (Exception ex)
+        {
+            var message = $"PushModalAsync für den Tresor-Editor ist fehlgeschlagen ({navigationHost.GetType().FullName}). Grund: {ex.Message}";
+            Debug.WriteLine($"[VaultEntryEditorPage] {message}\n{ex}");
+            throw new InvalidOperationException(message, ex);
+        }
+
         return await page.Result.ConfigureAwait(false);
     }
 
@@ -93,9 +160,16 @@ public partial class VaultEntryEditorPage : ContentPage
             return;
         }
 
-        CategoryEntry.Text = category;
-        CategoryEntry.CursorPosition = category.Length;
-        CategorySuggestionsView.IsVisible = false;
+        if (CategoryEntry is not null)
+        {
+            CategoryEntry.Text = category;
+            CategoryEntry.CursorPosition = category.Length;
+        }
+
+        if (CategorySuggestionsView is not null)
+        {
+            CategorySuggestionsView.IsVisible = false;
+        }
     }
 
     private void UpdateCategorySuggestions(string? query, bool showSuggestions)
@@ -154,9 +228,28 @@ public partial class VaultEntryEditorPage : ContentPage
             return;
         }
 
-        if (navigationHost.ModalStack.Contains(this))
+        async Task PopAsync()
         {
-            await navigationHost.PopModalAsync().ConfigureAwait(false);
+            if (navigationHost.ModalStack.Contains(this))
+            {
+                await navigationHost.PopModalAsync().ConfigureAwait(false);
+            }
+        }
+
+        try
+        {
+            if (MainThread.IsMainThread)
+            {
+                await PopAsync().ConfigureAwait(false);
+            }
+            else
+            {
+                await MainThread.InvokeOnMainThreadAsync(PopAsync);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[VaultEntryEditorPage] Fehler beim Schließen des Editors: {ex}");
         }
     }
 }

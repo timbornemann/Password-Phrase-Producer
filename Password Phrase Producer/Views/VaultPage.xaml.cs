@@ -1,6 +1,8 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using CommunityToolkit.Maui.Storage;
 using Microsoft.Maui.ApplicationModel;
@@ -142,9 +144,37 @@ public partial class VaultPage : ContentPage
             {
                 result = await VaultEntryEditorPage.ShowAsync(Navigation, entry, title, _viewModel.AvailableCategories);
             }
+            catch (InvalidOperationException ex)
+            {
+                Debug.WriteLine($"[VaultPage] Editor konnte nicht geöffnet werden: {ex}");
+
+                var messageBuilder = new StringBuilder();
+                messageBuilder.AppendLine("Der Editor konnte nicht geöffnet werden.");
+                messageBuilder.AppendLine();
+                messageBuilder.AppendLine("Details:");
+                messageBuilder.Append("• ").AppendLine(ex.Message);
+
+                if (ex.InnerException is not null)
+                {
+                    messageBuilder.Append("• Innere Ausnahme: ")
+                        .Append(ex.InnerException.GetType().Name)
+                        .Append(": ")
+                        .AppendLine(ex.InnerException.Message);
+                }
+
+                messageBuilder.AppendLine();
+                messageBuilder.AppendLine("Geprüfte Navigationsquellen:");
+                messageBuilder.AppendLine("• Shell.Current.Navigation");
+                messageBuilder.AppendLine("• Übergebener Navigationsparameter");
+                messageBuilder.AppendLine("• Application.Current.MainPage.Navigation");
+
+                await DisplayAlert("Editor nicht verfügbar", messageBuilder.ToString(), "OK");
+                return;
+            }
             catch (Exception ex)
             {
-                await DisplayAlert("Fehler", $"Der Editor konnte nicht geöffnet werden: {ex.Message}", "OK");
+                Debug.WriteLine($"[VaultPage] Unerwarteter Fehler beim Öffnen des Editors: {ex}");
+                await DisplayAlert("Fehler", $"Beim Öffnen des Editors ist ein unerwarteter Fehler aufgetreten: {ex.Message}", "OK");
                 return;
             }
 
