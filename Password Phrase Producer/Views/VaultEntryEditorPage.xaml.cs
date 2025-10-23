@@ -24,13 +24,12 @@ public partial class VaultEntryEditorPage : ContentPage
         BindingContext = entry;
         Title = title;
 
-        _availableCategories = availableCategories?
+        _availableCategories = (availableCategories ?? Array.Empty<string>())
             .Where(category => !string.IsNullOrWhiteSpace(category))
             .Select(category => category.Trim())
             .Distinct(StringComparer.CurrentCultureIgnoreCase)
             .OrderBy(category => category, StringComparer.CurrentCultureIgnoreCase)
-            .ToList()
-            ?? new List<string>();
+            .ToList();
 
         CategorySuggestions = new ObservableCollection<string>();
         UpdateCategorySuggestions(entry.Category, false);
