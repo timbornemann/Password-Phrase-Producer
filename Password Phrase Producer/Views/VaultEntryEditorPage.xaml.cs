@@ -13,15 +13,14 @@ namespace Password_Phrase_Producer.Views;
 public partial class VaultEntryEditorPage : ContentPage
 {
     private readonly TaskCompletionSource<PasswordVaultEntry?> _resultSource = new();
-    private readonly List<string> _availableCategories;
+    private readonly List<string> _availableCategories = new();
     private Page? _modalHost;
 
-    public VaultEntryEditorPage(PasswordVaultEntry entry, string title, IEnumerable<string> availableCategories)
+    public VaultEntryEditorPage(PasswordVaultEntry entry, string title, IEnumerable<string>? availableCategories)
     {
         ArgumentNullException.ThrowIfNull(entry);
 
-        _availableCategories = NormalizeCategories(availableCategories);
-        CategorySuggestions = new ObservableCollection<string>();
+        SetAvailableCategories(availableCategories);
 
         InitializeComponent();
         BindingContext = entry;
@@ -31,9 +30,9 @@ public partial class VaultEntryEditorPage : ContentPage
 
     public Task<PasswordVaultEntry?> Result => _resultSource.Task;
 
-    public ObservableCollection<string> CategorySuggestions { get; }
+    public ObservableCollection<string> CategorySuggestions { get; } = new();
 
-    public static async Task<PasswordVaultEntry?> ShowAsync(INavigation? navigation, PasswordVaultEntry entry, string title, IEnumerable<string> availableCategories)
+    public static async Task<PasswordVaultEntry?> ShowAsync(INavigation? navigation, PasswordVaultEntry entry, string title, IEnumerable<string>? availableCategories)
     {
         ArgumentNullException.ThrowIfNull(entry);
 
@@ -66,6 +65,24 @@ public partial class VaultEntryEditorPage : ContentPage
         }
 
         return await page.Result.ConfigureAwait(false);
+    }
+
+    private void SetAvailableCategories(IEnumerable<string>? availableCategories)
+    {
+        _availableCategories.Clear();
+
+        if (availableCategories is null)
+        {
+            return;
+        }
+
+        var normalized = NormalizeCategories(availableCategories);
+        if (normalized.Count == 0)
+        {
+            return;
+        }
+
+        _availableCategories.AddRange(normalized);
     }
 
     private static List<string> NormalizeCategories(IEnumerable<string>? availableCategories)
@@ -141,7 +158,11 @@ public partial class VaultEntryEditorPage : ContentPage
 
     private void UpdateCategorySuggestions(string? query, bool showSuggestions)
     {
-        if (_availableCategories.Count == 0)
+        var available = _availableCategories
+            .Where(category => !string.IsNullOrWhiteSpace(category))
+            .ToList();
+
+        if (available.Count == 0)
         {
             CategorySuggestions.Clear();
             if (CategorySuggestionsView is not null)
@@ -154,8 +175,8 @@ public partial class VaultEntryEditorPage : ContentPage
         var normalizedQuery = query?.Trim() ?? string.Empty;
 
         var suggestions = string.IsNullOrEmpty(normalizedQuery)
-            ? _availableCategories
-            : _availableCategories.Where(category => category.Contains(normalizedQuery, StringComparison.CurrentCultureIgnoreCase));
+            ? available
+            : available.Where(category => category.Contains(normalizedQuery, StringComparison.CurrentCultureIgnoreCase));
 
         var distinctSuggestions = suggestions
             .Where(category => !string.Equals(category, normalizedQuery, StringComparison.CurrentCultureIgnoreCase))
