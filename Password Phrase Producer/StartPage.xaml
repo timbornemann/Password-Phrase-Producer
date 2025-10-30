@@ -14,7 +14,8 @@
     </ContentPage.Background>
 
     <ScrollView>
-        <VerticalStackLayout Spacing="28"
+        <VerticalStackLayout x:Name="PageContentLayout"
+                             Spacing="28"
                              Padding="24,48,24,40">
             <Grid ColumnDefinitions="*,Auto"
                   RowDefinitions="Auto"
@@ -58,17 +59,11 @@
                             Margin="0,8,0,0"
                             ItemSizingStrategy="MeasureAllItems">
                 <CollectionView.ItemsLayout>
-                    <GridItemsLayout Orientation="Vertical"
+                    <GridItemsLayout x:Name="ModeGridLayout"
+                                     Orientation="Vertical"
                                      VerticalItemSpacing="22"
-                                     HorizontalItemSpacing="22">
-                        <GridItemsLayout.Span>
-                            <OnIdiom x:TypeArguments="x:Int32">
-                                <OnIdiom.Phone>1</OnIdiom.Phone>
-                                <OnIdiom.Tablet>2</OnIdiom.Tablet>
-                                <OnIdiom.Desktop>3</OnIdiom.Desktop>
-                            </OnIdiom>
-                        </GridItemsLayout.Span>
-                    </GridItemsLayout>
+                                     HorizontalItemSpacing="22"
+                                     Span="1" />
                 </CollectionView.ItemsLayout>
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="local:PasswordModeOption">
