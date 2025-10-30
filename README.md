@@ -19,16 +19,9 @@ To receive an installable and updatable APK you must provide a persistent Androi
 
 The workflow restores the keystore, signs the APK during `dotnet publish`, and increments both the display and internal version numbers so that newer builds can be installed as updates on devices.
 
-### Windows (MSIX)
+### Windows (portable ZIP)
 
-Windows artifacts are now delivered as a single MSIX package that supports updating without manual uninstalling. Provide a code-signing certificate by configuring the following secrets:
-
-| Secret | Description |
-| --- | --- |
-| `WINDOWS_PFX_BASE64` | Base64 encoded `.pfx` certificate used to sign the MSIX. Ensure that the subject matches `CN=Password Phrase Producer` so that it aligns with the package manifest. |
-| `WINDOWS_PFX_PASSWORD` | Password that protects the certificate. |
-
-If the certificate is absent the workflow still produces an unsigned MSIX, which Windows will require you to trust manually before installing.
+Windows builds are published as self-contained, portable bundles. The workflow zips the published output (`Password Phrase Producer.exe` plus all required dependencies) into a single archive named `Password-Phrase-Producer_<version>_windows_x64_portable.zip`. Users simply extract the ZIP and launch the executable—no installer or code-signing certificate is required.
 
 ### Versioning
 

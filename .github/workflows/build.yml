@@ -137,51 +137,40 @@ jobs:
         run: |
           [IO.File]::WriteAllBytes($env:WINDOWS_CERTIFICATE_PATH, [Convert]::FromBase64String($env:WINDOWS_PFX_BASE64))
 
-      - name: Publish Windows MSIX package
+      - name: Publish Windows portable build
         shell: pwsh
-        env:
-          WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
         run: |
-          $signingArgs = "-p:AppxPackageSigningEnabled=false"
-          if (Test-Path $env:WINDOWS_CERTIFICATE_PATH) {
-            $signingArgs = "-p:AppxPackageSigningEnabled=true -p:PackageCertificateFile=$env:WINDOWS_CERTIFICATE_PATH -p:PackageCertificatePassword=$env:WINDOWS_PFX_PASSWORD"
-          }
-          else {
-            Write-Host "::warning::Windows certificate not provided. MSIX package will be unsigned and require manual trust before installation or updates."
-          }
-
           dotnet publish "./Password Phrase Producer/Password Phrase Producer.sln" `
             -c Release `
             -f net9.0-windows10.0.19041.0 `
             -p:RuntimeIdentifier=win10-x64 `
-            -p:WindowsPackageType=MSIX `
+            -p:WindowsPackageType=None `
+            -p:SelfContained=true `
+            -p:PublishSingleFile=false `
             -p:ApplicationDisplayVersion=$env:APP_VERSION `
-            -p:ApplicationVersion=$env:APP_BUILD `
-            -p:PackageVersion=$env:APP_VERSION_WINDOWS `
-            $signingArgs
+            -p:ApplicationVersion=$env:APP_BUILD
 
       - name: Stage Windows artifact
         shell: pwsh
         run: |
           $workspace = "${{ github.workspace }}"
-          $packagesDir = Join-Path $workspace "Password Phrase Producer\bin\Release\net9.0-windows10.0.19041.0\win10-x64\AppPackages"
-          if (-not (Test-Path $packagesDir)) {
-            throw "Windows AppPackages directory not found."
+          $publishDir = Join-Path $workspace "Password Phrase Producer\bin\Release\net9.0-windows10.0.19041.0\win10-x64\publish"
+          if (-not (Test-Path $publishDir)) {
+            throw "Windows publish directory not found."
           }
 
-          $msix = Get-ChildItem -Path $packagesDir -Recurse -Filter "*.msix" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-          if (-not $msix) {
-            throw "MSIX package was not produced."
+          $destination = Join-Path $env:RELEASE_DIRECTORY "Password-Phrase-Producer_$($env:APP_VERSION)_windows_x64_portable.zip"
+          if (Test-Path $destination) {
+            Remove-Item -Path $destination -Force
           }
 
-          $destination = Join-Path $env:RELEASE_DIRECTORY "Password-Phrase-Producer_$($env:APP_VERSION)_windows_x64.msix"
-          Copy-Item -Path $msix.FullName -Destination $destination -Force
+          Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $destination
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
-          name: windows-msix
-          path: '${{ env.RELEASE_DIRECTORY }}\\Password-Phrase-Producer_${{ env.APP_VERSION }}_windows_x64.msix'
+          name: windows-portable
+          path: '${{ env.RELEASE_DIRECTORY }}\\Password-Phrase-Producer_${{ env.APP_VERSION }}_windows_x64_portable.zip'
 
   release:
     name: Release artifacts
@@ -204,13 +193,13 @@ jobs:
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
-          name: windows-msix
+          name: windows-portable
           path: release-assets
 
       - name: Generate SHA256 checksums
         working-directory: release-assets
         run: |
-          sha256sum "Password-Phrase-Producer_${VERSION}_android_signed.apk" "Password-Phrase-Producer_${VERSION}_windows_x64.msix" > "Password-Phrase-Producer_${VERSION}_SHA256.txt"
+          sha256sum "Password-Phrase-Producer_${VERSION}_android_signed.apk" "Password-Phrase-Producer_${VERSION}_windows_x64_portable.zip" > "Password-Phrase-Producer_${VERSION}_SHA256.txt"
 
       - name: Determine release metadata
         id: release_meta
@@ -235,5 +224,5 @@ jobs:
           prerelease: ${{ steps.release_meta.outputs.prerelease }}
           files: |
             release-assets/Password-Phrase-Producer_${{ env.VERSION }}_android_signed.apk
-            release-assets/Password-Phrase-Producer_${{ env.VERSION }}_windows_x64.msix
+            release-assets/Password-Phrase-Producer_${{ env.VERSION }}_windows_x64_portable.zip
             release-assets/Password-Phrase-Producer_${{ env.VERSION }}_SHA256.txt
