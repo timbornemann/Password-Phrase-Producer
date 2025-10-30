@@ -62,7 +62,7 @@ public partial class VaultPage : ContentPage
         _viewModel.Deactivate();
     }
 
-    private async void OnAddEntryClicked(object? sender, TappedEventArgs e)
+    private async void OnAddEntryClicked(object? sender, EventArgs e)
     {
         if (!_viewModel.IsUnlocked)
         {
