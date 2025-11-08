@@ -33,7 +33,7 @@ namespace Password_Phrase_Producer.PasswordGenerationTechniques.SegmentRotationT
             return $"{string.Join("-", rotated)}#{checksum}";
         }
 
-        private static IList<string> CreateSegments(string cleaned, int segmentLength)
+        private static IReadOnlyList<string> CreateSegments(string cleaned, int segmentLength)
         {
             var segments = new List<string>();
 
