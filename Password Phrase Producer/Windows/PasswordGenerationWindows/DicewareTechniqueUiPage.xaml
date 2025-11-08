@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:Password_Phrase_Producer.Windows.PasswordGenerationWindows.Controls"
+             x:Class="Password_Phrase_Producer.Windows.PasswordGenerationWindows.DicewareTechniqueUiPage">
+    <VerticalStackLayout Spacing="24">
+        <Border StrokeThickness="0"
+                Padding="18"
+                BackgroundColor="#1F2438">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="22" />
+            </Border.StrokeShape>
+            <VerticalStackLayout Spacing="14">
+                <Label Text="Diceware Generator"
+                       FontSize="18"
+                       FontAttributes="Bold"
+                       TextColor="White"/>
+                <Label Text="Erzeuge reproduzierbare Passphrasen mit einem optionalen Seed."
+                       TextColor="#BDC2E8"
+                       FontSize="14"
+                       LineBreakMode="WordWrap"/>
+                <Label x:Name="wordCountLabel"
+                       Text="Wörter: 5"
+                       TextColor="#8F95C6"
+                       FontSize="13" />
+                <Slider x:Name="wordCountSlider"
+                        Minimum="3"
+                        Maximum="8"
+                        Value="5"
+                        ValueChanged="OnWordCountChanged" />
+                <Entry x:Name="seedEntry"
+                       Placeholder="Optionaler Seed für deterministische Ergebnisse"
+                       Style="{StaticResource DarkEntryStyle}" />
+            </VerticalStackLayout>
+        </Border>
+
+        <Border StrokeThickness="0"
+                Padding="18"
+                BackgroundColor="#1F2438">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="22" />
+            </Border.StrokeShape>
+            <VerticalStackLayout Spacing="16">
+                <Label Text="Passphrase"
+                       FontSize="18"
+                       FontAttributes="Bold"
+                       TextColor="White"/>
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <Entry x:Name="resultEntry"
+                           Placeholder="Generierte Passphrase"
+                           Style="{StaticResource DarkEntryStyle}"
+                           IsReadOnly="True" />
+                    <Button Grid.Column="1"
+                            Text="Kopieren"
+                            Style="{StaticResource PrimaryActionButtonStyle}"
+                            Clicked="OnCopyClicked"
+                            HorizontalOptions="End" />
+                </Grid>
+                <Button Text="Passphrase erzeugen"
+                        Style="{StaticResource PrimaryActionButtonStyle}"
+                        Clicked="OnCreateClicked" />
+                <controls:PasswordAnalysisPanel x:Name="analysisPanel"
+                                                 IsVisible="False" />
+            </VerticalStackLayout>
+        </Border>
+    </VerticalStackLayout>
+</ContentView>

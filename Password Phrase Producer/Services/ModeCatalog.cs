@@ -1,6 +1,11 @@
 using System.Collections.Generic;
 using Password_Phrase_Producer.PasswordGenerationTechniques.ConcatenationTechniques;
 using Password_Phrase_Producer.PasswordGenerationTechniques.HashBasedTechniques;
+using Password_Phrase_Producer.PasswordGenerationTechniques.DicewareTechnique;
+using Password_Phrase_Producer.PasswordGenerationTechniques.MirrorLockTechnique;
+using Password_Phrase_Producer.PasswordGenerationTechniques.PatternCascadeTechnique;
+using Password_Phrase_Producer.PasswordGenerationTechniques.SegmentRotationTechnique;
+using Password_Phrase_Producer.PasswordGenerationTechniques.SymbolInjectionTechnique;
 using Password_Phrase_Producer.Windows.PasswordGenerationWindows;
 using PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques;
 using Password_Phrase_Producer.Services.EntropyAnalyzer;
@@ -54,6 +59,41 @@ public static class ModeCatalog
             "Modernes Verfahren mit erweiterten Prüfungen und Komfort.",
             () => new TbvUiPage(new TBV3(), EntropyAnalyzer),
             "mode-tbv3",
-            "🚀")
+            "🚀"),
+        new(
+            "mirror-lock",
+            "Mirror Lock",
+            "Spiegele eine Phrase und ergänze sie um eine dreistellige Prüfsumme.",
+            () => new MirrorTechniqueUiPage(new MirrorLockTechnique(), EntropyAnalyzer),
+            "mode-mirror-lock",
+            "🪞"),
+        new(
+            "segment-rotation",
+            "Segment Rotation",
+            "Zerlege Text in Segmente und rotiere sie für ein strukturiertes Passwort.",
+            () => new SegmentRotationTechniqueUiPage(new SegmentRotationTechnique(), EntropyAnalyzer),
+            "mode-segment-rotation",
+            "🔁"),
+        new(
+            "diceware-seed",
+            "Diceware Seeded",
+            "Erzeuge Diceware-Phrasen mit optional deterministischem Seed.",
+            () => new DicewareTechniqueUiPage(new AdaptiveDicewareTechnique(), EntropyAnalyzer),
+            "mode-diceware-seed",
+            "🎲"),
+        new(
+            "symbol-mixer",
+            "Symbol Mixer",
+            "Mische Symbole in ein Passwort und steuere die Groß-/Kleinschreibung.",
+            () => new SymbolInjectionTechniqueUiPage(new SymbolInterleavingTechnique(), EntropyAnalyzer),
+            "mode-symbol-mixer",
+            "✨"),
+        new(
+            "pattern-cascade",
+            "Pattern Cascade",
+            "Kaskadiere Wörter und Zahlen zu einer wiederholbaren Struktur.",
+            () => new PatternCascadeTechniqueUiPage(new PatternCascadeTechnique(), EntropyAnalyzer),
+            "mode-pattern-cascade",
+            "🧬")
     };
 }
