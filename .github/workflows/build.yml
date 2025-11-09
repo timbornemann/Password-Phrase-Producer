@@ -53,10 +53,15 @@ jobs:
         id: compute_versions
         shell: pwsh
         run: |
-          $majorMinor = "1.0"
-          $build = "${{ github.run_number }}"
-          $appVersion = "$majorMinor.$build"
-          $windowsVersion = "$majorMinor.$build.0"
+          $runNumber = [int]"${{ github.run_number }}"
+          $major = [math]::Floor($runNumber / 100) + 1
+          $minor = [math]::Floor(($runNumber % 100) / 10)
+          $patch = $runNumber % 10
+
+          $majorMinor = "$major.$minor"
+          $build = $runNumber.ToString()
+          $appVersion = "$major.$minor.$patch"
+          $windowsVersion = "$appVersion.0"
           $releaseDir = Join-Path $env:RUNNER_TEMP 'release'
 
           New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
