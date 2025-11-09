@@ -140,7 +140,26 @@ public class PasswordGeneratorHostView : ContentView
 
         if (!vaultService.IsUnlocked)
         {
-            await PromptToUnlockVault();
+            var pendingRequest = VaultNavigationCoordinator.SetPendingPassword(password);
+
+            var shell = Shell.Current;
+            if (shell is null)
+            {
+                VaultNavigationCoordinator.ClearPendingRequest(pendingRequest.Id);
+                await ShowAlert("Navigation nicht verfügbar", "Der Tresor konnte nicht geöffnet werden.");
+                return;
+            }
+
+            try
+            {
+                await shell.GoToAsync("//vault");
+            }
+            catch (Exception ex)
+            {
+                VaultNavigationCoordinator.ClearPendingRequest(pendingRequest.Id);
+                await ShowAlert("Navigation fehlgeschlagen", $"Der Tresor konnte nicht geöffnet werden: {ex.Message}");
+            }
+
             return;
         }
 
@@ -198,29 +217,6 @@ public class PasswordGeneratorHostView : ContentView
             "Abbrechen");
 
         if (createVault)
-        {
-            if (Shell.Current is not null)
-            {
-                await Shell.Current.GoToAsync("//vault");
-            }
-        }
-    }
-
-    private async Task PromptToUnlockVault()
-    {
-        var mainPage = Application.Current?.MainPage;
-        if (mainPage is null)
-        {
-            return;
-        }
-
-        var navigateToVault = await mainPage.DisplayAlert(
-            "Tresor gesperrt",
-            "Bitte entsperre deinen Tresor, um Passwörter speichern zu können.",
-            "Zum Tresor",
-            "Abbrechen");
-
-        if (navigateToVault)
         {
             if (Shell.Current is not null)
             {
