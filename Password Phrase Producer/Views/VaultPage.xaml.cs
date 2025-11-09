@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -15,6 +16,7 @@ using Microsoft.UI.Xaml.Controls;
 using WinUIFlyoutBase = Microsoft.UI.Xaml.Controls.Primitives.FlyoutBase;
 #endif
 using Password_Phrase_Producer.Models;
+using Password_Phrase_Producer.Services.Vault;
 using Password_Phrase_Producer.ViewModels;
 using Password_Phrase_Producer.Views.Dialogs;
 
@@ -24,6 +26,8 @@ public partial class VaultPage : ContentPage
 {
     private readonly VaultPageViewModel _viewModel;
     private int _modalDepth;
+    private PendingVaultEntryRequest? _pendingVaultRequest;
+    private bool _isSubscribedToUnlockChanges;
 #if WINDOWS
     private readonly Microsoft.UI.Xaml.Controls.MenuFlyout _vaultActionsFlyout;
 #endif
@@ -48,6 +52,8 @@ public partial class VaultPage : ContentPage
 
         _viewModel.Activate();
         await _viewModel.InitializeAsync();
+
+        await HandlePendingVaultRequestAsync();
     }
 
     protected override void OnDisappearing()
@@ -60,6 +66,7 @@ public partial class VaultPage : ContentPage
         }
 
         _viewModel.Deactivate();
+        DetachUnlockSubscription();
     }
 
     private async void OnAddEntryClicked(object? sender, EventArgs e)
@@ -72,6 +79,90 @@ public partial class VaultPage : ContentPage
 
         var entry = new PasswordVaultEntry();
         await ShowEditorAsync(entry, "Neuer Tresor-Eintrag");
+    }
+
+    private async Task HandlePendingVaultRequestAsync()
+    {
+        var request = VaultNavigationCoordinator.GetPendingRequest();
+        if (request is null)
+        {
+            _pendingVaultRequest = null;
+            DetachUnlockSubscription();
+            return;
+        }
+
+        if (_viewModel.IsUnlocked)
+        {
+            await ProcessPendingVaultRequestAsync(request);
+        }
+        else
+        {
+            _pendingVaultRequest = request;
+            AttachUnlockSubscription();
+        }
+    }
+
+    private async Task ProcessPendingVaultRequestAsync(PendingVaultEntryRequest request)
+    {
+        if (!_viewModel.IsUnlocked)
+        {
+            return;
+        }
+
+        _pendingVaultRequest = null;
+        VaultNavigationCoordinator.ClearPendingRequest(request.Id);
+        DetachUnlockSubscription();
+
+        var entry = new PasswordVaultEntry
+        {
+            Password = request.Password
+        };
+
+        await ShowEditorAsync(entry, "Passwort zum Tresor hinzufügen");
+    }
+
+    private void AttachUnlockSubscription()
+    {
+        if (_isSubscribedToUnlockChanges)
+        {
+            return;
+        }
+
+        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        _isSubscribedToUnlockChanges = true;
+    }
+
+    private void DetachUnlockSubscription()
+    {
+        if (!_isSubscribedToUnlockChanges)
+        {
+            return;
+        }
+
+        _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        _isSubscribedToUnlockChanges = false;
+    }
+
+    private async void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (!string.Equals(e.PropertyName, nameof(VaultPageViewModel.IsUnlocked), StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        if (!_viewModel.IsUnlocked)
+        {
+            return;
+        }
+
+        var request = _pendingVaultRequest ?? VaultNavigationCoordinator.GetPendingRequest();
+        if (request is null)
+        {
+            DetachUnlockSubscription();
+            return;
+        }
+
+        await ProcessPendingVaultRequestAsync(request);
     }
 
     private async void OnEditEntryTapped(object? sender, TappedEventArgs e)
