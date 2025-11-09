@@ -1,11 +1,10 @@
 using System;
-using Microsoft.Maui.Controls;
 using Password_Phrase_Producer.PasswordGenerationTechniques.SymbolInjectionTechnique;
 using Password_Phrase_Producer.Services.EntropyAnalyzer;
 
 namespace Password_Phrase_Producer.Windows.PasswordGenerationWindows;
 
-public partial class SymbolInjectionTechniqueUiPage : ContentView
+public partial class SymbolInjectionTechniqueUiPage : PasswordGeneratorContentView
 {
     private readonly ISymbolInjectionTechnique symbolInjectionTechnique;
     private readonly IPasswordEntropyAnalyzer entropyAnalyzer;
@@ -55,6 +54,7 @@ public partial class SymbolInjectionTechniqueUiPage : ContentView
             }
 
             analysisPanel?.Reset();
+            UpdateGeneratedPassword(null);
             return;
         }
 
@@ -62,6 +62,8 @@ public partial class SymbolInjectionTechniqueUiPage : ContentView
         {
             resultEntry.Text = result;
         }
+
+        UpdateGeneratedPassword(result);
 
         if (analysisPanel is not null)
         {

@@ -11,7 +11,8 @@ public partial class ModeHostPage : ContentPage
         InitializeComponent();
         BindingContext = option;
         Title = option.Title;
-        ContentHost.Content = option.CreateView();
+        var contentView = option.CreateView();
+        ContentHost.Content = new PasswordGeneratorHostView(contentView);
     }
 
     private async void OnBackTapped(object? sender, TappedEventArgs e)

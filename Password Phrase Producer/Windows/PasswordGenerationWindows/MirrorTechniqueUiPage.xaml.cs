@@ -1,11 +1,10 @@
 using System;
-using Microsoft.Maui.Controls;
 using Password_Phrase_Producer.PasswordGenerationTechniques.MirrorLockTechnique;
 using Password_Phrase_Producer.Services.EntropyAnalyzer;
 
 namespace Password_Phrase_Producer.Windows.PasswordGenerationWindows;
 
-public partial class MirrorTechniqueUiPage : ContentView
+public partial class MirrorTechniqueUiPage : PasswordGeneratorContentView
 {
     private readonly IMirrorLockTechnique mirrorTechnique;
     private readonly IPasswordEntropyAnalyzer entropyAnalyzer;
@@ -32,6 +31,7 @@ public partial class MirrorTechniqueUiPage : ContentView
             }
 
             analysisPanel?.Reset();
+            UpdateGeneratedPassword(null);
             return;
         }
 
@@ -39,6 +39,8 @@ public partial class MirrorTechniqueUiPage : ContentView
         {
             resultEntry.Text = result;
         }
+
+        UpdateGeneratedPassword(result);
 
         if (analysisPanel is not null)
         {
