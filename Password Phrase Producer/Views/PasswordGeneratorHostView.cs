@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Controls.Shapes;
 using Password_Phrase_Producer.Models;
 using Password_Phrase_Producer.Services.Vault;
 using Password_Phrase_Producer.Windows.PasswordGenerationWindows;
@@ -24,6 +25,8 @@ public class PasswordGeneratorHostView : ContentView
         _resultProvider = content as IPasswordResultProvider ?? FindResultProvider(content);
         _vaultService = ResolveVaultService();
 
+        _addToVaultButton = CreateAddToVaultButton();
+
         var layout = new Grid
         {
             RowSpacing = 24,
@@ -37,7 +40,7 @@ public class PasswordGeneratorHostView : ContentView
         layout.Children.Add(content);
         Grid.SetRow(content, 0);
 
-        var actionContainer = CreateActionContainer();
+        var actionContainer = CreateActionContainer(_addToVaultButton);
         layout.Children.Add(actionContainer);
         Grid.SetRow(actionContainer, 1);
 
@@ -62,7 +65,26 @@ public class PasswordGeneratorHostView : ContentView
         }
     }
 
-    private View CreateActionContainer()
+    private Button CreateAddToVaultButton()
+    {
+        var button = new Button
+        {
+            Text = "Zum Tresor hinzufügen",
+            HorizontalOptions = LayoutOptions.Fill,
+            IsEnabled = false
+        };
+
+        if (Application.Current?.Resources.TryGetValue("PrimaryActionButtonStyle", out var styleObj) == true && styleObj is Style style)
+        {
+            button.Style = style;
+        }
+
+        button.Clicked += OnAddToVaultClicked;
+
+        return button;
+    }
+
+    private View CreateActionContainer(Button button)
     {
         var border = new Border
         {
@@ -72,21 +94,7 @@ public class PasswordGeneratorHostView : ContentView
             StrokeShape = new RoundRectangle { CornerRadius = 20 }
         };
 
-        _addToVaultButton = new Button
-        {
-            Text = "Zum Tresor hinzufügen",
-            HorizontalOptions = LayoutOptions.Fill,
-            IsEnabled = false
-        };
-
-        if (Application.Current?.Resources.TryGetValue("PrimaryActionButtonStyle", out var styleObj) == true && styleObj is Style style)
-        {
-            _addToVaultButton.Style = style;
-        }
-
-        _addToVaultButton.Clicked += OnAddToVaultClicked;
-
-        border.Content = _addToVaultButton;
+        border.Content = button;
         return border;
     }
 
@@ -265,13 +273,19 @@ public class PasswordGeneratorHostView : ContentView
             return provider;
         }
 
-        if (element is IElement view)
+        if (element is Element view)
         {
-            foreach (var child in view.FindDescendants())
+            foreach (var child in view.LogicalChildren)
             {
                 if (child is IPasswordResultProvider childProvider)
                 {
                     return childProvider;
+                }
+
+                var descendantProvider = FindResultProvider(child);
+                if (descendantProvider is not null)
+                {
+                    return descendantProvider;
                 }
             }
         }
