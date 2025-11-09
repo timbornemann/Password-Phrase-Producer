@@ -1,11 +1,10 @@
 using System;
-using Microsoft.Maui.Controls;
 using Password_Phrase_Producer.PasswordGenerationTechniques.SegmentRotationTechnique;
 using Password_Phrase_Producer.Services.EntropyAnalyzer;
 
 namespace Password_Phrase_Producer.Windows.PasswordGenerationWindows;
 
-public partial class SegmentRotationTechniqueUiPage : ContentView
+public partial class SegmentRotationTechniqueUiPage : PasswordGeneratorContentView
 {
     private readonly ISegmentRotationTechnique rotationTechnique;
     private readonly IPasswordEntropyAnalyzer entropyAnalyzer;
@@ -52,6 +51,7 @@ public partial class SegmentRotationTechniqueUiPage : ContentView
             }
 
             analysisPanel?.Reset();
+            UpdateGeneratedPassword(null);
             return;
         }
 
@@ -59,6 +59,8 @@ public partial class SegmentRotationTechniqueUiPage : ContentView
         {
             resultEntry.Text = result;
         }
+
+        UpdateGeneratedPassword(result);
 
         if (analysisPanel is not null)
         {

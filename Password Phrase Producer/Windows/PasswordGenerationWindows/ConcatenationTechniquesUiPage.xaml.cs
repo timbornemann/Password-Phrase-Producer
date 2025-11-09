@@ -9,7 +9,7 @@ using Password_Phrase_Producer.Services.EntropyAnalyzer;
 
 namespace Password_Phrase_Producer.Windows.PasswordGenerationWindows;
 
-public partial class ConcatenationTechniquesUiPage : ContentView
+public partial class ConcatenationTechniquesUiPage : PasswordGeneratorContentView
 {
     private readonly IConcatenationTechnique concatenationTechnique;
     private readonly IPasswordEntropyAnalyzer entropyAnalyzer;
@@ -72,6 +72,7 @@ public partial class ConcatenationTechniquesUiPage : ContentView
             }
 
             analysisPanel?.Reset();
+            UpdateGeneratedPassword(null);
             return;
         }
 
@@ -79,6 +80,8 @@ public partial class ConcatenationTechniquesUiPage : ContentView
         {
             resultEntry.Text = result;
         }
+
+        UpdateGeneratedPassword(result);
 
         if (analysisPanel is not null)
         {
