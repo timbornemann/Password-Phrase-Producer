@@ -51,6 +51,8 @@
                 <Button Text="Passwort spiegeln"
                         Style="{StaticResource PrimaryActionButtonStyle}"
                         Clicked="OnCreateClicked" />
+                <ContentView x:Name="addToVaultHost"
+                             IsVisible="False" />
                 <controls:PasswordAnalysisPanel x:Name="analysisPanel"
                                                  IsVisible="False" />
             </VerticalStackLayout>

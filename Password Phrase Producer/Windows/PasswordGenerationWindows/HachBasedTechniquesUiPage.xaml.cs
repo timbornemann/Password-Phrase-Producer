@@ -12,6 +12,7 @@ public partial class HachBasedTechniquesUiPage : PasswordGeneratorContentView
     public HachBasedTechniquesUiPage(IHashBasedTechniques hashBasedTechnique, IPasswordEntropyAnalyzer entropyAnalyzer)
     {
         InitializeComponent();
+        RegisterAddToVaultHost(addToVaultHost);
         this.hashBasedTechnique = hashBasedTechnique;
         this.entropyAnalyzer = entropyAnalyzer;
 

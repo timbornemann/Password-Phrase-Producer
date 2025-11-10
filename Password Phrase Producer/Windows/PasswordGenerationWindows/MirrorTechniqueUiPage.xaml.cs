@@ -12,6 +12,7 @@ public partial class MirrorTechniqueUiPage : PasswordGeneratorContentView
     public MirrorTechniqueUiPage(IMirrorLockTechnique mirrorTechnique, IPasswordEntropyAnalyzer entropyAnalyzer)
     {
         InitializeComponent();
+        RegisterAddToVaultHost(addToVaultHost);
         this.mirrorTechnique = mirrorTechnique;
         this.entropyAnalyzer = entropyAnalyzer;
 

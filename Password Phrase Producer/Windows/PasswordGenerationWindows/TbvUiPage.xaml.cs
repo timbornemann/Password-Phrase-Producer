@@ -12,6 +12,7 @@ public partial class TbvUiPage : PasswordGeneratorContentView
     public TbvUiPage(Itbv itbv, IPasswordEntropyAnalyzer entropyAnalyzer)
     {
         InitializeComponent();
+        RegisterAddToVaultHost(addToVaultHost);
         tbv = itbv;
         this.entropyAnalyzer = entropyAnalyzer;
 

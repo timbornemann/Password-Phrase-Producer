@@ -12,6 +12,7 @@ public partial class PatternCascadeTechniqueUiPage : PasswordGeneratorContentVie
     public PatternCascadeTechniqueUiPage(IPatternCascadeTechnique patternCascadeTechnique, IPasswordEntropyAnalyzer entropyAnalyzer)
     {
         InitializeComponent();
+        RegisterAddToVaultHost(addToVaultHost);
         this.patternCascadeTechnique = patternCascadeTechnique;
         this.entropyAnalyzer = entropyAnalyzer;
 

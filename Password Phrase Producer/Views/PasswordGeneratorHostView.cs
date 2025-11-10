@@ -41,8 +41,17 @@ public class PasswordGeneratorHostView : ContentView
         Grid.SetRow(content, 0);
 
         var actionContainer = CreateActionContainer(_addToVaultButton);
-        layout.Children.Add(actionContainer);
-        Grid.SetRow(actionContainer, 1);
+
+        if (content is IPasswordGeneratorActionHost actionHost && actionHost.TrySetAddToVaultAction(actionContainer))
+        {
+            layout.RowDefinitions.Clear();
+            layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Star });
+        }
+        else
+        {
+            layout.Children.Add(actionContainer);
+            Grid.SetRow(actionContainer, 1);
+        }
 
         Content = layout;
 
