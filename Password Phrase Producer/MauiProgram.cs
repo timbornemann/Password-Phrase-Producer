@@ -30,6 +30,11 @@ public static class MauiProgram
         builder.Services.AddSingleton<IVaultSyncProvider, S3VaultSyncProvider>();
         builder.Services.AddSingleton<IVaultSyncProvider, GoogleDriveVaultSyncProvider>();
 #if ANDROID
+        builder.Services.AddSingleton<IGoogleDriveDocumentPicker, Password_Phrase_Producer.Platforms.Android.Services.AndroidGoogleDriveDocumentPicker>();
+#else
+        builder.Services.AddSingleton<IGoogleDriveDocumentPicker, NoOpGoogleDriveDocumentPicker>();
+#endif
+#if ANDROID
         builder.Services.AddSingleton<IVaultSyncScheduler, Password_Phrase_Producer.Platforms.Android.VaultSyncScheduler>();
 #elif WINDOWS
         builder.Services.AddSingleton<IVaultSyncScheduler, Password_Phrase_Producer.Platforms.Windows.VaultSyncScheduler>();

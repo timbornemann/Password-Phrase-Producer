@@ -51,12 +51,10 @@ public class VaultPageViewModel : INotifyPropertyChanged
     private string _s3Region = string.Empty;
     private string _s3AccessKeyId = string.Empty;
     private string _s3SecretAccessKey = string.Empty;
-    private string _googleDriveClientId = string.Empty;
-    private string _googleDriveClientSecret = string.Empty;
-    private string _googleDriveRefreshToken = string.Empty;
-    private string _googleDriveFileId = string.Empty;
-    private string _googleDriveFileName = "vault.json.enc";
-    private string _googleDriveFolderId = string.Empty;
+    private readonly IGoogleDriveDocumentPicker _googleDriveDocumentPicker;
+    private readonly Command _selectGoogleDriveDocumentCommand;
+    private readonly Command _clearGoogleDriveDocumentCommand;
+    private string _googleDriveDocumentUri = string.Empty;
     private string? _currentS3Secret;
     private bool _hasS3Secret;
     private DateTimeOffset? _lastSyncUtc;
@@ -65,10 +63,11 @@ public class VaultPageViewModel : INotifyPropertyChanged
 
     private const string AllCategoriesFilter = "Alle Kategorien";
 
-    public VaultPageViewModel(PasswordVaultService vaultService, IBiometricAuthenticationService biometricAuthenticationService)
+    public VaultPageViewModel(PasswordVaultService vaultService, IBiometricAuthenticationService biometricAuthenticationService, IGoogleDriveDocumentPicker googleDriveDocumentPicker)
     {
         _vaultService = vaultService;
         _biometricAuthenticationService = biometricAuthenticationService;
+        _googleDriveDocumentPicker = googleDriveDocumentPicker;
         EntryGroups = new ObservableCollection<VaultEntryGroup>();
         CategoryFilterOptions = new ObservableCollection<string> { AllCategoriesFilter };
         SyncProviders = _syncProviders;
@@ -77,6 +76,10 @@ public class VaultPageViewModel : INotifyPropertyChanged
         UnlockWithBiometricCommand = new Command(async () => await UnlockWithBiometricAsync(), () => !IsBusy && CanUseBiometric && IsBiometricConfigured);
         SaveSyncSettingsCommand = new Command(async () => await SaveSyncSettingsAsync(), () => IsSyncSettingsDirty && !IsSyncBusy);
         SyncNowCommand = new Command(async () => await SyncNowAsync(), () => !IsSyncBusy && IsSyncEnabled);
+        _selectGoogleDriveDocumentCommand = new Command(async () => await SelectGoogleDriveDocumentAsync(), () => !IsSyncBusy && IsGoogleDriveProviderSelected);
+        _clearGoogleDriveDocumentCommand = new Command(ClearGoogleDriveDocumentSelection, () => !IsSyncBusy && IsGoogleDriveProviderSelected && !string.IsNullOrWhiteSpace(GoogleDriveDocumentUri));
+        SelectGoogleDriveDocumentCommand = _selectGoogleDriveDocumentCommand;
+        ClearGoogleDriveDocumentCommand = _clearGoogleDriveDocumentCommand;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -231,77 +234,26 @@ public class VaultPageViewModel : INotifyPropertyChanged
         }
     }
 
-    public string GoogleDriveClientId
+    public string GoogleDriveDocumentUri
     {
-        get => _googleDriveClientId;
+        get => _googleDriveDocumentUri;
         set
         {
-            if (SetProperty(ref _googleDriveClientId, value) && !_isLoadingSyncSettings)
+            if (SetProperty(ref _googleDriveDocumentUri, value))
             {
-                MarkSyncSettingsDirty();
+                if (!_isLoadingSyncSettings)
+                {
+                    MarkSyncSettingsDirty();
+                }
+
+                UpdateSyncCommandStates();
             }
         }
     }
 
-    public string GoogleDriveClientSecret
-    {
-        get => _googleDriveClientSecret;
-        set
-        {
-            if (SetProperty(ref _googleDriveClientSecret, value) && !_isLoadingSyncSettings)
-            {
-                MarkSyncSettingsDirty();
-            }
-        }
-    }
+    public ICommand SelectGoogleDriveDocumentCommand { get; }
 
-    public string GoogleDriveRefreshToken
-    {
-        get => _googleDriveRefreshToken;
-        set
-        {
-            if (SetProperty(ref _googleDriveRefreshToken, value) && !_isLoadingSyncSettings)
-            {
-                MarkSyncSettingsDirty();
-            }
-        }
-    }
-
-    public string GoogleDriveFileId
-    {
-        get => _googleDriveFileId;
-        set
-        {
-            if (SetProperty(ref _googleDriveFileId, value) && !_isLoadingSyncSettings)
-            {
-                MarkSyncSettingsDirty();
-            }
-        }
-    }
-
-    public string GoogleDriveFileName
-    {
-        get => _googleDriveFileName;
-        set
-        {
-            if (SetProperty(ref _googleDriveFileName, value) && !_isLoadingSyncSettings)
-            {
-                MarkSyncSettingsDirty();
-            }
-        }
-    }
-
-    public string GoogleDriveFolderId
-    {
-        get => _googleDriveFolderId;
-        set
-        {
-            if (SetProperty(ref _googleDriveFolderId, value) && !_isLoadingSyncSettings)
-            {
-                MarkSyncSettingsDirty();
-            }
-        }
-    }
+    public ICommand ClearGoogleDriveDocumentCommand { get; }
 
     public bool HasS3Secret
     {
@@ -542,12 +494,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
             configuration.Parameters.TryGetValue(S3VaultSyncProvider.RegionParameterKey, out var region);
             configuration.Parameters.TryGetValue(S3VaultSyncProvider.AccessKeyIdParameterKey, out var accessKeyId);
             configuration.Parameters.TryGetValue(S3VaultSyncProvider.SecretAccessKeyParameterKey, out var secret);
-            configuration.Parameters.TryGetValue(GoogleDriveVaultSyncProvider.ClientIdParameterKey, out var googleClientId);
-            configuration.Parameters.TryGetValue(GoogleDriveVaultSyncProvider.ClientSecretParameterKey, out var googleClientSecret);
-            configuration.Parameters.TryGetValue(GoogleDriveVaultSyncProvider.RefreshTokenParameterKey, out var googleRefreshToken);
-            configuration.Parameters.TryGetValue(GoogleDriveVaultSyncProvider.FileIdParameterKey, out var googleFileId);
-            configuration.Parameters.TryGetValue(GoogleDriveVaultSyncProvider.FileNameParameterKey, out var googleFileName);
-            configuration.Parameters.TryGetValue(GoogleDriveVaultSyncProvider.FolderIdParameterKey, out var googleFolderId);
+            configuration.Parameters.TryGetValue(GoogleDriveVaultSyncProvider.DocumentUriParameterKey, out var googleDocumentUri);
 
             await MainThread.InvokeOnMainThreadAsync(() =>
             {
@@ -562,12 +509,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
                 _currentS3Secret = secret;
                 HasS3Secret = !string.IsNullOrWhiteSpace(_currentS3Secret);
                 S3SecretAccessKey = string.Empty;
-                GoogleDriveClientId = googleClientId ?? string.Empty;
-                GoogleDriveClientSecret = googleClientSecret ?? string.Empty;
-                GoogleDriveRefreshToken = googleRefreshToken ?? string.Empty;
-                GoogleDriveFileId = googleFileId ?? string.Empty;
-                GoogleDriveFileName = string.IsNullOrWhiteSpace(googleFileName) ? "vault.json.enc" : googleFileName;
-                GoogleDriveFolderId = googleFolderId ?? string.Empty;
+                GoogleDriveDocumentUri = googleDocumentUri ?? string.Empty;
                 UpdateSyncStatusMessage(status, null);
                 IsSyncSettingsDirty = false;
             }).ConfigureAwait(false);
@@ -681,39 +623,63 @@ public class VaultPageViewModel : INotifyPropertyChanged
             }
         }
 
-        if (IsGoogleDriveProviderSelected)
+        if (IsGoogleDriveProviderSelected && !string.IsNullOrWhiteSpace(GoogleDriveDocumentUri))
         {
-            if (!string.IsNullOrWhiteSpace(GoogleDriveClientId))
-            {
-                configuration.Parameters[GoogleDriveVaultSyncProvider.ClientIdParameterKey] = GoogleDriveClientId.Trim();
-            }
-
-            if (!string.IsNullOrWhiteSpace(GoogleDriveClientSecret))
-            {
-                configuration.Parameters[GoogleDriveVaultSyncProvider.ClientSecretParameterKey] = GoogleDriveClientSecret.Trim();
-            }
-
-            if (!string.IsNullOrWhiteSpace(GoogleDriveRefreshToken))
-            {
-                configuration.Parameters[GoogleDriveVaultSyncProvider.RefreshTokenParameterKey] = GoogleDriveRefreshToken.Trim();
-            }
-
-            if (!string.IsNullOrWhiteSpace(GoogleDriveFileId))
-            {
-                configuration.Parameters[GoogleDriveVaultSyncProvider.FileIdParameterKey] = GoogleDriveFileId.Trim();
-            }
-
-            configuration.Parameters[GoogleDriveVaultSyncProvider.FileNameParameterKey] = string.IsNullOrWhiteSpace(GoogleDriveFileName)
-                ? "vault.json.enc"
-                : GoogleDriveFileName.Trim();
-
-            if (!string.IsNullOrWhiteSpace(GoogleDriveFolderId))
-            {
-                configuration.Parameters[GoogleDriveVaultSyncProvider.FolderIdParameterKey] = GoogleDriveFolderId.Trim();
-            }
+            configuration.Parameters[GoogleDriveVaultSyncProvider.DocumentUriParameterKey] = GoogleDriveDocumentUri.Trim();
         }
 
         return configuration;
+    }
+
+    private async Task SelectGoogleDriveDocumentAsync()
+    {
+        if (!IsGoogleDriveProviderSelected)
+        {
+            return;
+        }
+
+        try
+        {
+            var uri = await _googleDriveDocumentPicker.CreateDocumentAsync(GoogleDriveVaultSyncProvider.DefaultFileName).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(uri))
+            {
+                GoogleDriveDocumentUri = uri!;
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Auswahl wurde abgebrochen – nichts weiter zu tun.
+        }
+        catch (Exception ex)
+        {
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                var page = Application.Current?.MainPage;
+                if (page is not null)
+                {
+                    await page.DisplayAlert("Google Drive", ex.Message, "OK");
+                }
+            }).ConfigureAwait(false);
+        }
+    }
+
+    private void ClearGoogleDriveDocumentSelection()
+    {
+        if (string.IsNullOrWhiteSpace(GoogleDriveDocumentUri))
+        {
+            return;
+        }
+
+        try
+        {
+            _googleDriveDocumentPicker.ReleasePersistedPermission(GoogleDriveDocumentUri);
+        }
+        catch (Exception)
+        {
+            // Ignorieren – einige Provider unterstützen keine persistente Berechtigung.
+        }
+
+        GoogleDriveDocumentUri = string.Empty;
     }
 
     public async Task SaveEntryAsync(PasswordVaultEntry entry, CancellationToken cancellationToken = default)
@@ -1013,6 +979,9 @@ public class VaultPageViewModel : INotifyPropertyChanged
         {
             MainThread.BeginInvokeOnMainThread(syncCommand.ChangeCanExecute);
         }
+
+        MainThread.BeginInvokeOnMainThread(_selectGoogleDriveDocumentCommand.ChangeCanExecute);
+        MainThread.BeginInvokeOnMainThread(_clearGoogleDriveDocumentCommand.ChangeCanExecute);
     }
 
     private void ApplyFilters()
