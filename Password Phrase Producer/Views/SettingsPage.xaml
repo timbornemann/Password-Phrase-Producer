@@ -139,50 +139,14 @@
                                 BackgroundColor="#1B2036" />
                         </VerticalStackLayout>
 
-                        <VerticalStackLayout IsVisible="{Binding IsS3ProviderSelected}" Spacing="6">
-                            <Label Text="Amazon S3 Konfiguration" TextColor="#7F85B2" />
-                            <Entry
-                                Text="{Binding S3BucketName}"
-                                Placeholder="Bucket"
-                                PlaceholderColor="#7F85B2"
-                                TextColor="#CFD3FF"
-                                BackgroundColor="#1B2036" />
-                            <Entry
-                                Text="{Binding S3ObjectKey}"
-                                Placeholder="Objektschlüssel"
-                                PlaceholderColor="#7F85B2"
-                                TextColor="#CFD3FF"
-                                BackgroundColor="#1B2036" />
-                            <Entry
-                                Text="{Binding S3Region}"
-                                Placeholder="Region (z. B. eu-central-1)"
-                                PlaceholderColor="#7F85B2"
-                                TextColor="#CFD3FF"
-                                BackgroundColor="#1B2036" />
-                            <Entry
-                                Text="{Binding S3AccessKeyId}"
-                                Placeholder="Access Key ID"
-                                PlaceholderColor="#7F85B2"
-                                TextColor="#CFD3FF"
-                                BackgroundColor="#1B2036" />
-                            <Entry
-                                Text="{Binding S3SecretAccessKey}"
-                                Placeholder="Secret Access Key"
-                                PlaceholderColor="#7F85B2"
-                                TextColor="#CFD3FF"
-                                IsPassword="True"
-                                BackgroundColor="#1B2036" />
-                            <Label
-                                IsVisible="{Binding HasS3Secret}"
-                                Text="Ein geheimes Zugriffstoken ist gespeichert."
-                                FontSize="12"
-                                TextColor="#63F5A8" />
-                        </VerticalStackLayout>
-
                         <VerticalStackLayout IsVisible="{Binding IsGoogleDriveProviderSelected}" Spacing="6">
                             <Label Text="Google Drive Synchronisation" TextColor="#7F85B2" />
                             <Label
-                                Text="Wähle die Zieldatei über das Android Storage Access Framework aus. Die Datei kann sich auch in Google Drive befinden."
+                                Text="Erstelle eine neue Tresordatei oder verknüpfe eine bestehende Datei über das Android Storage Access Framework."
+                                FontSize="12"
+                                TextColor="#7F85B2" />
+                            <Label
+                                Text="Nach der Auswahl kannst du den Tresor jederzeit über Google Drive auf anderen Geräten synchronisieren."
                                 FontSize="12"
                                 TextColor="#7F85B2" />
                             <Entry
@@ -204,6 +168,43 @@
                                     BackgroundColor="#2D3A7C"
                                     TextColor="White" />
                             </HorizontalStackLayout>
+                            <VerticalStackLayout IsVisible="{Binding IsRemotePasswordRequired}" Spacing="6">
+                                <Label Text="Remote-Passwort" TextColor="#7F85B2" />
+                                <Label
+                                    Text="Vergib ein separates Passwort für die verschlüsselten Cloud-Daten, um Verwechslungen mit dem lokalen Tresor zu vermeiden."
+                                    FontSize="12"
+                                    TextColor="#7F85B2" />
+                                <Entry
+                                    Text="{Binding RemotePassword}"
+                                    Placeholder="Remote-Passwort"
+                                    PlaceholderColor="#7F85B2"
+                                    TextColor="#CFD3FF"
+                                    BackgroundColor="#1B2036"
+                                    IsPassword="True" />
+                                <Entry
+                                    Text="{Binding ConfirmRemotePassword}"
+                                    Placeholder="Remote-Passwort bestätigen"
+                                    PlaceholderColor="#7F85B2"
+                                    TextColor="#CFD3FF"
+                                    BackgroundColor="#1B2036"
+                                    IsPassword="True" />
+                                <Label
+                                    Text="{Binding RemotePasswordSuccess}"
+                                    FontSize="12"
+                                    TextColor="#63F5A8"
+                                    IsVisible="{Binding RemotePasswordSuccess, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}" />
+                                <Label
+                                    Text="{Binding RemotePasswordError}"
+                                    FontSize="12"
+                                    TextColor="#FF6B6B"
+                                    IsVisible="{Binding RemotePasswordError, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}" />
+                                <Button
+                                    Text="Remote-Passwort entfernen"
+                                    Command="{Binding ClearRemotePasswordCommand}"
+                                    BackgroundColor="#2D3A7C"
+                                    TextColor="White"
+                                    IsVisible="{Binding IsRemotePasswordConfigured}" />
+                            </VerticalStackLayout>
                         </VerticalStackLayout>
 
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">

@@ -32,6 +32,8 @@ public class PasswordVaultService
 
     private const string SyncConfigurationStorageKey = "PasswordVaultSyncConfiguration";
     private const string SyncStatusStorageKey = "PasswordVaultSyncStatus";
+    private const string RemotePasswordStoragePrefix = "PasswordVaultRemotePassword_";
+    private const int RemotePackageVersion = 1;
     private static readonly TimeSpan DefaultAutoSyncInterval = TimeSpan.FromMinutes(15);
 
     private readonly SemaphoreSlim _syncLock = new(1, 1);
@@ -95,6 +97,33 @@ public class PasswordVaultService
         return status;
     }
 
+    public async Task SetRemotePasswordAsync(string providerKey, string password, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(providerKey);
+        ArgumentException.ThrowIfNullOrWhiteSpace(password);
+
+        var key = NormalizeRemoteProviderKey(providerKey);
+        await SecureStorage.Default.SetAsync(GetRemotePasswordStorageKey(key), password.Trim()).ConfigureAwait(false);
+    }
+
+    public Task ClearRemotePasswordAsync(string providerKey, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(providerKey);
+
+        var key = NormalizeRemoteProviderKey(providerKey);
+        SecureStorage.Default.Remove(GetRemotePasswordStorageKey(key));
+        return Task.CompletedTask;
+    }
+
+    public async Task<bool> HasRemotePasswordAsync(string providerKey, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(providerKey);
+
+        var key = NormalizeRemoteProviderKey(providerKey);
+        var stored = await SecureStorage.Default.GetAsync(GetRemotePasswordStorageKey(key)).ConfigureAwait(false);
+        return !string.IsNullOrEmpty(stored);
+    }
+
     public async Task UpdateSyncConfigurationAsync(VaultSyncConfiguration configuration, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(configuration);
@@ -149,8 +178,7 @@ public class PasswordVaultService
         await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var localPayload = await ReadEncryptedFileAsync(cancellationToken).ConfigureAwait(false);
-            var localState = CreateLocalRemoteState(localPayload);
+            var (localPayload, localState) = await PrepareSyncPayloadAsync(configuration, cancellationToken).ConfigureAwait(false);
             var remoteState = await provider.GetRemoteStateAsync(configuration, cancellationToken).ConfigureAwait(false);
 
             if (remoteState is null && localPayload.Length == 0)
@@ -219,8 +247,9 @@ public class PasswordVaultService
                     return error;
                 }
 
-                var downloadedContent = ParseVaultFile(download.Payload);
-                await WriteVaultFileInternalAsync(download.Payload, cancellationToken).ConfigureAwait(false);
+                var localFileContent = await ConvertRemotePayloadToLocalAsync(configuration.ProviderKey, download.Payload, cancellationToken).ConfigureAwait(false);
+                var downloadedContent = ParseVaultFile(localFileContent);
+                await WriteVaultFileInternalAsync(localFileContent, cancellationToken).ConfigureAwait(false);
                 File.SetLastWriteTimeUtc(_vaultFilePath, download.RemoteState.LastModifiedUtc.UtcDateTime);
                 await UpdatePasswordMetadataAsync(downloadedContent).ConfigureAwait(false);
 
@@ -710,6 +739,45 @@ public class PasswordVaultService
         MessagingCenter.Send(this, VaultMessages.SyncStatusChanged, payload);
     }
 
+    private async Task<(byte[] Payload, VaultSyncRemoteState LocalState)> PrepareSyncPayloadAsync(VaultSyncConfiguration configuration, CancellationToken cancellationToken)
+    {
+        var rawPayload = await ReadEncryptedFileAsync(cancellationToken).ConfigureAwait(false);
+        var providerKey = configuration.ProviderKey;
+
+        if (!RequiresRemotePassword(providerKey) || rawPayload.Length == 0)
+        {
+            var state = CreateLocalRemoteState(rawPayload);
+            return (rawPayload, state);
+        }
+
+        var remotePassword = await GetRemotePasswordAsync(providerKey, cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(remotePassword))
+        {
+            throw new InvalidOperationException("Für die ausgewählte Synchronisation ist ein Remote-Passwort erforderlich. Bitte lege in den Einstellungen eines fest.");
+        }
+
+        var remotePayload = await CreateRemotePackageAsync(rawPayload, remotePassword).ConfigureAwait(false);
+        var remoteState = CreateLocalRemoteState(remotePayload);
+        return (remotePayload, remoteState);
+    }
+
+    private async Task<byte[]> ConvertRemotePayloadToLocalAsync(string? providerKey, byte[] payload, CancellationToken cancellationToken)
+    {
+        if (!RequiresRemotePassword(providerKey) || payload.Length == 0)
+        {
+            return payload;
+        }
+
+        var remotePassword = await GetRemotePasswordAsync(providerKey, cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(remotePassword))
+        {
+            throw new InvalidOperationException("Für die ausgewählte Synchronisation ist ein Remote-Passwort erforderlich. Bitte lege in den Einstellungen eines fest.");
+        }
+
+        var package = ParseRemotePackage(payload);
+        return DecryptRemotePackage(package, remotePassword);
+    }
+
     private VaultSyncRemoteState CreateLocalRemoteState(byte[] payload)
         => new()
         {
@@ -818,45 +886,18 @@ public class PasswordVaultService
         await WriteVaultFileInternalAsync(vaultFile.RawContent, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<byte[]> EncryptAsync(byte[] data, CancellationToken cancellationToken)
+    private Task<byte[]> EncryptAsync(byte[] data, CancellationToken cancellationToken)
     {
         var key = GetUnlockedKey();
-        var nonce = RandomNumberGenerator.GetBytes(12);
-        var cipher = new byte[data.Length];
-        var tag = new byte[16];
-
-        using var aes = new AesGcm(key, tag.Length);
-        aes.Encrypt(nonce, data, cipher, tag);
-
-        var result = new byte[nonce.Length + cipher.Length + tag.Length];
-        Buffer.BlockCopy(nonce, 0, result, 0, nonce.Length);
-        Buffer.BlockCopy(cipher, 0, result, nonce.Length, cipher.Length);
-        Buffer.BlockCopy(tag, 0, result, nonce.Length + cipher.Length, tag.Length);
-        return result;
+        var result = EncryptWithKey(data, key);
+        return Task.FromResult(result);
     }
 
-    private async Task<byte[]> DecryptAsync(byte[] data, CancellationToken cancellationToken)
+    private Task<byte[]> DecryptAsync(byte[] data, CancellationToken cancellationToken)
     {
-        if (data.Length < 28)
-        {
-            return Array.Empty<byte>();
-        }
-
         var key = GetUnlockedKey();
-
-        var nonce = new byte[12];
-        var tag = new byte[16];
-        var cipher = new byte[data.Length - 28];
-
-        Buffer.BlockCopy(data, 0, nonce, 0, nonce.Length);
-        Buffer.BlockCopy(data, nonce.Length, cipher, 0, cipher.Length);
-        Buffer.BlockCopy(data, nonce.Length + cipher.Length, tag, 0, tag.Length);
-
-        var plain = new byte[cipher.Length];
-
-        using var aes = new AesGcm(key, tag.Length);
-        aes.Decrypt(nonce, cipher, tag, plain);
-        return plain;
+        var result = DecryptWithKey(data, key);
+        return Task.FromResult(result);
     }
 
     private async Task<byte[]> ReadEncryptedFileAsync(CancellationToken cancellationToken)
@@ -960,6 +1001,95 @@ public class PasswordVaultService
         await File.WriteAllBytesAsync(_vaultFilePath, rawContent, cancellationToken).ConfigureAwait(false);
     }
 
+    private async Task<string?> GetRemotePasswordAsync(string? providerKey, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(providerKey))
+        {
+            return null;
+        }
+
+        var key = NormalizeRemoteProviderKey(providerKey);
+        return await SecureStorage.Default.GetAsync(GetRemotePasswordStorageKey(key)).ConfigureAwait(false);
+    }
+
+    private async Task<byte[]> CreateRemotePackageAsync(byte[] payload, string password)
+    {
+        var salt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
+        var key = DeriveKey(password, salt);
+
+        try
+        {
+            var encrypted = EncryptWithKey(payload, key);
+            var dto = new RemoteVaultPackageDto
+            {
+                Version = RemotePackageVersion,
+                Salt = Convert.ToBase64String(salt),
+                Pbkdf2Iterations = Pbkdf2Iterations,
+                CipherText = Convert.ToBase64String(encrypted)
+            };
+
+            return JsonSerializer.SerializeToUtf8Bytes(dto, _jsonOptions);
+        }
+        finally
+        {
+            Array.Clear(key);
+        }
+    }
+
+    private RemoteVaultPackageDto ParseRemotePackage(byte[] payload)
+    {
+        try
+        {
+            var dto = JsonSerializer.Deserialize<RemoteVaultPackageDto>(payload, _jsonOptions);
+            if (dto is null || string.IsNullOrWhiteSpace(dto.CipherText))
+            {
+                throw new InvalidOperationException("Das Remote-Tresorformat ist ungültig.");
+            }
+
+            if (dto.Version != RemotePackageVersion)
+            {
+                throw new InvalidOperationException("Das Remote-Tresorformat wird nicht unterstützt.");
+            }
+
+            if (dto.Pbkdf2Iterations.HasValue && dto.Pbkdf2Iterations.Value != Pbkdf2Iterations)
+            {
+                throw new InvalidOperationException("Das Remote-Tresorformat verwendet eine nicht unterstützte Schlüsselableitung.");
+            }
+
+            return dto;
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidOperationException("Die entfernten Tresordaten konnten nicht interpretiert werden.", ex);
+        }
+    }
+
+    private byte[] DecryptRemotePackage(RemoteVaultPackageDto package, string password)
+    {
+        if (string.IsNullOrWhiteSpace(package.CipherText))
+        {
+            return Array.Empty<byte>();
+        }
+
+        if (string.IsNullOrWhiteSpace(package.Salt))
+        {
+            throw new InvalidOperationException("Das Remote-Tresorformat enthält keine Salt-Informationen.");
+        }
+
+        var salt = Convert.FromBase64String(package.Salt);
+        var encrypted = Convert.FromBase64String(package.CipherText);
+        var key = DeriveKey(password, salt);
+
+        try
+        {
+            return DecryptWithKey(encrypted, key);
+        }
+        finally
+        {
+            Array.Clear(key);
+        }
+    }
+
     private async Task EnsurePasswordMetadataAsync(CancellationToken cancellationToken)
     {
         var salt = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false);
@@ -1036,5 +1166,72 @@ public class PasswordVaultService
     {
         using var sha = SHA256.Create();
         return sha.ComputeHash(key);
+    }
+
+    private static byte[] EncryptWithKey(byte[] data, byte[] key)
+    {
+        var nonce = RandomNumberGenerator.GetBytes(12);
+        var cipher = new byte[data.Length];
+        var tag = new byte[16];
+
+        using var aes = new AesGcm(key, tag.Length);
+        aes.Encrypt(nonce, data, cipher, tag);
+
+        var result = new byte[nonce.Length + cipher.Length + tag.Length];
+        Buffer.BlockCopy(nonce, 0, result, 0, nonce.Length);
+        Buffer.BlockCopy(cipher, 0, result, nonce.Length, cipher.Length);
+        Buffer.BlockCopy(tag, 0, result, nonce.Length + cipher.Length, tag.Length);
+        return result;
+    }
+
+    private static byte[] DecryptWithKey(byte[] data, byte[] key)
+    {
+        const int nonceLength = 12;
+        const int tagLength = 16;
+
+        if (data.Length < nonceLength + tagLength)
+        {
+            return Array.Empty<byte>();
+        }
+
+        var cipherLength = data.Length - nonceLength - tagLength;
+        if (cipherLength < 0)
+        {
+            throw new InvalidOperationException("Ungültiges verschlüsseltes Format.");
+        }
+
+        var nonce = new byte[nonceLength];
+        var cipher = new byte[cipherLength];
+        var tag = new byte[tagLength];
+
+        Buffer.BlockCopy(data, 0, nonce, 0, nonceLength);
+        Buffer.BlockCopy(data, nonceLength, cipher, 0, cipherLength);
+        Buffer.BlockCopy(data, nonceLength + cipherLength, tag, 0, tagLength);
+
+        var plain = new byte[cipherLength];
+        using var aes = new AesGcm(key, tagLength);
+        aes.Decrypt(nonce, cipher, tag, plain);
+        return plain;
+    }
+
+    private static string NormalizeRemoteProviderKey(string providerKey)
+        => providerKey.Trim().ToUpperInvariant();
+
+    private static string GetRemotePasswordStorageKey(string normalizedProviderKey)
+        => RemotePasswordStoragePrefix + normalizedProviderKey;
+
+    private static bool RequiresRemotePassword(string? providerKey)
+        => string.Equals(providerKey, GoogleDriveVaultSyncProvider.ProviderKey, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(providerKey, FileSystemVaultSyncProvider.ProviderKey, StringComparison.OrdinalIgnoreCase);
+
+    private sealed record RemoteVaultPackageDto
+    {
+        public int Version { get; init; }
+
+        public string? Salt { get; init; }
+
+        public int? Pbkdf2Iterations { get; init; }
+
+        public string CipherText { get; init; } = string.Empty;
     }
 }
