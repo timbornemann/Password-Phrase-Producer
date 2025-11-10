@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Android.App;
 using Android.Content;
-using Android.Net;
 using Android.OS;
 using Android.Provider;
 using Microsoft.Maui.ApplicationModel;
@@ -37,7 +36,7 @@ public sealed class AndroidGoogleDriveDocumentPicker : IGoogleDriveDocumentPicke
 
                 activity.ActivityResult -= handler;
 
-                if (args.ResultCode == Result.Ok && args.Data?.Data is Uri uri)
+                if (args.ResultCode == Result.Ok && args.Data?.Data is Android.Net.Uri uri)
                 {
                     var takeFlags = args.Data.Flags & (ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantWriteUriPermission);
                     try
@@ -93,13 +92,13 @@ public sealed class AndroidGoogleDriveDocumentPicker : IGoogleDriveDocumentPicke
             return;
         }
 
-        var resolver = (MainActivity.Current ?? Application.Context)?.ContentResolver;
+        var resolver = (MainActivity.Current ?? Android.App.Application.Context)?.ContentResolver;
         if (resolver is null)
         {
             return;
         }
 
-        var uri = Uri.Parse(documentUri);
+        var uri = Android.Net.Uri.Parse(documentUri);
         try
         {
             resolver.ReleasePersistableUriPermission(uri, ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantWriteUriPermission);
