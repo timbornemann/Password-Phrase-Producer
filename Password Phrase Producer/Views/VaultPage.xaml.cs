@@ -425,7 +425,7 @@ public partial class VaultPage : ContentPage
         foreach (var category in _viewModel.CategoryFilterOptions)
         {
             var isSelected = string.Equals(category, _viewModel.SelectedCategory, StringComparison.CurrentCultureIgnoreCase);
-            options.Add(new ActionSheetPopupOption(category, category, isSelected: isSelected));
+            options.Add(new ActionSheetPopupOption(category, category, IsSelected: isSelected));
         }
 
         var popup = new ActionSheetPopup("Kategorie wählen", options, cancelText: "Abbrechen");
