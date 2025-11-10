@@ -18,6 +18,7 @@ public partial class ConcatenationTechniquesUiPage : PasswordGeneratorContentVie
     public ConcatenationTechniquesUiPage(IConcatenationTechnique concatenationTechnique, IPasswordEntropyAnalyzer entropyAnalyzer)
     {
         InitializeComponent();
+        RegisterAddToVaultHost(addToVaultHost);
         this.concatenationTechnique = concatenationTechnique;
         this.entropyAnalyzer = entropyAnalyzer;
 

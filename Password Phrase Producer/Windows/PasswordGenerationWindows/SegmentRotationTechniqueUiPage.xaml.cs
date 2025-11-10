@@ -12,6 +12,7 @@ public partial class SegmentRotationTechniqueUiPage : PasswordGeneratorContentVi
     public SegmentRotationTechniqueUiPage(ISegmentRotationTechnique rotationTechnique, IPasswordEntropyAnalyzer entropyAnalyzer)
     {
         InitializeComponent();
+        RegisterAddToVaultHost(addToVaultHost);
         this.rotationTechnique = rotationTechnique;
         this.entropyAnalyzer = entropyAnalyzer;
 

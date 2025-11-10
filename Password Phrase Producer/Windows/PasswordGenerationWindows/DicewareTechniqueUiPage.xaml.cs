@@ -12,6 +12,7 @@ public partial class DicewareTechniqueUiPage : PasswordGeneratorContentView
     public DicewareTechniqueUiPage(IDicewareTechnique dicewareTechnique, IPasswordEntropyAnalyzer entropyAnalyzer)
     {
         InitializeComponent();
+        RegisterAddToVaultHost(addToVaultHost);
         this.dicewareTechnique = dicewareTechnique;
         this.entropyAnalyzer = entropyAnalyzer;
 

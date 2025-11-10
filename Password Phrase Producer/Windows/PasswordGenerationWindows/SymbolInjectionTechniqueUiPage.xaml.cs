@@ -12,6 +12,7 @@ public partial class SymbolInjectionTechniqueUiPage : PasswordGeneratorContentVi
     public SymbolInjectionTechniqueUiPage(ISymbolInjectionTechnique symbolInjectionTechnique, IPasswordEntropyAnalyzer entropyAnalyzer)
     {
         InitializeComponent();
+        RegisterAddToVaultHost(addToVaultHost);
         this.symbolInjectionTechnique = symbolInjectionTechnique;
         this.entropyAnalyzer = entropyAnalyzer;
 

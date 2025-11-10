@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using CommunityToolkit.Maui.Views;
 using CommunityToolkit.Maui.Storage;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
@@ -183,8 +185,9 @@ public partial class VaultPage : ContentPage
             return;
         }
 
-        var confirm = await DisplayAlert("Eintrag löschen", $"Soll der Eintrag '{entry.Label}' gelöscht werden?", "Löschen", "Abbrechen");
-        if (!confirm)
+        var popup = new ConfirmationPopup("Eintrag löschen", $"Soll der Eintrag '{entry.Label}' gelöscht werden?", "Löschen", "Abbrechen", true);
+        var result = await this.ShowPopupAsync(popup);
+        if (result is not bool confirm || !confirm)
         {
             return;
         }
@@ -378,15 +381,17 @@ public partial class VaultPage : ContentPage
         const string importEncrypted = "Verschlüsselten Tresor importieren";
         const string changePassword = "Master-Passwort ändern";
 
-        var selection = await DisplayActionSheet(
-            "Aktionen",
-            "Abbrechen",
-            null,
-            exportBackup,
-            importBackup,
-            exportEncrypted,
-            importEncrypted,
-            changePassword);
+        var options = new List<ActionSheetPopupOption>
+        {
+            new(exportBackup, exportBackup),
+            new(importBackup, importBackup),
+            new(exportEncrypted, exportEncrypted),
+            new(importEncrypted, importEncrypted),
+            new(changePassword, changePassword)
+        };
+
+        var popup = new ActionSheetPopup("Aktionen", options, cancelText: "Abbrechen");
+        var selection = await this.ShowPopupAsync(popup) as string;
 
         switch (selection)
         {
@@ -407,6 +412,38 @@ public partial class VaultPage : ContentPage
                 break;
         }
 #endif
+    }
+
+    private async void OnCategoryFilterTapped(object? sender, TappedEventArgs e)
+    {
+        if (_viewModel.CategoryFilterOptions.Count == 0)
+        {
+            return;
+        }
+
+        var options = new List<ActionSheetPopupOption>();
+        foreach (var category in _viewModel.CategoryFilterOptions)
+        {
+            var isSelected = string.Equals(category, _viewModel.SelectedCategory, StringComparison.CurrentCultureIgnoreCase);
+            options.Add(new ActionSheetPopupOption(category, category, isSelected: isSelected));
+        }
+
+        var popup = new ActionSheetPopup("Kategorie wählen", options, cancelText: "Abbrechen");
+        var selection = await this.ShowPopupAsync(popup) as string;
+
+        if (string.IsNullOrWhiteSpace(selection) || string.Equals(selection, _viewModel.SelectedCategory, StringComparison.CurrentCultureIgnoreCase))
+        {
+            return;
+        }
+
+        foreach (var category in _viewModel.CategoryFilterOptions)
+        {
+            if (string.Equals(category, selection, StringComparison.CurrentCultureIgnoreCase))
+            {
+                _viewModel.SelectedCategory = category;
+                break;
+            }
+        }
     }
 
 #if WINDOWS

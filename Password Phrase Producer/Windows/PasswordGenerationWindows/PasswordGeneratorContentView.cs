@@ -4,9 +4,10 @@ using Password_Phrase_Producer.Views;
 
 namespace Password_Phrase_Producer.Windows.PasswordGenerationWindows;
 
-public abstract class PasswordGeneratorContentView : ContentView, IPasswordResultProvider
+public abstract class PasswordGeneratorContentView : ContentView, IPasswordResultProvider, IPasswordGeneratorActionHost
 {
     private string? _lastGeneratedPassword;
+    private ContentView? _addToVaultHost;
 
     public event EventHandler<string>? PasswordGenerated;
 
@@ -16,6 +17,27 @@ public abstract class PasswordGeneratorContentView : ContentView, IPasswordResul
     {
         get => _lastGeneratedPassword;
         private set => _lastGeneratedPassword = value;
+    }
+
+    protected void RegisterAddToVaultHost(ContentView host)
+    {
+        _addToVaultHost = host;
+        _addToVaultHost.IsVisible = false;
+    }
+
+    bool IPasswordGeneratorActionHost.TrySetAddToVaultAction(View actionView)
+    {
+        if (_addToVaultHost is null)
+        {
+            return false;
+        }
+
+        actionView.HorizontalOptions = LayoutOptions.Fill;
+        actionView.VerticalOptions = LayoutOptions.Center;
+
+        _addToVaultHost.Content = actionView;
+        _addToVaultHost.IsVisible = true;
+        return true;
     }
 
     protected void UpdateGeneratedPassword(string? password)
