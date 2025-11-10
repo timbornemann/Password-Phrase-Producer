@@ -301,49 +301,30 @@
                         </VerticalStackLayout>
 
                         <VerticalStackLayout IsVisible="{Binding IsGoogleDriveProviderSelected}" Spacing="6">
-                            <Label Text="Google Drive Konfiguration" TextColor="#7F85B2" />
-                            <Entry
-                                Text="{Binding GoogleDriveClientId}"
-                                Placeholder="OAuth Client ID"
-                                PlaceholderColor="#7F85B2"
-                                TextColor="#CFD3FF"
-                                BackgroundColor="#1B2036" />
-                            <Entry
-                                Text="{Binding GoogleDriveClientSecret}"
-                                Placeholder="OAuth Client Secret"
-                                PlaceholderColor="#7F85B2"
-                                TextColor="#CFD3FF"
-                                BackgroundColor="#1B2036"
-                                IsPassword="True" />
-                            <Entry
-                                Text="{Binding GoogleDriveRefreshToken}"
-                                Placeholder="Refresh Token"
-                                PlaceholderColor="#7F85B2"
-                                TextColor="#CFD3FF"
-                                BackgroundColor="#1B2036"
-                                IsPassword="True" />
-                            <Entry
-                                Text="{Binding GoogleDriveFileId}"
-                                Placeholder="Datei-ID (optional)"
-                                PlaceholderColor="#7F85B2"
-                                TextColor="#CFD3FF"
-                                BackgroundColor="#1B2036" />
-                            <Entry
-                                Text="{Binding GoogleDriveFileName}"
-                                Placeholder="Dateiname (z. B. vault.json.enc)"
-                                PlaceholderColor="#7F85B2"
-                                TextColor="#CFD3FF"
-                                BackgroundColor="#1B2036" />
-                            <Entry
-                                Text="{Binding GoogleDriveFolderId}"
-                                Placeholder="Ordner-ID (optional)"
-                                PlaceholderColor="#7F85B2"
-                                TextColor="#CFD3FF"
-                                BackgroundColor="#1B2036" />
+                            <Label Text="Google Drive Synchronisation" TextColor="#7F85B2" />
                             <Label
-                                Text="Nutze einen OAuth-Client mit Drive-Berechtigung (Drive oder Drive.File). Die Datei-ID ist optional, bei leerem Feld wird anhand des Dateinamens gesucht oder neu erstellt."
+                                Text="Wähle die Zieldatei über das Android Storage Access Framework aus. Die Datei kann sich auch in Google Drive befinden."
                                 FontSize="12"
                                 TextColor="#7F85B2" />
+                            <Entry
+                                Text="{Binding GoogleDriveDocumentUri}"
+                                Placeholder="Keine Datei ausgewählt"
+                                PlaceholderColor="#7F85B2"
+                                TextColor="#CFD3FF"
+                                BackgroundColor="#1B2036"
+                                IsReadOnly="True" />
+                            <HorizontalStackLayout Spacing="12">
+                                <Button
+                                    Text="Datei auswählen"
+                                    Command="{Binding SelectGoogleDriveDocumentCommand}"
+                                    BackgroundColor="#3B4AD1"
+                                    TextColor="White" />
+                                <Button
+                                    Text="Auswahl zurücksetzen"
+                                    Command="{Binding ClearGoogleDriveDocumentCommand}"
+                                    BackgroundColor="#2D3A7C"
+                                    TextColor="White" />
+                            </HorizontalStackLayout>
                         </VerticalStackLayout>
 
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
