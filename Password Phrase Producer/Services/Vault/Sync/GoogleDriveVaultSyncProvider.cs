@@ -4,6 +4,12 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
+#if ANDROID
+using AndroidContentResolver = global::Android.Content.ContentResolver;
+using AndroidDocumentsContract = global::Android.Provider.DocumentsContract;
+using AndroidUri = global::Android.Net.Uri;
+#endif
+
 namespace Password_Phrase_Producer.Services.Vault.Sync;
 
 public sealed class GoogleDriveVaultSyncProvider : IVaultSyncProvider
@@ -114,14 +120,14 @@ public sealed class GoogleDriveVaultSyncProvider : IVaultSyncProvider
 #if ANDROID
     private static async Task<DocumentSnapshot?> TryReadDocumentAsync(string documentUri, CancellationToken cancellationToken)
     {
-        var context = Android.App.Application.Context;
+        var context = global::Android.App.Application.Context;
         var resolver = context?.ContentResolver;
         if (resolver is null)
         {
             return null;
         }
 
-        var uri = Android.Net.Uri.Parse(documentUri);
+        var uri = AndroidUri.Parse(documentUri);
         try
         {
             await using var stream = resolver.OpenInputStream(uri);
@@ -148,14 +154,14 @@ public sealed class GoogleDriveVaultSyncProvider : IVaultSyncProvider
 
     private static async Task WriteDocumentAsync(string documentUri, byte[] payload, CancellationToken cancellationToken)
     {
-        var context = Android.App.Application.Context;
+        var context = global::Android.App.Application.Context;
         var resolver = context?.ContentResolver;
         if (resolver is null)
         {
             throw new InvalidOperationException("Die Google-Drive-Datei konnte nicht geöffnet werden.");
         }
 
-        var uri = Android.Net.Uri.Parse(documentUri);
+        var uri = AndroidUri.Parse(documentUri);
         try
         {
             await using var stream = resolver.OpenOutputStream(uri, "wt");
@@ -173,12 +179,12 @@ public sealed class GoogleDriveVaultSyncProvider : IVaultSyncProvider
         }
     }
 
-    private static DocumentMetadata QueryDocumentMetadata(Android.Content.ContentResolver resolver, Android.Net.Uri uri)
+    private static DocumentMetadata QueryDocumentMetadata(AndroidContentResolver resolver, AndroidUri uri)
     {
         var projection = new[]
         {
-            Android.Provider.DocumentsContract.Document.ColumnLastModified,
-            Android.Provider.DocumentsContract.Document.ColumnSize
+            AndroidDocumentsContract.Document.ColumnLastModified,
+            AndroidDocumentsContract.Document.ColumnSize
         };
 
         using var cursor = resolver.Query(uri, projection, null, null, null);
@@ -190,7 +196,7 @@ public sealed class GoogleDriveVaultSyncProvider : IVaultSyncProvider
         DateTimeOffset? lastModified = null;
         long? size = null;
 
-        var lastModifiedIndex = cursor.GetColumnIndex(Android.Provider.DocumentsContract.Document.ColumnLastModified);
+        var lastModifiedIndex = cursor.GetColumnIndex(AndroidDocumentsContract.Document.ColumnLastModified);
         if (lastModifiedIndex >= 0 && !cursor.IsNull(lastModifiedIndex))
         {
             var value = cursor.GetLong(lastModifiedIndex);
@@ -200,7 +206,7 @@ public sealed class GoogleDriveVaultSyncProvider : IVaultSyncProvider
             }
         }
 
-        var sizeIndex = cursor.GetColumnIndex(Android.Provider.DocumentsContract.Document.ColumnSize);
+        var sizeIndex = cursor.GetColumnIndex(AndroidDocumentsContract.Document.ColumnSize);
         if (sizeIndex >= 0 && !cursor.IsNull(sizeIndex))
         {
             var value = cursor.GetLong(sizeIndex);

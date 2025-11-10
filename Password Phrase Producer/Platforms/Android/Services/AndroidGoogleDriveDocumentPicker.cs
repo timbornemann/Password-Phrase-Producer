@@ -94,7 +94,7 @@ public sealed class AndroidGoogleDriveDocumentPicker : IGoogleDriveDocumentPicke
             return;
         }
 
-        var resolver = (MainActivity.Current ?? Android.App.Application.Context)?.ContentResolver;
+        var resolver = (MainActivity.Current ?? global::Android.App.Application.Context)?.ContentResolver;
         if (resolver is null)
         {
             return;
