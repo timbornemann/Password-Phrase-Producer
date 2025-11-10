@@ -28,7 +28,7 @@
             <Grid
                 Padding="24,40,24,16"
                 RowSpacing="12"
-                RowDefinitions="Auto,Auto">
+                RowDefinitions="Auto,Auto,Auto">
                 <Grid
                     ColumnDefinitions="Auto,*,Auto,Auto,Auto"
                     ColumnSpacing="16"
@@ -211,6 +211,162 @@
                         </Grid>
                     </Border>
                 </Grid>
+                <Border
+                    Grid.Row="2"
+                    BackgroundColor="#1F2338"
+                    StrokeThickness="0"
+                    Padding="16"
+                    HorizontalOptions="Fill"
+                    VerticalOptions="Start">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="20" />
+                    </Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow Brush="#1A000000" Radius="12" Offset="0,8" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="12">
+                        <Label
+                            Text="{Binding SyncStatusMessage}"
+                            TextColor="#CFD3FF"
+                            FontAttributes="Bold"
+                            FontSize="14" />
+
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+                                <Label Text="Sync aktiv" TextColor="#CFD3FF" />
+                                <Switch IsToggled="{Binding IsSyncEnabled}" />
+                            </HorizontalStackLayout>
+                            <HorizontalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
+                                <Label Text="Auto-Sync" TextColor="#CFD3FF" />
+                                <Switch IsToggled="{Binding IsAutoSyncEnabled}" />
+                            </HorizontalStackLayout>
+                        </Grid>
+
+                        <Picker
+                            Title="Synchronisationsanbieter"
+                            ItemsSource="{Binding SyncProviders}"
+                            ItemDisplayBinding="{Binding DisplayName}"
+                            SelectedItem="{Binding SelectedSyncProvider}"
+                            TextColor="#CFD3FF"
+                            BackgroundColor="#242846" />
+
+                        <VerticalStackLayout IsVisible="{Binding IsFileProviderSelected}" Spacing="6">
+                            <Label Text="Zielpfad (z. B. Netzlaufwerk)" TextColor="#7F85B2" />
+                            <Entry
+                                Text="{Binding FileSyncPath}"
+                                Placeholder="\\\\Server\\Freigabe\\vault.json.enc"
+                                PlaceholderColor="#7F85B2"
+                                TextColor="#CFD3FF"
+                                BackgroundColor="#1B2036" />
+                        </VerticalStackLayout>
+
+                        <VerticalStackLayout IsVisible="{Binding IsS3ProviderSelected}" Spacing="6">
+                            <Label Text="Amazon S3 Konfiguration" TextColor="#7F85B2" />
+                            <Entry
+                                Text="{Binding S3BucketName}"
+                                Placeholder="Bucket"
+                                PlaceholderColor="#7F85B2"
+                                TextColor="#CFD3FF"
+                                BackgroundColor="#1B2036" />
+                            <Entry
+                                Text="{Binding S3ObjectKey}"
+                                Placeholder="Objektschlüssel"
+                                PlaceholderColor="#7F85B2"
+                                TextColor="#CFD3FF"
+                                BackgroundColor="#1B2036" />
+                            <Entry
+                                Text="{Binding S3Region}"
+                                Placeholder="Region (z. B. eu-central-1)"
+                                PlaceholderColor="#7F85B2"
+                                TextColor="#CFD3FF"
+                                BackgroundColor="#1B2036" />
+                            <Entry
+                                Text="{Binding S3AccessKeyId}"
+                                Placeholder="Access Key ID"
+                                PlaceholderColor="#7F85B2"
+                                TextColor="#CFD3FF"
+                                BackgroundColor="#1B2036" />
+                            <Entry
+                                Text="{Binding S3SecretAccessKey}"
+                                Placeholder="Secret Access Key"
+                                PlaceholderColor="#7F85B2"
+                                TextColor="#CFD3FF"
+                                IsPassword="True"
+                                BackgroundColor="#1B2036" />
+                            <Label
+                                IsVisible="{Binding HasS3Secret}"
+                                Text="Ein geheimes Zugriffstoken ist gespeichert."
+                                FontSize="12"
+                                TextColor="#63F5A8" />
+                        </VerticalStackLayout>
+
+                        <VerticalStackLayout IsVisible="{Binding IsGoogleDriveProviderSelected}" Spacing="6">
+                            <Label Text="Google Drive Konfiguration" TextColor="#7F85B2" />
+                            <Entry
+                                Text="{Binding GoogleDriveClientId}"
+                                Placeholder="OAuth Client ID"
+                                PlaceholderColor="#7F85B2"
+                                TextColor="#CFD3FF"
+                                BackgroundColor="#1B2036" />
+                            <Entry
+                                Text="{Binding GoogleDriveClientSecret}"
+                                Placeholder="OAuth Client Secret"
+                                PlaceholderColor="#7F85B2"
+                                TextColor="#CFD3FF"
+                                BackgroundColor="#1B2036"
+                                IsPassword="True" />
+                            <Entry
+                                Text="{Binding GoogleDriveRefreshToken}"
+                                Placeholder="Refresh Token"
+                                PlaceholderColor="#7F85B2"
+                                TextColor="#CFD3FF"
+                                BackgroundColor="#1B2036"
+                                IsPassword="True" />
+                            <Entry
+                                Text="{Binding GoogleDriveFileId}"
+                                Placeholder="Datei-ID (optional)"
+                                PlaceholderColor="#7F85B2"
+                                TextColor="#CFD3FF"
+                                BackgroundColor="#1B2036" />
+                            <Entry
+                                Text="{Binding GoogleDriveFileName}"
+                                Placeholder="Dateiname (z. B. vault.json.enc)"
+                                PlaceholderColor="#7F85B2"
+                                TextColor="#CFD3FF"
+                                BackgroundColor="#1B2036" />
+                            <Entry
+                                Text="{Binding GoogleDriveFolderId}"
+                                Placeholder="Ordner-ID (optional)"
+                                PlaceholderColor="#7F85B2"
+                                TextColor="#CFD3FF"
+                                BackgroundColor="#1B2036" />
+                            <Label
+                                Text="Nutze einen OAuth-Client mit Drive-Berechtigung (Drive oder Drive.File). Die Datei-ID ist optional, bei leerem Feld wird anhand des Dateinamens gesucht oder neu erstellt."
+                                FontSize="12"
+                                TextColor="#7F85B2" />
+                        </VerticalStackLayout>
+
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <Button
+                                Text="Sync-Einstellungen speichern"
+                                Command="{Binding SaveSyncSettingsCommand}"
+                                IsEnabled="{Binding IsSyncSettingsDirty}"
+                                BackgroundColor="#3B4AD1"
+                                TextColor="White" />
+                            <Button
+                                Grid.Column="1"
+                                Text="Jetzt synchronisieren"
+                                Command="{Binding SyncNowCommand}"
+                                BackgroundColor="#2D3A7C"
+                                TextColor="White" />
+                        </Grid>
+
+                        <ActivityIndicator
+                            IsVisible="{Binding IsSyncBusy}"
+                            IsRunning="{Binding IsSyncBusy}"
+                            Color="#63F5A8" />
+                    </VerticalStackLayout>
+                </Border>
             </Grid>
 
             <CollectionView

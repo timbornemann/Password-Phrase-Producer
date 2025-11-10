@@ -9,12 +9,14 @@ using System.Threading.Tasks;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
 using Password_Phrase_Producer.Models;
+using Password_Phrase_Producer.Services.Vault.Sync;
 
 namespace Password_Phrase_Producer.Services.Vault;
 
 public static class VaultMessages
 {
     public const string EntriesChanged = nameof(EntriesChanged);
+    public const string SyncStatusChanged = nameof(SyncStatusChanged);
 }
 
 public class PasswordVaultService
@@ -27,6 +29,10 @@ public class PasswordVaultService
     private const int SaltSizeBytes = 16;
     private const int Pbkdf2Iterations = 200_000;
 
+    private const string SyncConfigurationStorageKey = "PasswordVaultSyncConfiguration";
+    private const string SyncStatusStorageKey = "PasswordVaultSyncStatus";
+    private static readonly TimeSpan DefaultAutoSyncInterval = TimeSpan.FromMinutes(15);
+
     private readonly SemaphoreSlim _syncLock = new(1, 1);
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -35,14 +41,231 @@ public class PasswordVaultService
     };
 
     private readonly string _vaultFilePath;
+    private readonly Dictionary<string, IVaultSyncProvider> _syncProviders;
+    private readonly IVaultSyncScheduler _syncScheduler;
     private byte[]? _encryptionKey;
 
-    public PasswordVaultService()
+    public PasswordVaultService(IEnumerable<IVaultSyncProvider>? syncProviders = null, IVaultSyncScheduler? syncScheduler = null)
     {
         _vaultFilePath = Path.Combine(FileSystem.AppDataDirectory, VaultFileName);
+        _syncProviders = (syncProviders ?? Array.Empty<IVaultSyncProvider>())
+            .GroupBy(provider => provider.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToDictionary(provider => provider.Key, provider => provider, StringComparer.OrdinalIgnoreCase);
+        _syncScheduler = syncScheduler ?? new NoOpVaultSyncScheduler();
+
+        _ = InitializeAutoSyncAsync();
     }
 
     public bool IsUnlocked => _encryptionKey is not null;
+
+    public IEnumerable<VaultSyncProviderDescriptor> GetAvailableSyncProviders()
+        => _syncProviders.Values
+            .Select(provider => new VaultSyncProviderDescriptor(provider.Key, provider.DisplayName, provider.SupportsAutomaticSync))
+            .OrderBy(descriptor => descriptor.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+    public async Task<VaultSyncConfiguration> GetSyncConfigurationAsync(CancellationToken cancellationToken = default)
+    {
+        await Task.Yield();
+        var json = Preferences.Default.Get(SyncConfigurationStorageKey, string.Empty);
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return new VaultSyncConfiguration();
+        }
+
+        var configuration = JsonSerializer.Deserialize<VaultSyncConfiguration>(json, _jsonOptions) ?? new VaultSyncConfiguration();
+        configuration.Parameters = configuration.Parameters is null
+            ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, string>(configuration.Parameters, StringComparer.OrdinalIgnoreCase);
+        return configuration;
+    }
+
+    public async Task<VaultSyncStatus> GetSyncStatusAsync(CancellationToken cancellationToken = default)
+    {
+        await Task.Yield();
+        var json = Preferences.Default.Get(SyncStatusStorageKey, string.Empty);
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return new VaultSyncStatus();
+        }
+
+        var status = JsonSerializer.Deserialize<VaultSyncStatus>(json, _jsonOptions) ?? new VaultSyncStatus();
+        return status;
+    }
+
+    public async Task UpdateSyncConfigurationAsync(VaultSyncConfiguration configuration, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        var clone = configuration.Clone();
+        var json = JsonSerializer.Serialize(clone, _jsonOptions);
+        Preferences.Default.Set(SyncConfigurationStorageKey, json);
+
+        var status = await GetSyncStatusAsync(cancellationToken).ConfigureAwait(false);
+        status.IsEnabled = clone.IsEnabled;
+        status.AutoSyncEnabled = clone.AutoSyncEnabled;
+        status.ProviderKey = clone.ProviderKey;
+        await SaveSyncStatusAsync(status).ConfigureAwait(false);
+
+        await ConfigureSchedulerAsync(clone, cancellationToken).ConfigureAwait(false);
+        NotifySyncStatusChanged();
+    }
+
+    public async Task<VaultSyncResult> SynchronizeAsync(bool preferDownload = false, CancellationToken cancellationToken = default)
+    {
+        var configuration = await GetSyncConfigurationAsync(cancellationToken).ConfigureAwait(false);
+
+        if (!configuration.IsEnabled)
+        {
+            var disabledResult = new VaultSyncResult { Operation = VaultSyncOperation.Disabled };
+            await UpdateSyncStatusAsync(configuration, disabledResult, cancellationToken).ConfigureAwait(false);
+            return disabledResult;
+        }
+
+        if (string.IsNullOrWhiteSpace(configuration.ProviderKey) || !_syncProviders.TryGetValue(configuration.ProviderKey, out var provider))
+        {
+            var result = new VaultSyncResult
+            {
+                Operation = VaultSyncOperation.NoProvider,
+                ErrorMessage = "Es wurde kein gültiger Synchronisationsanbieter ausgewählt."
+            };
+            await UpdateSyncStatusAsync(configuration, result, cancellationToken).ConfigureAwait(false);
+            return result;
+        }
+
+        if (!await provider.IsConfiguredAsync(configuration, cancellationToken).ConfigureAwait(false))
+        {
+            var result = new VaultSyncResult
+            {
+                Operation = VaultSyncOperation.NoProvider,
+                ErrorMessage = "Der ausgewählte Synchronisationsanbieter ist nicht vollständig konfiguriert."
+            };
+            await UpdateSyncStatusAsync(configuration, result, cancellationToken).ConfigureAwait(false);
+            return result;
+        }
+
+        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var localPayload = await ReadEncryptedFileAsync(cancellationToken).ConfigureAwait(false);
+            var localState = CreateLocalRemoteState(localPayload);
+            var remoteState = await provider.GetRemoteStateAsync(configuration, cancellationToken).ConfigureAwait(false);
+
+            if (remoteState is null && localPayload.Length == 0)
+            {
+                var emptyResult = new VaultSyncResult
+                {
+                    Operation = VaultSyncOperation.UpToDate,
+                    LocalState = localState
+                };
+                await UpdateSyncStatusAsync(configuration, emptyResult, cancellationToken).ConfigureAwait(false);
+                return emptyResult;
+            }
+
+            if (remoteState is null)
+            {
+                await provider.UploadAsync(new VaultSyncUploadRequest
+                {
+                    Payload = localPayload,
+                    LocalState = localState
+                }, configuration, cancellationToken).ConfigureAwait(false);
+
+                var uploadResult = new VaultSyncResult
+                {
+                    Operation = VaultSyncOperation.Uploaded,
+                    LocalState = localState,
+                    RemoteState = localState
+                };
+                await UpdateSyncStatusAsync(configuration, uploadResult, cancellationToken).ConfigureAwait(false);
+                return uploadResult;
+            }
+
+            if (string.Equals(remoteState.MerkleHash, localState.MerkleHash, StringComparison.Ordinal))
+            {
+                var upToDate = new VaultSyncResult
+                {
+                    Operation = VaultSyncOperation.UpToDate,
+                    LocalState = localState,
+                    RemoteState = remoteState
+                };
+                await UpdateSyncStatusAsync(configuration, upToDate, cancellationToken).ConfigureAwait(false);
+                return upToDate;
+            }
+
+            var shouldDownload = preferDownload;
+            if (!shouldDownload)
+            {
+                shouldDownload = remoteState.LastModifiedUtc > localState.LastModifiedUtc;
+            }
+
+            if (!shouldDownload && localPayload.Length == 0)
+            {
+                shouldDownload = true;
+            }
+
+            if (shouldDownload)
+            {
+                var download = await provider.DownloadAsync(configuration, cancellationToken).ConfigureAwait(false);
+                if (download is null)
+                {
+                    var error = new VaultSyncResult
+                    {
+                        Operation = VaultSyncOperation.Error,
+                        ErrorMessage = "Die entfernten Tresordaten konnten nicht geladen werden."
+                    };
+                    await UpdateSyncStatusAsync(configuration, error, cancellationToken).ConfigureAwait(false);
+                    return error;
+                }
+
+                Directory.CreateDirectory(Path.GetDirectoryName(_vaultFilePath)!);
+                await File.WriteAllBytesAsync(_vaultFilePath, download.Payload, cancellationToken).ConfigureAwait(false);
+                File.SetLastWriteTimeUtc(_vaultFilePath, download.RemoteState.LastModifiedUtc.UtcDateTime);
+
+                MessagingCenter.Send(this, VaultMessages.EntriesChanged);
+
+                var refreshedState = CreateLocalRemoteState(download.Payload);
+                var downloadResult = new VaultSyncResult
+                {
+                    Operation = VaultSyncOperation.Downloaded,
+                    LocalState = refreshedState,
+                    RemoteState = download.RemoteState
+                };
+                await UpdateSyncStatusAsync(configuration, downloadResult, cancellationToken).ConfigureAwait(false);
+                return downloadResult;
+            }
+
+            await provider.UploadAsync(new VaultSyncUploadRequest
+            {
+                Payload = localPayload,
+                LocalState = localState,
+                RemoteStateBeforeUpload = remoteState
+            }, configuration, cancellationToken).ConfigureAwait(false);
+
+            var uploadConflictResult = new VaultSyncResult
+            {
+                Operation = VaultSyncOperation.Uploaded,
+                LocalState = localState,
+                RemoteState = localState
+            };
+            await UpdateSyncStatusAsync(configuration, uploadConflictResult, cancellationToken).ConfigureAwait(false);
+            return uploadConflictResult;
+        }
+        catch (Exception ex)
+        {
+            var errorResult = new VaultSyncResult
+            {
+                Operation = VaultSyncOperation.Error,
+                ErrorMessage = ex.Message
+            };
+            await UpdateSyncStatusAsync(configuration, errorResult, cancellationToken).ConfigureAwait(false);
+            return errorResult;
+        }
+        finally
+        {
+            _syncLock.Release();
+        }
+    }
 
     public async Task<bool> HasMasterPasswordAsync(CancellationToken cancellationToken = default)
     {
@@ -391,6 +614,149 @@ public class PasswordVaultService
         }
 
         MessagingCenter.Send(this, VaultMessages.EntriesChanged);
+    }
+
+    private async Task InitializeAutoSyncAsync()
+    {
+        try
+        {
+            var configuration = await GetSyncConfigurationAsync().ConfigureAwait(false);
+            await ConfigureSchedulerAsync(configuration).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Hintergrund-Scheduling darf die App-Initialisierung nicht verhindern.
+        }
+    }
+
+    private async Task ConfigureSchedulerAsync(VaultSyncConfiguration configuration, CancellationToken cancellationToken = default)
+    {
+        _syncScheduler.Cancel();
+
+        if (!configuration.IsEnabled || !configuration.AutoSyncEnabled)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(configuration.ProviderKey) || !_syncProviders.TryGetValue(configuration.ProviderKey, out var provider))
+        {
+            return;
+        }
+
+        if (!provider.SupportsAutomaticSync)
+        {
+            return;
+        }
+
+        if (!await provider.IsConfiguredAsync(configuration, cancellationToken).ConfigureAwait(false))
+        {
+            return;
+        }
+
+        _syncScheduler.Schedule(DefaultAutoSyncInterval, RunScheduledSyncAsync);
+    }
+
+    private Task RunScheduledSyncAsync(CancellationToken cancellationToken)
+        => SynchronizeAsync(false, cancellationToken);
+
+    private async Task UpdateSyncStatusAsync(VaultSyncConfiguration configuration, VaultSyncResult result, CancellationToken cancellationToken)
+    {
+        var status = await GetSyncStatusAsync(cancellationToken).ConfigureAwait(false);
+        status.IsEnabled = configuration.IsEnabled;
+        status.AutoSyncEnabled = configuration.AutoSyncEnabled;
+        status.ProviderKey = configuration.ProviderKey;
+        status.LastOperation = result.Operation;
+
+        if (result.Operation is VaultSyncOperation.Uploaded or VaultSyncOperation.Downloaded or VaultSyncOperation.UpToDate)
+        {
+            status.LastSyncUtc = DateTimeOffset.UtcNow;
+            status.LastError = null;
+            status.RemoteState = result.RemoteState ?? result.LocalState ?? status.RemoteState;
+        }
+        else if (result.Operation == VaultSyncOperation.Error)
+        {
+            status.LastError = result.ErrorMessage;
+        }
+        else
+        {
+            status.LastError = result.ErrorMessage;
+        }
+
+        await SaveSyncStatusAsync(status).ConfigureAwait(false);
+        NotifySyncStatusChanged(result);
+    }
+
+    private Task SaveSyncStatusAsync(VaultSyncStatus status)
+    {
+        var json = JsonSerializer.Serialize(status, _jsonOptions);
+        Preferences.Default.Set(SyncStatusStorageKey, json);
+        return Task.CompletedTask;
+    }
+
+    private void NotifySyncStatusChanged(VaultSyncResult? result = null)
+    {
+        var payload = result ?? new VaultSyncResult { Operation = VaultSyncOperation.None };
+        MessagingCenter.Send(this, VaultMessages.SyncStatusChanged, payload);
+    }
+
+    private VaultSyncRemoteState CreateLocalRemoteState(byte[] payload)
+        => new()
+        {
+            LastModifiedUtc = GetLocalFileLastModifiedUtc(),
+            ContentLength = payload.LongLength,
+            MerkleHash = ComputeMerkleRoot(payload)
+        };
+
+    private DateTimeOffset GetLocalFileLastModifiedUtc()
+    {
+        if (!File.Exists(_vaultFilePath))
+        {
+            return DateTimeOffset.UtcNow;
+        }
+
+        var lastWrite = File.GetLastWriteTimeUtc(_vaultFilePath);
+        if (lastWrite.Kind != DateTimeKind.Utc)
+        {
+            lastWrite = DateTime.SpecifyKind(lastWrite, DateTimeKind.Utc);
+        }
+
+        return new DateTimeOffset(lastWrite);
+    }
+
+    internal static string ComputeMerkleRoot(byte[] payload)
+    {
+        using var sha = SHA256.Create();
+        if (payload.Length == 0)
+        {
+            var emptyHash = sha.ComputeHash(Array.Empty<byte>());
+            return Convert.ToHexString(emptyHash);
+        }
+
+        const int chunkSize = 4 * 1024;
+        var hashes = new List<byte[]>();
+        for (var offset = 0; offset < payload.Length; offset += chunkSize)
+        {
+            var length = Math.Min(chunkSize, payload.Length - offset);
+            hashes.Add(sha.ComputeHash(payload, offset, length));
+        }
+
+        while (hashes.Count > 1)
+        {
+            var nextLevel = new List<byte[]>((hashes.Count + 1) / 2);
+            for (var i = 0; i < hashes.Count; i += 2)
+            {
+                var left = hashes[i];
+                var right = i + 1 < hashes.Count ? hashes[i + 1] : left;
+                var combined = new byte[left.Length + right.Length];
+                Buffer.BlockCopy(left, 0, combined, 0, left.Length);
+                Buffer.BlockCopy(right, 0, combined, left.Length, right.Length);
+                nextLevel.Add(sha.ComputeHash(combined));
+            }
+
+            hashes = nextLevel;
+        }
+
+        return Convert.ToHexString(hashes[0]);
     }
 
     private async Task<List<PasswordVaultEntry>> LoadEntriesInternalAsync(CancellationToken cancellationToken)
