@@ -189,13 +189,4 @@ public sealed class ActionSheetPopup : Popup
         return cancelBorder;
     }
 
-    protected override void OnLightDismissed()
-    {
-        base.OnLightDismissed();
-
-        if (_cancelText is not null)
-        {
-            Close(null);
-        }
-    }
 }
