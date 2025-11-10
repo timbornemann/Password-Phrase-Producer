@@ -27,7 +27,6 @@ public static class MauiProgram
 #endif
 
         builder.Services.AddSingleton<IVaultSyncProvider, FileSystemVaultSyncProvider>();
-        builder.Services.AddSingleton<IVaultSyncProvider, S3VaultSyncProvider>();
         builder.Services.AddSingleton<IVaultSyncProvider, GoogleDriveVaultSyncProvider>();
 #if ANDROID
         builder.Services.AddSingleton<IGoogleDriveDocumentPicker, Password_Phrase_Producer.Platforms.Android.Services.AndroidGoogleDriveDocumentPicker>();

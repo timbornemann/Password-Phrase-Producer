@@ -46,20 +46,20 @@ public class VaultPageViewModel : INotifyPropertyChanged
     private bool _isLoadingSyncSettings;
     private string _syncStatusMessage = "Synchronisation inaktiv.";
     private string _fileSyncPath = string.Empty;
-    private string _s3BucketName = string.Empty;
-    private string _s3ObjectKey = "vault.json.enc";
-    private string _s3Region = string.Empty;
-    private string _s3AccessKeyId = string.Empty;
-    private string _s3SecretAccessKey = string.Empty;
     private readonly IGoogleDriveDocumentPicker _googleDriveDocumentPicker;
     private readonly Command _selectGoogleDriveDocumentCommand;
     private readonly Command _clearGoogleDriveDocumentCommand;
+    private readonly Command _clearRemotePasswordCommand;
     private string _googleDriveDocumentUri = string.Empty;
-    private string? _currentS3Secret;
-    private bool _hasS3Secret;
     private DateTimeOffset? _lastSyncUtc;
     private VaultSyncOperation _lastSyncOperation = VaultSyncOperation.None;
     private string? _lastSyncError;
+    private string _remotePassword = string.Empty;
+    private string _confirmRemotePassword = string.Empty;
+    private bool _isRemotePasswordConfigured;
+    private string? _remotePasswordError;
+    private string? _remotePasswordSuccess;
+    private bool _isRemotePasswordBusy;
 
     private const string AllCategoriesFilter = "Alle Kategorien";
 
@@ -80,6 +80,9 @@ public class VaultPageViewModel : INotifyPropertyChanged
         _clearGoogleDriveDocumentCommand = new Command(ClearGoogleDriveDocumentSelection, () => !IsSyncBusy && IsGoogleDriveProviderSelected && !string.IsNullOrWhiteSpace(GoogleDriveDocumentUri));
         SelectGoogleDriveDocumentCommand = _selectGoogleDriveDocumentCommand;
         ClearGoogleDriveDocumentCommand = _clearGoogleDriveDocumentCommand;
+
+        _clearRemotePasswordCommand = new Command(async () => await ClearRemotePasswordAsync(), () => !IsRemotePasswordBusy && IsRemotePasswordProviderSelected && IsRemotePasswordConfigured);
+        ClearRemotePasswordCommand = _clearRemotePasswordCommand;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -145,22 +148,31 @@ public class VaultPageViewModel : INotifyPropertyChanged
         get => _selectedSyncProvider;
         set
         {
-            if (SetProperty(ref _selectedSyncProvider, value) && !_isLoadingSyncSettings)
+            if (SetProperty(ref _selectedSyncProvider, value))
             {
-                MarkSyncSettingsDirty();
-                OnPropertyChanged(nameof(IsS3ProviderSelected));
                 OnPropertyChanged(nameof(IsFileProviderSelected));
                 OnPropertyChanged(nameof(IsGoogleDriveProviderSelected));
+                OnPropertyChanged(nameof(IsRemotePasswordProviderSelected));
+                OnPropertyChanged(nameof(IsRemotePasswordRequired));
+
+                if (!_isLoadingSyncSettings)
+                {
+                    MarkSyncSettingsDirty();
+                }
+
                 UpdateSyncCommandStates();
+                _ = RefreshRemotePasswordStateAsync();
             }
         }
     }
 
-    public bool IsS3ProviderSelected => string.Equals(SelectedSyncProvider?.Key, S3VaultSyncProvider.ProviderKey, StringComparison.OrdinalIgnoreCase);
-
     public bool IsFileProviderSelected => string.Equals(SelectedSyncProvider?.Key, FileSystemVaultSyncProvider.ProviderKey, StringComparison.OrdinalIgnoreCase);
 
     public bool IsGoogleDriveProviderSelected => string.Equals(SelectedSyncProvider?.Key, GoogleDriveVaultSyncProvider.ProviderKey, StringComparison.OrdinalIgnoreCase);
+
+    public bool IsRemotePasswordProviderSelected => RequiresRemotePassword(SelectedSyncProvider?.Key);
+
+    public bool IsRemotePasswordRequired => IsRemotePasswordProviderSelected;
 
     public string FileSyncPath
     {
@@ -168,66 +180,6 @@ public class VaultPageViewModel : INotifyPropertyChanged
         set
         {
             if (SetProperty(ref _fileSyncPath, value) && !_isLoadingSyncSettings)
-            {
-                MarkSyncSettingsDirty();
-            }
-        }
-    }
-
-    public string S3BucketName
-    {
-        get => _s3BucketName;
-        set
-        {
-            if (SetProperty(ref _s3BucketName, value) && !_isLoadingSyncSettings)
-            {
-                MarkSyncSettingsDirty();
-            }
-        }
-    }
-
-    public string S3ObjectKey
-    {
-        get => _s3ObjectKey;
-        set
-        {
-            if (SetProperty(ref _s3ObjectKey, value) && !_isLoadingSyncSettings)
-            {
-                MarkSyncSettingsDirty();
-            }
-        }
-    }
-
-    public string S3Region
-    {
-        get => _s3Region;
-        set
-        {
-            if (SetProperty(ref _s3Region, value) && !_isLoadingSyncSettings)
-            {
-                MarkSyncSettingsDirty();
-            }
-        }
-    }
-
-    public string S3AccessKeyId
-    {
-        get => _s3AccessKeyId;
-        set
-        {
-            if (SetProperty(ref _s3AccessKeyId, value) && !_isLoadingSyncSettings)
-            {
-                MarkSyncSettingsDirty();
-            }
-        }
-    }
-
-    public string S3SecretAccessKey
-    {
-        get => _s3SecretAccessKey;
-        set
-        {
-            if (SetProperty(ref _s3SecretAccessKey, value) && !_isLoadingSyncSettings)
             {
                 MarkSyncSettingsDirty();
             }
@@ -255,10 +207,92 @@ public class VaultPageViewModel : INotifyPropertyChanged
 
     public ICommand ClearGoogleDriveDocumentCommand { get; }
 
-    public bool HasS3Secret
+    public ICommand ClearRemotePasswordCommand { get; }
+
+    public string RemotePassword
     {
-        get => _hasS3Secret;
-        private set => SetProperty(ref _hasS3Secret, value);
+        get => _remotePassword;
+        set
+        {
+            if (SetProperty(ref _remotePassword, value))
+            {
+                if (!string.IsNullOrEmpty(RemotePasswordError))
+                {
+                    RemotePasswordError = null;
+                }
+
+                if (!string.IsNullOrEmpty(RemotePasswordSuccess))
+                {
+                    RemotePasswordSuccess = null;
+                }
+
+                if (!_isLoadingSyncSettings)
+                {
+                    MarkSyncSettingsDirty();
+                }
+            }
+        }
+    }
+
+    public string ConfirmRemotePassword
+    {
+        get => _confirmRemotePassword;
+        set
+        {
+            if (SetProperty(ref _confirmRemotePassword, value))
+            {
+                if (!string.IsNullOrEmpty(RemotePasswordError))
+                {
+                    RemotePasswordError = null;
+                }
+
+                if (!string.IsNullOrEmpty(RemotePasswordSuccess))
+                {
+                    RemotePasswordSuccess = null;
+                }
+
+                if (!_isLoadingSyncSettings)
+                {
+                    MarkSyncSettingsDirty();
+                }
+            }
+        }
+    }
+
+    public bool IsRemotePasswordConfigured
+    {
+        get => _isRemotePasswordConfigured;
+        private set
+        {
+            if (SetProperty(ref _isRemotePasswordConfigured, value))
+            {
+                UpdateRemotePasswordCommandStates();
+            }
+        }
+    }
+
+    public string? RemotePasswordError
+    {
+        get => _remotePasswordError;
+        private set => SetProperty(ref _remotePasswordError, value);
+    }
+
+    public string? RemotePasswordSuccess
+    {
+        get => _remotePasswordSuccess;
+        private set => SetProperty(ref _remotePasswordSuccess, value);
+    }
+
+    public bool IsRemotePasswordBusy
+    {
+        get => _isRemotePasswordBusy;
+        private set
+        {
+            if (SetProperty(ref _isRemotePasswordBusy, value))
+            {
+                UpdateRemotePasswordCommandStates();
+            }
+        }
     }
 
     public DateTimeOffset? LastSyncUtc
@@ -489,11 +523,6 @@ public class VaultPageViewModel : INotifyPropertyChanged
             var status = await _vaultService.GetSyncStatusAsync(cancellationToken).ConfigureAwait(false);
 
             configuration.Parameters.TryGetValue(FileSystemVaultSyncProvider.PathParameterKey, out var path);
-            configuration.Parameters.TryGetValue(S3VaultSyncProvider.BucketParameterKey, out var bucket);
-            configuration.Parameters.TryGetValue(S3VaultSyncProvider.ObjectKeyParameterKey, out var objectKey);
-            configuration.Parameters.TryGetValue(S3VaultSyncProvider.RegionParameterKey, out var region);
-            configuration.Parameters.TryGetValue(S3VaultSyncProvider.AccessKeyIdParameterKey, out var accessKeyId);
-            configuration.Parameters.TryGetValue(S3VaultSyncProvider.SecretAccessKeyParameterKey, out var secret);
             configuration.Parameters.TryGetValue(GoogleDriveVaultSyncProvider.DocumentUriParameterKey, out var googleDocumentUri);
 
             await MainThread.InvokeOnMainThreadAsync(() =>
@@ -502,14 +531,12 @@ public class VaultPageViewModel : INotifyPropertyChanged
                 IsSyncEnabled = configuration.IsEnabled;
                 IsAutoSyncEnabled = configuration.AutoSyncEnabled;
                 FileSyncPath = path ?? string.Empty;
-                S3BucketName = bucket ?? string.Empty;
-                S3ObjectKey = string.IsNullOrWhiteSpace(objectKey) ? "vault.json.enc" : objectKey;
-                S3Region = region ?? string.Empty;
-                S3AccessKeyId = accessKeyId ?? string.Empty;
-                _currentS3Secret = secret;
-                HasS3Secret = !string.IsNullOrWhiteSpace(_currentS3Secret);
-                S3SecretAccessKey = string.Empty;
                 GoogleDriveDocumentUri = googleDocumentUri ?? string.Empty;
+                IsRemotePasswordConfigured = false;
+                RemotePassword = string.Empty;
+                ConfirmRemotePassword = string.Empty;
+                RemotePasswordError = null;
+                RemotePasswordSuccess = null;
                 UpdateSyncStatusMessage(status, null);
                 IsSyncSettingsDirty = false;
             }).ConfigureAwait(false);
@@ -518,6 +545,8 @@ public class VaultPageViewModel : INotifyPropertyChanged
         {
             _isLoadingSyncSettings = false;
         }
+
+        await RefreshRemotePasswordStateAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task RefreshSyncStatusAsync(VaultSyncResult? result = null, CancellationToken cancellationToken = default)
@@ -531,15 +560,35 @@ public class VaultPageViewModel : INotifyPropertyChanged
         try
         {
             var configuration = BuildSyncConfiguration();
+            var providerKey = configuration.ProviderKey;
+
+            try
+            {
+                await ApplyRemotePasswordUpdatesAsync(providerKey).ConfigureAwait(false);
+                await EnsureRemotePasswordConfiguredAsync(providerKey).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    RemotePasswordSuccess = null;
+                    RemotePasswordError = ex.Message;
+                }).ConfigureAwait(false);
+                throw;
+            }
+
             await _vaultService.UpdateSyncConfigurationAsync(configuration).ConfigureAwait(false);
             await MainThread.InvokeOnMainThreadAsync(() =>
             {
-                _currentS3Secret = configuration.Parameters.TryGetValue(S3VaultSyncProvider.SecretAccessKeyParameterKey, out var secret)
-                    ? secret
-                    : null;
-                HasS3Secret = !string.IsNullOrWhiteSpace(_currentS3Secret);
-                S3SecretAccessKey = string.Empty;
+                var previousLoading = _isLoadingSyncSettings;
+                _isLoadingSyncSettings = true;
                 IsSyncSettingsDirty = false;
+                if (IsRemotePasswordRequired)
+                {
+                    RemotePassword = string.Empty;
+                    ConfirmRemotePassword = string.Empty;
+                }
+                _isLoadingSyncSettings = previousLoading;
             }).ConfigureAwait(false);
             await RefreshSyncStatusAsync().ConfigureAwait(false);
         }
@@ -592,37 +641,6 @@ public class VaultPageViewModel : INotifyPropertyChanged
             configuration.Parameters[FileSystemVaultSyncProvider.PathParameterKey] = FileSyncPath.Trim();
         }
 
-        if (IsS3ProviderSelected)
-        {
-            if (!string.IsNullOrWhiteSpace(S3BucketName))
-            {
-                configuration.Parameters[S3VaultSyncProvider.BucketParameterKey] = S3BucketName.Trim();
-            }
-
-            configuration.Parameters[S3VaultSyncProvider.ObjectKeyParameterKey] = string.IsNullOrWhiteSpace(S3ObjectKey)
-                ? "vault.json.enc"
-                : S3ObjectKey.Trim();
-
-            if (!string.IsNullOrWhiteSpace(S3Region))
-            {
-                configuration.Parameters[S3VaultSyncProvider.RegionParameterKey] = S3Region.Trim();
-            }
-
-            if (!string.IsNullOrWhiteSpace(S3AccessKeyId))
-            {
-                configuration.Parameters[S3VaultSyncProvider.AccessKeyIdParameterKey] = S3AccessKeyId.Trim();
-            }
-
-            if (!string.IsNullOrWhiteSpace(S3SecretAccessKey))
-            {
-                configuration.Parameters[S3VaultSyncProvider.SecretAccessKeyParameterKey] = S3SecretAccessKey;
-            }
-            else if (!string.IsNullOrWhiteSpace(_currentS3Secret))
-            {
-                configuration.Parameters[S3VaultSyncProvider.SecretAccessKeyParameterKey] = _currentS3Secret!;
-            }
-        }
-
         if (IsGoogleDriveProviderSelected && !string.IsNullOrWhiteSpace(GoogleDriveDocumentUri))
         {
             configuration.Parameters[GoogleDriveVaultSyncProvider.DocumentUriParameterKey] = GoogleDriveDocumentUri.Trim();
@@ -640,7 +658,33 @@ public class VaultPageViewModel : INotifyPropertyChanged
 
         try
         {
-            var uri = await _googleDriveDocumentPicker.CreateDocumentAsync(GoogleDriveVaultSyncProvider.DefaultFileName).ConfigureAwait(false);
+            string? uri = null;
+            var page = Application.Current?.MainPage;
+
+            if (page is not null)
+            {
+                var createOption = "Neue Tresordatei erstellen";
+                var pickOption = "Bestehende Datei auswählen";
+                var choice = await MainThread.InvokeOnMainThreadAsync(() => page.DisplayActionSheet("Google Drive Datei", "Abbrechen", null, createOption, pickOption)).ConfigureAwait(false);
+
+                if (string.Equals(choice, createOption, StringComparison.Ordinal))
+                {
+                    uri = await _googleDriveDocumentPicker.CreateDocumentAsync(GoogleDriveVaultSyncProvider.DefaultFileName).ConfigureAwait(false);
+                }
+                else if (string.Equals(choice, pickOption, StringComparison.Ordinal))
+                {
+                    uri = await _googleDriveDocumentPicker.PickExistingDocumentAsync().ConfigureAwait(false);
+                }
+                else
+                {
+                    return;
+                }
+            }
+            else
+            {
+                uri = await _googleDriveDocumentPicker.CreateDocumentAsync(GoogleDriveVaultSyncProvider.DefaultFileName).ConfigureAwait(false);
+            }
+
             if (!string.IsNullOrWhiteSpace(uri))
             {
                 GoogleDriveDocumentUri = uri!;
@@ -681,6 +725,153 @@ public class VaultPageViewModel : INotifyPropertyChanged
 
         GoogleDriveDocumentUri = string.Empty;
     }
+
+    private async Task<bool> ApplyRemotePasswordUpdatesAsync(string? providerKey)
+    {
+        if (!RequiresRemotePassword(providerKey))
+        {
+            return false;
+        }
+
+        var password = RemotePassword?.Trim();
+        var confirm = ConfirmRemotePassword?.Trim();
+
+        if (string.IsNullOrEmpty(password) && string.IsNullOrEmpty(confirm))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrEmpty(password))
+        {
+            throw new InvalidOperationException("Bitte gib ein Remote-Passwort ein.");
+        }
+
+        if (!string.Equals(password, confirm, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Die Remote-Passwörter stimmen nicht überein.");
+        }
+
+        if (string.IsNullOrWhiteSpace(providerKey))
+        {
+            throw new InvalidOperationException("Bitte wähle einen Synchronisationsanbieter aus.");
+        }
+
+        await _vaultService.SetRemotePasswordAsync(providerKey, password).ConfigureAwait(false);
+
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            RemotePassword = string.Empty;
+            ConfirmRemotePassword = string.Empty;
+            RemotePasswordError = null;
+            RemotePasswordSuccess = "Das Remote-Passwort wurde gespeichert.";
+            IsRemotePasswordConfigured = true;
+        }).ConfigureAwait(false);
+
+        return true;
+    }
+
+    private async Task EnsureRemotePasswordConfiguredAsync(string? providerKey, CancellationToken cancellationToken = default)
+    {
+        if (!RequiresRemotePassword(providerKey))
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(providerKey))
+        {
+            throw new InvalidOperationException("Bitte wähle einen Synchronisationsanbieter aus.");
+        }
+
+        var hasRemotePassword = await _vaultService.HasRemotePasswordAsync(providerKey, cancellationToken).ConfigureAwait(false);
+        if (!hasRemotePassword)
+        {
+            throw new InvalidOperationException("Bitte vergebe ein Remote-Passwort für die Synchronisation.");
+        }
+
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            IsRemotePasswordConfigured = true;
+        }).ConfigureAwait(false);
+    }
+
+    private async Task RefreshRemotePasswordStateAsync(CancellationToken cancellationToken = default)
+    {
+        var providerKey = SelectedSyncProvider?.Key;
+        if (!RequiresRemotePassword(providerKey))
+        {
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                IsRemotePasswordConfigured = false;
+                RemotePassword = string.Empty;
+                ConfirmRemotePassword = string.Empty;
+                RemotePasswordError = null;
+                RemotePasswordSuccess = null;
+            }).ConfigureAwait(false);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(providerKey))
+        {
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                IsRemotePasswordConfigured = false;
+                RemotePasswordSuccess = null;
+            }).ConfigureAwait(false);
+            return;
+        }
+
+        var hasRemotePassword = await _vaultService.HasRemotePasswordAsync(providerKey, cancellationToken).ConfigureAwait(false);
+
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            IsRemotePasswordConfigured = hasRemotePassword;
+            if (!hasRemotePassword)
+            {
+                RemotePasswordSuccess = null;
+            }
+        }).ConfigureAwait(false);
+    }
+
+    private async Task ClearRemotePasswordAsync()
+    {
+        var providerKey = SelectedSyncProvider?.Key;
+        if (!RequiresRemotePassword(providerKey) || !IsRemotePasswordConfigured || IsRemotePasswordBusy)
+        {
+            return;
+        }
+
+        var key = providerKey!;
+
+        try
+        {
+            await MainThread.InvokeOnMainThreadAsync(() => IsRemotePasswordBusy = true).ConfigureAwait(false);
+            await _vaultService.ClearRemotePasswordAsync(key).ConfigureAwait(false);
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                IsRemotePasswordConfigured = false;
+                RemotePassword = string.Empty;
+                ConfirmRemotePassword = string.Empty;
+                RemotePasswordError = null;
+                RemotePasswordSuccess = "Das Remote-Passwort wurde entfernt.";
+            }).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                RemotePasswordSuccess = null;
+                RemotePasswordError = $"Fehler beim Entfernen des Remote-Passworts: {ex.Message}";
+            }).ConfigureAwait(false);
+        }
+        finally
+        {
+            await MainThread.InvokeOnMainThreadAsync(() => IsRemotePasswordBusy = false).ConfigureAwait(false);
+        }
+    }
+
+    private static bool RequiresRemotePassword(string? providerKey)
+        => string.Equals(providerKey, GoogleDriveVaultSyncProvider.ProviderKey, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(providerKey, FileSystemVaultSyncProvider.ProviderKey, StringComparison.OrdinalIgnoreCase);
 
     public async Task SaveEntryAsync(PasswordVaultEntry entry, CancellationToken cancellationToken = default)
     {
@@ -982,10 +1173,14 @@ public class VaultPageViewModel : INotifyPropertyChanged
 
         MainThread.BeginInvokeOnMainThread(_selectGoogleDriveDocumentCommand.ChangeCanExecute);
         MainThread.BeginInvokeOnMainThread(_clearGoogleDriveDocumentCommand.ChangeCanExecute);
+        UpdateRemotePasswordCommandStates();
     }
 
     private void ApplyFilters()
         => MainThread.BeginInvokeOnMainThread(ApplyFiltersOnMainThread);
+
+    private void UpdateRemotePasswordCommandStates()
+        => MainThread.BeginInvokeOnMainThread(_clearRemotePasswordCommand.ChangeCanExecute);
 
     private void ApplyFiltersOnMainThread()
     {
