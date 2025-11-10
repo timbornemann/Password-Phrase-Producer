@@ -1,0 +1,367 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="Password_Phrase_Producer.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:converters="clr-namespace:Password_Phrase_Producer.Converters"
+    xmlns:viewmodels="clr-namespace:Password_Phrase_Producer.ViewModels"
+    Padding="0"
+    Shell.NavBarIsVisible="False">
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <converters:StringNotNullOrWhiteSpaceConverter x:Key="StringNotNullOrWhiteSpaceConverter" />
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+    <ContentPage.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#0F111A" Offset="0" />
+            <GradientStop Color="#151728" Offset="0.5" />
+            <GradientStop Color="#111322" Offset="1" />
+        </LinearGradientBrush>
+    </ContentPage.Background>
+
+    <Grid RowDefinitions="Auto,*">
+        <Grid
+            Padding="24,40,24,16"
+            ColumnDefinitions="Auto,*,Auto"
+            ColumnSpacing="16">
+            <Border
+                WidthRequest="52"
+                HeightRequest="52"
+                BackgroundColor="#1F2338"
+                StrokeThickness="0"
+                VerticalOptions="Center">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="18" />
+                </Border.StrokeShape>
+                <Border.Shadow>
+                    <Shadow Brush="#25000000" Radius="12" Offset="0,8" />
+                </Border.Shadow>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnBackTapped" />
+                </Border.GestureRecognizers>
+                <Label
+                    Text="←"
+                    FontSize="20"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"
+                    TextColor="#CFD3FF" />
+            </Border>
+
+            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                <Label
+                    Text="Einstellungen"
+                    FontSize="28"
+                    FontAttributes="Bold"
+                    TextColor="White" />
+                <Label
+                    Text="Verwalte Synchronisation, Backups und dein Master-Passwort"
+                    FontSize="14"
+                    TextColor="#9EA3C4" />
+            </VerticalStackLayout>
+
+            <Border
+                Grid.Column="2"
+                WidthRequest="52"
+                HeightRequest="52"
+                BackgroundColor="#1F2338"
+                StrokeThickness="0"
+                HorizontalOptions="End"
+                VerticalOptions="Center">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="18" />
+                </Border.StrokeShape>
+                <Border.Shadow>
+                    <Shadow Brush="#25000000" Radius="12" Offset="0,8" />
+                </Border.Shadow>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnOpenFlyoutTapped" />
+                </Border.GestureRecognizers>
+                <Label
+                    Text="☰"
+                    FontSize="20"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"
+                    TextColor="#CFD3FF" />
+            </Border>
+        </Grid>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="24,0,24,32" Spacing="24">
+                <Border
+                    BackgroundColor="#1F2338"
+                    Padding="20"
+                    StrokeThickness="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="22" />
+                    </Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow Brush="#1A000000" Radius="18" Offset="0,10" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="16">
+                        <Label
+                            Text="Synchronisation"
+                            FontSize="22"
+                            FontAttributes="Bold"
+                            TextColor="White" />
+                        <Label
+                            Text="{Binding SyncStatusMessage}"
+                            TextColor="#CFD3FF"
+                            FontSize="14" />
+
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                            <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
+                                <Label Text="Sync aktiv" TextColor="#CFD3FF" />
+                                <Switch IsToggled="{Binding IsSyncEnabled}" />
+                            </HorizontalStackLayout>
+                            <HorizontalStackLayout Grid.Column="1" Spacing="10" VerticalOptions="Center">
+                                <Label Text="Auto-Sync" TextColor="#CFD3FF" />
+                                <Switch IsToggled="{Binding IsAutoSyncEnabled}" />
+                            </HorizontalStackLayout>
+                        </Grid>
+
+                        <Picker
+                            Title="Synchronisationsanbieter"
+                            ItemsSource="{Binding SyncProviders}"
+                            ItemDisplayBinding="{Binding DisplayName}"
+                            SelectedItem="{Binding SelectedSyncProvider}"
+                            TextColor="#CFD3FF"
+                            BackgroundColor="#242846" />
+
+                        <VerticalStackLayout IsVisible="{Binding IsFileProviderSelected}" Spacing="6">
+                            <Label Text="Zielpfad (z. B. Netzlaufwerk)" TextColor="#7F85B2" />
+                            <Entry
+                                Text="{Binding FileSyncPath}"
+                                Placeholder="\\\\Server\\Freigabe\\vault.json.enc"
+                                PlaceholderColor="#7F85B2"
+                                TextColor="#CFD3FF"
+                                BackgroundColor="#1B2036" />
+                        </VerticalStackLayout>
+
+                        <VerticalStackLayout IsVisible="{Binding IsS3ProviderSelected}" Spacing="6">
+                            <Label Text="Amazon S3 Konfiguration" TextColor="#7F85B2" />
+                            <Entry
+                                Text="{Binding S3BucketName}"
+                                Placeholder="Bucket"
+                                PlaceholderColor="#7F85B2"
+                                TextColor="#CFD3FF"
+                                BackgroundColor="#1B2036" />
+                            <Entry
+                                Text="{Binding S3ObjectKey}"
+                                Placeholder="Objektschlüssel"
+                                PlaceholderColor="#7F85B2"
+                                TextColor="#CFD3FF"
+                                BackgroundColor="#1B2036" />
+                            <Entry
+                                Text="{Binding S3Region}"
+                                Placeholder="Region (z. B. eu-central-1)"
+                                PlaceholderColor="#7F85B2"
+                                TextColor="#CFD3FF"
+                                BackgroundColor="#1B2036" />
+                            <Entry
+                                Text="{Binding S3AccessKeyId}"
+                                Placeholder="Access Key ID"
+                                PlaceholderColor="#7F85B2"
+                                TextColor="#CFD3FF"
+                                BackgroundColor="#1B2036" />
+                            <Entry
+                                Text="{Binding S3SecretAccessKey}"
+                                Placeholder="Secret Access Key"
+                                PlaceholderColor="#7F85B2"
+                                TextColor="#CFD3FF"
+                                IsPassword="True"
+                                BackgroundColor="#1B2036" />
+                            <Label
+                                IsVisible="{Binding HasS3Secret}"
+                                Text="Ein geheimes Zugriffstoken ist gespeichert."
+                                FontSize="12"
+                                TextColor="#63F5A8" />
+                        </VerticalStackLayout>
+
+                        <VerticalStackLayout IsVisible="{Binding IsGoogleDriveProviderSelected}" Spacing="6">
+                            <Label Text="Google Drive Synchronisation" TextColor="#7F85B2" />
+                            <Label
+                                Text="Wähle die Zieldatei über das Android Storage Access Framework aus. Die Datei kann sich auch in Google Drive befinden."
+                                FontSize="12"
+                                TextColor="#7F85B2" />
+                            <Entry
+                                Text="{Binding GoogleDriveDocumentUri}"
+                                Placeholder="Keine Datei ausgewählt"
+                                PlaceholderColor="#7F85B2"
+                                TextColor="#CFD3FF"
+                                BackgroundColor="#1B2036"
+                                IsReadOnly="True" />
+                            <HorizontalStackLayout Spacing="12">
+                                <Button
+                                    Text="Datei auswählen"
+                                    Command="{Binding SelectGoogleDriveDocumentCommand}"
+                                    BackgroundColor="#3B4AD1"
+                                    TextColor="White" />
+                                <Button
+                                    Text="Auswahl zurücksetzen"
+                                    Command="{Binding ClearGoogleDriveDocumentCommand}"
+                                    BackgroundColor="#2D3A7C"
+                                    TextColor="White" />
+                            </HorizontalStackLayout>
+                        </VerticalStackLayout>
+
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                            <Button
+                                Text="Sync-Einstellungen speichern"
+                                Command="{Binding SaveSyncSettingsCommand}"
+                                IsEnabled="{Binding IsSyncSettingsDirty}"
+                                BackgroundColor="#3B4AD1"
+                                TextColor="White" />
+                            <Button
+                                Grid.Column="1"
+                                Text="Jetzt synchronisieren"
+                                Command="{Binding SyncNowCommand}"
+                                BackgroundColor="#2D3A7C"
+                                TextColor="White" />
+                        </Grid>
+
+                        <ActivityIndicator
+                            IsVisible="{Binding IsSyncBusy}"
+                            IsRunning="{Binding IsSyncBusy}"
+                            Color="#63F5A8" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border
+                    BackgroundColor="#1F2338"
+                    Padding="20"
+                    StrokeThickness="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="22" />
+                    </Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow Brush="#1A000000" Radius="18" Offset="0,10" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="12">
+                        <Label
+                            Text="Datensicherung"
+                            FontSize="22"
+                            FontAttributes="Bold"
+                            TextColor="White" />
+                        <Label
+                            Text="Exportiere verschlüsselte Tresordaten oder Backups und importiere vorhandene Dateien."
+                            FontSize="14"
+                            TextColor="#9EA3C4" />
+                        <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,*" ColumnSpacing="12" RowSpacing="12">
+                            <Button
+                                Text="Backup exportieren"
+                                Clicked="OnExportBackupClicked"
+                                BackgroundColor="#3B4AD1"
+                                TextColor="White" />
+                            <Button
+                                Grid.Column="1"
+                                Text="Backup importieren"
+                                Clicked="OnImportBackupClicked"
+                                BackgroundColor="#2D3A7C"
+                                TextColor="White" />
+                            <Button
+                                Grid.Row="1"
+                                Text="Verschlüsselten Tresor exportieren"
+                                Clicked="OnExportEncryptedClicked"
+                                BackgroundColor="#3B4AD1"
+                                TextColor="White" />
+                            <Button
+                                Grid.Row="1"
+                                Grid.Column="1"
+                                Text="Verschlüsselten Tresor importieren"
+                                Clicked="OnImportEncryptedClicked"
+                                BackgroundColor="#2D3A7C"
+                                TextColor="White" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border
+                    BackgroundColor="#1F2338"
+                    Padding="20"
+                    StrokeThickness="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="22" />
+                    </Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow Brush="#1A000000" Radius="18" Offset="0,10" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="12">
+                        <Label
+                            Text="Master-Passwort"
+                            FontSize="22"
+                            FontAttributes="Bold"
+                            TextColor="White" />
+                        <Label
+                            Text="Der Tresor muss entsperrt sein, um das Passwort zu ändern."
+                            TextColor="#9EA3C4"
+                            FontSize="14">
+                            <Label.Triggers>
+                                <DataTrigger TargetType="Label" Binding="{Binding IsVaultUnlocked}" Value="True">
+                                    <Setter Property="IsVisible" Value="False" />
+                                </DataTrigger>
+                            </Label.Triggers>
+                        </Label>
+
+                        <Entry
+                            Text="{Binding NewMasterPassword}"
+                            Placeholder="Neues Master-Passwort"
+                            PlaceholderColor="#7F85B2"
+                            TextColor="White"
+                            BackgroundColor="#1B2036"
+                            IsPassword="True"
+                            IsEnabled="{Binding IsVaultUnlocked}" />
+                        <Entry
+                            Text="{Binding ConfirmMasterPassword}"
+                            Placeholder="Passwort bestätigen"
+                            PlaceholderColor="#7F85B2"
+                            TextColor="White"
+                            BackgroundColor="#1B2036"
+                            IsPassword="True"
+                            IsEnabled="{Binding IsVaultUnlocked}" />
+
+                        <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding CanUseBiometric}">
+                            <Switch
+                                Grid.Column="0"
+                                IsToggled="{Binding EnableBiometric}"
+                                IsEnabled="{Binding IsVaultUnlocked}" />
+                            <Label
+                                Grid.Column="1"
+                                Text="Biometrische Anmeldung speichern"
+                                FontSize="12"
+                                TextColor="#D7DBF7"
+                                Margin="12,0,0,0"
+                                VerticalOptions="Center"
+                                LineBreakMode="WordWrap" />
+                        </Grid>
+
+                        <Label
+                            Text="{Binding ChangePasswordError}"
+                            TextColor="#FF9A9A"
+                            FontSize="12"
+                            IsVisible="{Binding ChangePasswordError, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}" />
+                        <Label
+                            Text="{Binding ChangePasswordSuccess}"
+                            TextColor="#63F5A8"
+                            FontSize="12"
+                            IsVisible="{Binding ChangePasswordSuccess, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}" />
+
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16" VerticalOptions="Center">
+                            <Button
+                                Text="Passwort aktualisieren"
+                                Command="{Binding ChangePasswordCommand}"
+                                BackgroundColor="#3B4AD1"
+                                TextColor="White" />
+                            <ActivityIndicator
+                                Grid.Column="1"
+                                IsRunning="{Binding IsPasswordChangeBusy}"
+                                IsVisible="{Binding IsPasswordChangeBusy}"
+                                Color="#63F5A8" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

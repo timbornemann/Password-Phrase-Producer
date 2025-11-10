@@ -24,4 +24,12 @@
             ContentTemplate="{DataTemplate views:VaultPage}" />
     </FlyoutItem>
 
+    <FlyoutItem Title="Einstellungen"
+                Route="settings"
+                FlyoutDisplayOptions="AsSingleItem">
+        <ShellContent
+            Title="Einstellungen"
+            ContentTemplate="{DataTemplate views:SettingsPage}" />
+    </FlyoutItem>
+
 </Shell>

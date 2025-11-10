@@ -44,7 +44,9 @@ public static class MauiProgram
         builder.Services.AddSingleton<PasswordVaultService>();
         builder.Services.AddSingleton<IBiometricAuthenticationService, BiometricAuthenticationService>();
         builder.Services.AddTransient<VaultPageViewModel>();
+        builder.Services.AddTransient<VaultSettingsViewModel>();
         builder.Services.AddTransient<VaultPage>();
+        builder.Services.AddTransient<SettingsPage>();
         builder.Services.AddTransient<VaultEntryEditorPage>();
 
         return builder.Build();
