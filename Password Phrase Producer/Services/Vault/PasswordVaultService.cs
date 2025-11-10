@@ -28,6 +28,7 @@ public class PasswordVaultService
     private const int KeySizeBytes = 32;
     private const int SaltSizeBytes = 16;
     private const int Pbkdf2Iterations = 200_000;
+    private const int VaultFileFormatVersion = 1;
 
     private const string SyncConfigurationStorageKey = "PasswordVaultSyncConfiguration";
     private const string SyncStatusStorageKey = "PasswordVaultSyncStatus";
@@ -218,9 +219,10 @@ public class PasswordVaultService
                     return error;
                 }
 
-                Directory.CreateDirectory(Path.GetDirectoryName(_vaultFilePath)!);
-                await File.WriteAllBytesAsync(_vaultFilePath, download.Payload, cancellationToken).ConfigureAwait(false);
+                var downloadedContent = ParseVaultFile(download.Payload);
+                await WriteVaultFileInternalAsync(download.Payload, cancellationToken).ConfigureAwait(false);
                 File.SetLastWriteTimeUtc(_vaultFilePath, download.RemoteState.LastModifiedUtc.UtcDateTime);
+                await UpdatePasswordMetadataAsync(downloadedContent).ConfigureAwait(false);
 
                 MessagingCenter.Send(this, VaultMessages.EntriesChanged);
 
@@ -269,6 +271,7 @@ public class PasswordVaultService
 
     public async Task<bool> HasMasterPasswordAsync(CancellationToken cancellationToken = default)
     {
+        await EnsurePasswordMetadataAsync(cancellationToken).ConfigureAwait(false);
         var salt = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false);
         return !string.IsNullOrEmpty(salt);
     }
@@ -316,6 +319,8 @@ public class PasswordVaultService
     public async Task<bool> UnlockAsync(string password, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(password);
+
+        await EnsurePasswordMetadataAsync(cancellationToken).ConfigureAwait(false);
 
         var saltBase64 = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false);
         var verifierBase64 = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey).ConfigureAwait(false);
@@ -393,6 +398,8 @@ public class PasswordVaultService
 
     public async Task<bool> TryUnlockWithStoredKeyAsync(CancellationToken cancellationToken = default)
     {
+        await EnsurePasswordMetadataAsync(cancellationToken).ConfigureAwait(false);
+
         var storedKeyBase64 = await SecureStorage.Default.GetAsync(BiometricKeyStorageKey).ConfigureAwait(false);
         var verifierBase64 = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey).ConfigureAwait(false);
 
@@ -519,7 +526,8 @@ public class PasswordVaultService
         await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var encryptedPayload = await ReadEncryptedFileAsync(cancellationToken).ConfigureAwait(false);
+            var vaultFile = await ReadVaultFileAsync(cancellationToken).ConfigureAwait(false);
+            var encryptedPayload = vaultFile.Cipher;
             var salt = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false)
                        ?? throw new InvalidOperationException("Kein Master-Passwort konfiguriert.");
             var verifier = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey).ConfigureAwait(false)
@@ -564,11 +572,12 @@ public class PasswordVaultService
         SecureStorage.Default.Remove(BiometricKeyStorageKey);
         _encryptionKey = null;
 
+        var vaultFile = await CreateVaultFileContentAsync(cipher, cancellationToken).ConfigureAwait(false);
+
         await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(_vaultFilePath)!);
-            await File.WriteAllBytesAsync(_vaultFilePath, cipher, cancellationToken).ConfigureAwait(false);
+            await WriteVaultFileInternalAsync(vaultFile.RawContent, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -602,17 +611,19 @@ public class PasswordVaultService
         await encryptedStream.CopyToAsync(memoryStream, cancellationToken).ConfigureAwait(false);
         var payload = memoryStream.ToArray();
 
+        var importedContent = ParseVaultFile(payload);
+
         await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(_vaultFilePath)!);
-            await File.WriteAllBytesAsync(_vaultFilePath, payload, cancellationToken).ConfigureAwait(false);
+            await WriteVaultFileInternalAsync(payload, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
             _syncLock.Release();
         }
 
+        await UpdatePasswordMetadataAsync(importedContent).ConfigureAwait(false);
         MessagingCenter.Send(this, VaultMessages.EntriesChanged);
     }
 
@@ -761,18 +772,13 @@ public class PasswordVaultService
 
     private async Task<List<PasswordVaultEntry>> LoadEntriesInternalAsync(CancellationToken cancellationToken)
     {
-        if (!File.Exists(_vaultFilePath))
+        var vaultFile = await ReadVaultFileAsync(cancellationToken).ConfigureAwait(false);
+        if (vaultFile.Cipher.Length == 0)
         {
             return new List<PasswordVaultEntry>();
         }
 
-        var encrypted = await File.ReadAllBytesAsync(_vaultFilePath, cancellationToken).ConfigureAwait(false);
-        if (encrypted.Length == 0)
-        {
-            return new List<PasswordVaultEntry>();
-        }
-
-        var decryptedBytes = await DecryptAsync(encrypted, cancellationToken).ConfigureAwait(false);
+        var decryptedBytes = await DecryptAsync(vaultFile.Cipher, cancellationToken).ConfigureAwait(false);
         if (decryptedBytes.Length == 0)
         {
             return new List<PasswordVaultEntry>();
@@ -807,9 +813,9 @@ public class PasswordVaultService
 
         var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
         var encrypted = await EncryptAsync(Encoding.UTF8.GetBytes(json), cancellationToken).ConfigureAwait(false);
+        var vaultFile = await CreateVaultFileContentAsync(encrypted, cancellationToken).ConfigureAwait(false);
 
-        Directory.CreateDirectory(Path.GetDirectoryName(_vaultFilePath)!);
-        await File.WriteAllBytesAsync(_vaultFilePath, encrypted, cancellationToken).ConfigureAwait(false);
+        await WriteVaultFileInternalAsync(vaultFile.RawContent, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<byte[]> EncryptAsync(byte[] data, CancellationToken cancellationToken)
@@ -855,12 +861,151 @@ public class PasswordVaultService
 
     private async Task<byte[]> ReadEncryptedFileAsync(CancellationToken cancellationToken)
     {
-        if (!File.Exists(_vaultFilePath))
+        var vaultFile = await ReadVaultFileAsync(cancellationToken).ConfigureAwait(false);
+        if (vaultFile.RawContent.Length == 0)
         {
             return Array.Empty<byte>();
         }
 
-        return await File.ReadAllBytesAsync(_vaultFilePath, cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(vaultFile.PasswordSalt) && !string.IsNullOrWhiteSpace(vaultFile.PasswordVerifier))
+        {
+            return vaultFile.RawContent;
+        }
+
+        var salt = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false);
+        var verifier = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey).ConfigureAwait(false);
+
+        if (string.IsNullOrEmpty(salt) || string.IsNullOrEmpty(verifier))
+        {
+            return vaultFile.RawContent;
+        }
+
+        var updatedContent = await CreateVaultFileContentAsync(vaultFile.Cipher, cancellationToken).ConfigureAwait(false);
+        await WriteVaultFileInternalAsync(updatedContent.RawContent, cancellationToken).ConfigureAwait(false);
+        return updatedContent.RawContent;
+    }
+
+    private async Task<VaultFileContent> ReadVaultFileAsync(CancellationToken cancellationToken)
+    {
+        if (!File.Exists(_vaultFilePath))
+        {
+            return VaultFileContent.Empty;
+        }
+
+        var rawContent = await File.ReadAllBytesAsync(_vaultFilePath, cancellationToken).ConfigureAwait(false);
+        return ParseVaultFile(rawContent);
+    }
+
+    private VaultFileContent ParseVaultFile(byte[] rawContent)
+    {
+        if (rawContent.Length == 0)
+        {
+            return VaultFileContent.Empty;
+        }
+
+        try
+        {
+            var json = Encoding.UTF8.GetString(rawContent);
+            if (!string.IsNullOrWhiteSpace(json) && json.TrimStart().StartsWith("{", StringComparison.Ordinal))
+            {
+                var dto = JsonSerializer.Deserialize<EncryptedVaultFileDto>(json, _jsonOptions);
+                if (dto is not null && !string.IsNullOrWhiteSpace(dto.CipherText))
+                {
+                    var cipher = Convert.FromBase64String(dto.CipherText);
+                    return new VaultFileContent(cipher, dto.PasswordSalt, dto.PasswordVerifier, dto.Pbkdf2Iterations, rawContent);
+                }
+
+                return new VaultFileContent(Array.Empty<byte>(), dto?.PasswordSalt, dto?.PasswordVerifier, dto?.Pbkdf2Iterations, rawContent);
+            }
+        }
+        catch (DecoderFallbackException)
+        {
+            // Nicht im JSON-Format gespeichert.
+        }
+        catch (JsonException)
+        {
+            // Nicht im JSON-Format gespeichert.
+        }
+        catch (FormatException)
+        {
+            // Ungültiges Cipher-Format.
+        }
+
+        return new VaultFileContent(rawContent, null, null, null, rawContent);
+    }
+
+    private async Task<VaultFileContent> CreateVaultFileContentAsync(byte[] cipher, CancellationToken cancellationToken)
+    {
+        var salt = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false)
+                   ?? throw new InvalidOperationException("Kein Master-Passwort konfiguriert.");
+        var verifier = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey).ConfigureAwait(false)
+                      ?? throw new InvalidOperationException("Kein Master-Passwort konfiguriert.");
+
+        var dto = new EncryptedVaultFileDto
+        {
+            Version = VaultFileFormatVersion,
+            CipherText = Convert.ToBase64String(cipher),
+            PasswordSalt = salt,
+            PasswordVerifier = verifier,
+            Pbkdf2Iterations = Pbkdf2Iterations
+        };
+
+        var rawContent = JsonSerializer.SerializeToUtf8Bytes(dto, _jsonOptions);
+        return new VaultFileContent(cipher, salt, verifier, Pbkdf2Iterations, rawContent);
+    }
+
+    private async Task WriteVaultFileInternalAsync(byte[] rawContent, CancellationToken cancellationToken)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(_vaultFilePath)!);
+        await File.WriteAllBytesAsync(_vaultFilePath, rawContent, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task EnsurePasswordMetadataAsync(CancellationToken cancellationToken)
+    {
+        var salt = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false);
+        var verifier = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey).ConfigureAwait(false);
+
+        if (!string.IsNullOrEmpty(salt) && !string.IsNullOrEmpty(verifier))
+        {
+            return;
+        }
+
+        var vaultFile = await ReadVaultFileAsync(cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(vaultFile.PasswordSalt) || string.IsNullOrWhiteSpace(vaultFile.PasswordVerifier))
+        {
+            return;
+        }
+
+        if (vaultFile.Pbkdf2Iterations.HasValue && vaultFile.Pbkdf2Iterations.Value != Pbkdf2Iterations)
+        {
+            throw new InvalidOperationException("Das Tresor-Format verwendet eine nicht unterstützte Schlüsselableitung.");
+        }
+
+        await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, vaultFile.PasswordSalt!).ConfigureAwait(false);
+        await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, vaultFile.PasswordVerifier!).ConfigureAwait(false);
+        SecureStorage.Default.Remove(BiometricKeyStorageKey);
+    }
+
+    private async Task UpdatePasswordMetadataAsync(VaultFileContent content)
+    {
+        if (string.IsNullOrWhiteSpace(content.PasswordSalt) || string.IsNullOrWhiteSpace(content.PasswordVerifier))
+        {
+            return;
+        }
+
+        if (content.Pbkdf2Iterations.HasValue && content.Pbkdf2Iterations.Value != Pbkdf2Iterations)
+        {
+            throw new InvalidOperationException("Das Tresor-Format verwendet eine nicht unterstützte Schlüsselableitung.");
+        }
+
+        await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, content.PasswordSalt).ConfigureAwait(false);
+        await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, content.PasswordVerifier).ConfigureAwait(false);
+        SecureStorage.Default.Remove(BiometricKeyStorageKey);
+    }
+
+    private sealed record VaultFileContent(byte[] Cipher, string? PasswordSalt, string? PasswordVerifier, int? Pbkdf2Iterations, byte[] RawContent)
+    {
+        public static VaultFileContent Empty { get; } = new(Array.Empty<byte>(), null, null, null, Array.Empty<byte>());
     }
 
     private byte[] GetUnlockedKey()
