@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CommunityToolkit.Maui.Views;
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Maui.Graphics;
 
 namespace Password_Phrase_Producer.Views.Dialogs;
@@ -25,8 +26,8 @@ public sealed class ActionSheetPopup : Popup
 
         _cancelText = cancelText;
 
-        BackgroundColor = Color.FromRgba(0, 0, 0, 0.65);
-        CanBeDismissedByTappingOutside = cancelText is not null;
+        Color = Color.FromRgba(0, 0, 0, 0.65);
+        CanBeDismissedByTappingOutsideOfPopup = cancelText is not null;
 
         var contentStack = new VerticalStackLayout
         {
@@ -123,13 +124,16 @@ public sealed class ActionSheetPopup : Popup
 
         if (!string.IsNullOrWhiteSpace(option.Description))
         {
-            optionLayout.Children.Add(new Label
+            var descriptionLabel = new Label
             {
                 Text = option.Description,
                 FontSize = 13,
                 TextColor = Color.FromArgb("#9EA3C4"),
                 LineBreakMode = LineBreakMode.WordWrap
-            }, 0, 1);
+            };
+            Grid.SetColumn(descriptionLabel, 0);
+            Grid.SetRow(descriptionLabel, 1);
+            optionLayout.Children.Add(descriptionLabel);
         }
 
         if (option.IsSelected)
@@ -142,7 +146,9 @@ public sealed class ActionSheetPopup : Popup
                 HorizontalOptions = LayoutOptions.End,
                 VerticalOptions = LayoutOptions.Start
             };
-            optionLayout.Children.Add(checkLabel, 1, 0);
+            Grid.SetColumn(checkLabel, 1);
+            Grid.SetRow(checkLabel, 0);
+            optionLayout.Children.Add(checkLabel);
             Grid.SetRowSpan(checkLabel, string.IsNullOrWhiteSpace(option.Description) ? 1 : 2);
         }
 

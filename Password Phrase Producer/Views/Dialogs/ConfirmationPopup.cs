@@ -1,6 +1,7 @@
 using System;
 using CommunityToolkit.Maui.Views;
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Maui.Graphics;
 
 namespace Password_Phrase_Producer.Views.Dialogs;
@@ -9,8 +10,8 @@ public sealed class ConfirmationPopup : Popup
 {
     public ConfirmationPopup(string title, string message, string confirmText, string cancelText, bool confirmIsDestructive = false)
     {
-        BackgroundColor = Color.FromRgba(0, 0, 0, 0.65);
-        CanBeDismissedByTappingOutside = false;
+        Color = Color.FromRgba(0, 0, 0, 0.65);
+        CanBeDismissedByTappingOutsideOfPopup = false;
 
         var titleLabel = new Label
         {
@@ -43,7 +44,9 @@ public sealed class ConfirmationPopup : Popup
 
         var confirmColor = confirmIsDestructive ? Color.FromArgb("#432028") : Color.FromArgb("#2C3A73");
         var confirmButton = CreateActionButton(confirmText, confirmColor, () => Close(true));
-        buttonGrid.Children.Add(confirmButton, 1, 0);
+        Grid.SetColumn(confirmButton, 1);
+        Grid.SetRow(confirmButton, 0);
+        buttonGrid.Children.Add(confirmButton);
 
         var cardLayout = new VerticalStackLayout
         {
