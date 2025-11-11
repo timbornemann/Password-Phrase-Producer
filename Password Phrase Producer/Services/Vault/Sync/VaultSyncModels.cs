@@ -92,4 +92,6 @@ public sealed class VaultSyncStatus
     public string? LastError { get; set; }
 
     public VaultSyncRemoteState? RemoteState { get; set; }
+
+    public DateTimeOffset? NextAutoSyncUtc { get; set; }
 }
