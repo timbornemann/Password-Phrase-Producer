@@ -27,6 +27,8 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     private readonly Command _clearGoogleDriveDocumentCommand;
     private readonly Command _changePasswordCommand;
     private readonly Command _clearRemotePasswordCommand;
+    private readonly Command _editSyncSettingsCommand;
+    private readonly Command _cancelSyncSettingsCommand;
     private VaultSyncProviderDescriptor? _selectedSyncProvider;
     private bool _isSyncEnabled;
     private bool _isAutoSyncEnabled;
@@ -40,6 +42,13 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     private VaultSyncOperation _lastSyncOperation = VaultSyncOperation.None;
     private string? _lastSyncError;
     private bool _isListening;
+    private bool _isSyncConfigured;
+    private bool _isEditingSyncSettings = true;
+    private string _syncSummaryProviderName = "Keine Verbindung aktiviert";
+    private string _syncSummaryConnectionDetail = "Wähle einen Synchronisationsanbieter, um zu starten.";
+    private string _syncSummaryLastSync = "Noch keine Synchronisation durchgeführt.";
+    private string _syncSummaryNextSync = "Automatische Synchronisation deaktiviert.";
+    private string _syncSummaryRemoteInfo = "Cloud-Datei wurde noch nicht erstellt.";
 
     private bool _isVaultUnlocked;
     private bool _canUseBiometric;
@@ -79,6 +88,12 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
 
         _changePasswordCommand = new Command(async () => await ChangeMasterPasswordAsync(), () => !IsPasswordChangeBusy && IsVaultUnlocked);
         ChangePasswordCommand = _changePasswordCommand;
+
+        _editSyncSettingsCommand = new Command(EnterSyncEditMode, () => IsSyncConfigured && !IsEditingSyncSettings);
+        EditSyncSettingsCommand = _editSyncSettingsCommand;
+
+        _cancelSyncSettingsCommand = new Command(async () => await CancelSyncEditingAsync(), () => IsSyncConfigured && IsEditingSyncSettings && !IsSyncBusy);
+        CancelSyncSettingsCommand = _cancelSyncSettingsCommand;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -96,6 +111,10 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     public ICommand ClearRemotePasswordCommand { get; }
 
     public ICommand ChangePasswordCommand { get; }
+
+    public ICommand EditSyncSettingsCommand { get; }
+
+    public ICommand CancelSyncSettingsCommand { get; }
 
     public string RemotePassword
     {
@@ -155,6 +174,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             if (SetProperty(ref _isRemotePasswordConfigured, value))
             {
                 UpdateRemotePasswordCommandStates();
+                EvaluateSyncConfigurationState(false);
             }
         }
     }
@@ -188,10 +208,15 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         get => _isSyncEnabled;
         set
         {
-            if (SetProperty(ref _isSyncEnabled, value) && !_isLoadingSyncSettings)
+            if (SetProperty(ref _isSyncEnabled, value))
             {
-                MarkSyncSettingsDirty();
+                if (!_isLoadingSyncSettings)
+                {
+                    MarkSyncSettingsDirty();
+                }
+
                 UpdateSyncCommandStates();
+                EvaluateSyncConfigurationState(false);
             }
         }
     }
@@ -201,10 +226,15 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         get => _isAutoSyncEnabled;
         set
         {
-            if (SetProperty(ref _isAutoSyncEnabled, value) && !_isLoadingSyncSettings)
+            if (SetProperty(ref _isAutoSyncEnabled, value))
             {
-                MarkSyncSettingsDirty();
+                if (!_isLoadingSyncSettings)
+                {
+                    MarkSyncSettingsDirty();
+                }
+
                 UpdateSyncCommandStates();
+                EvaluateSyncConfigurationState(false);
             }
         }
     }
@@ -251,6 +281,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
                 }
 
                 UpdateSyncCommandStates();
+                EvaluateSyncConfigurationState(false);
                 _ = RefreshRemotePasswordStateAsync();
             }
         }
@@ -269,9 +300,14 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         get => _fileSyncPath;
         set
         {
-            if (SetProperty(ref _fileSyncPath, value) && !_isLoadingSyncSettings)
+            if (SetProperty(ref _fileSyncPath, value))
             {
-                MarkSyncSettingsDirty();
+                if (!_isLoadingSyncSettings)
+                {
+                    MarkSyncSettingsDirty();
+                }
+
+                EvaluateSyncConfigurationState(false);
             }
         }
     }
@@ -289,6 +325,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
                 }
 
                 UpdateSyncCommandStates();
+                EvaluateSyncConfigurationState(false);
             }
         }
     }
@@ -303,6 +340,72 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     {
         get => _syncStatusMessage;
         private set => SetProperty(ref _syncStatusMessage, value);
+    }
+
+    public bool IsSyncConfigured
+    {
+        get => _isSyncConfigured;
+        private set
+        {
+            if (SetProperty(ref _isSyncConfigured, value))
+            {
+                OnPropertyChanged(nameof(IsSyncSummaryVisible));
+                OnPropertyChanged(nameof(IsSyncSetupVisible));
+                OnPropertyChanged(nameof(IsCancelSyncEditVisible));
+                UpdateSyncCommandStates();
+            }
+        }
+    }
+
+    public bool IsEditingSyncSettings
+    {
+        get => _isEditingSyncSettings;
+        private set
+        {
+            if (SetProperty(ref _isEditingSyncSettings, value))
+            {
+                OnPropertyChanged(nameof(IsSyncSummaryVisible));
+                OnPropertyChanged(nameof(IsSyncSetupVisible));
+                OnPropertyChanged(nameof(IsCancelSyncEditVisible));
+                UpdateSyncCommandStates();
+            }
+        }
+    }
+
+    public bool IsSyncSummaryVisible => IsSyncConfigured && !IsEditingSyncSettings;
+
+    public bool IsSyncSetupVisible => !IsSyncConfigured || IsEditingSyncSettings;
+
+    public bool IsCancelSyncEditVisible => IsSyncConfigured && IsEditingSyncSettings;
+
+    public string SyncSummaryProviderName
+    {
+        get => _syncSummaryProviderName;
+        private set => SetProperty(ref _syncSummaryProviderName, value);
+    }
+
+    public string SyncSummaryConnectionDetail
+    {
+        get => _syncSummaryConnectionDetail;
+        private set => SetProperty(ref _syncSummaryConnectionDetail, value);
+    }
+
+    public string SyncSummaryLastSync
+    {
+        get => _syncSummaryLastSync;
+        private set => SetProperty(ref _syncSummaryLastSync, value);
+    }
+
+    public string SyncSummaryNextSync
+    {
+        get => _syncSummaryNextSync;
+        private set => SetProperty(ref _syncSummaryNextSync, value);
+    }
+
+    public string SyncSummaryRemoteInfo
+    {
+        get => _syncSummaryRemoteInfo;
+        private set => SetProperty(ref _syncSummaryRemoteInfo, value);
     }
 
     public bool IsVaultUnlocked
@@ -498,6 +601,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
                 RemotePasswordSuccess = null;
                 UpdateSyncStatusMessage(status, null);
                 IsSyncSettingsDirty = false;
+                EvaluateSyncConfigurationState(false);
             }).ConfigureAwait(false);
         }
         finally
@@ -544,6 +648,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
                 _isLoadingSyncSettings = previousLoading;
             }).ConfigureAwait(false);
             await RefreshSyncStatusAsync().ConfigureAwait(false);
+            await MainThread.InvokeOnMainThreadAsync(() => EvaluateSyncConfigurationState(true)).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -765,6 +870,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
                 ConfirmRemotePassword = string.Empty;
                 RemotePasswordError = null;
                 RemotePasswordSuccess = null;
+                EvaluateSyncConfigurationState(true);
             }).ConfigureAwait(false);
             return;
         }
@@ -775,6 +881,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             {
                 IsRemotePasswordConfigured = false;
                 RemotePasswordSuccess = null;
+                EvaluateSyncConfigurationState(true);
             }).ConfigureAwait(false);
             return;
         }
@@ -788,6 +895,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             {
                 RemotePasswordSuccess = null;
             }
+            EvaluateSyncConfigurationState(true);
         }).ConfigureAwait(false);
     }
 
@@ -927,6 +1035,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         }
 
         SyncStatusMessage = builder.ToString();
+        UpdateSyncSummaryDetails(status);
     }
 
     private static string DescribeSyncOperation(VaultSyncOperation operation)
@@ -942,6 +1051,147 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             VaultSyncOperation.Error => "Fehler",
             _ => "Unbekannt"
         };
+
+    private void EnterSyncEditMode()
+    {
+        IsEditingSyncSettings = true;
+    }
+
+    private async Task CancelSyncEditingAsync()
+    {
+        await LoadSyncConfigurationAsync().ConfigureAwait(false);
+        await MainThread.InvokeOnMainThreadAsync(() => EvaluateSyncConfigurationState(true)).ConfigureAwait(false);
+    }
+
+    private void EvaluateSyncConfigurationState(bool allowCollapse)
+    {
+        var configured = DetermineSyncConfigured();
+        IsSyncConfigured = configured;
+
+        if (!configured)
+        {
+            if (!IsEditingSyncSettings)
+            {
+                IsEditingSyncSettings = true;
+            }
+
+            return;
+        }
+
+        if (allowCollapse && !IsSyncSettingsDirty)
+        {
+            IsEditingSyncSettings = false;
+        }
+    }
+
+    private bool DetermineSyncConfigured()
+    {
+        if (!IsSyncEnabled)
+        {
+            return false;
+        }
+
+        var providerKey = SelectedSyncProvider?.Key;
+        if (string.IsNullOrWhiteSpace(providerKey))
+        {
+            return false;
+        }
+
+        if (IsFileProviderSelected && string.IsNullOrWhiteSpace(FileSyncPath))
+        {
+            return false;
+        }
+
+        if (IsGoogleDriveProviderSelected && string.IsNullOrWhiteSpace(GoogleDriveDocumentUri))
+        {
+            return false;
+        }
+
+        if (IsRemotePasswordProviderSelected && !IsRemotePasswordConfigured)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private string BuildConnectionDetail(string? providerKey, string providerName)
+    {
+        if (string.Equals(providerKey, FileSystemVaultSyncProvider.ProviderKey, StringComparison.OrdinalIgnoreCase))
+        {
+            return string.IsNullOrWhiteSpace(FileSyncPath)
+                ? $"{providerName}: Keine Datei ausgewählt."
+                : $"{providerName}: {FileSyncPath}";
+        }
+
+        if (string.Equals(providerKey, GoogleDriveVaultSyncProvider.ProviderKey, StringComparison.OrdinalIgnoreCase))
+        {
+            return string.IsNullOrWhiteSpace(GoogleDriveDocumentUri)
+                ? $"{providerName}: Keine Datei verknüpft."
+                : $"{providerName}: {FormatGoogleDriveDocumentName(GoogleDriveDocumentUri)}";
+        }
+
+        return $"Verbindung: {providerName}";
+    }
+
+    private void UpdateSyncSummaryDetails(VaultSyncStatus status)
+    {
+        if (!status.IsEnabled || string.IsNullOrWhiteSpace(status.ProviderKey))
+        {
+            SyncSummaryProviderName = "Synchronisation deaktiviert";
+            SyncSummaryConnectionDetail = "Aktiviere die Synchronisation, um automatische Updates zu erhalten.";
+        }
+        else
+        {
+            var providerName = _syncProviders.FirstOrDefault(p => string.Equals(p.Key, status.ProviderKey, StringComparison.OrdinalIgnoreCase))?.DisplayName
+                ?? SelectedSyncProvider?.DisplayName
+                ?? "Unbekannter Anbieter";
+            SyncSummaryProviderName = providerName;
+            SyncSummaryConnectionDetail = BuildConnectionDetail(status.ProviderKey, providerName);
+        }
+
+        SyncSummaryLastSync = status.LastSyncUtc is DateTimeOffset lastSync
+            ? $"Letzte Synchronisation: {lastSync.ToLocalTime():g}"
+            : "Noch keine Synchronisation durchgeführt.";
+
+        if (!status.IsEnabled)
+        {
+            SyncSummaryNextSync = "Synchronisation deaktiviert.";
+        }
+        else if (!status.AutoSyncEnabled)
+        {
+            SyncSummaryNextSync = "Automatische Synchronisation deaktiviert.";
+        }
+        else if (status.NextAutoSyncUtc is DateTimeOffset nextSync)
+        {
+            SyncSummaryNextSync = $"Nächste automatische Synchronisation spätestens um {nextSync.ToLocalTime():g}.";
+        }
+        else
+        {
+            SyncSummaryNextSync = "Automatische Synchronisation aktiv.";
+        }
+
+        SyncSummaryRemoteInfo = status.RemoteState is { } remote
+            ? $"Stand der Cloud-Datei: {remote.LastModifiedUtc.ToLocalTime():g}"
+            : "Cloud-Datei wurde noch nicht erstellt.";
+    }
+
+    private static string FormatGoogleDriveDocumentName(string uri)
+    {
+        if (string.IsNullOrWhiteSpace(uri))
+        {
+            return "Datei verknüpft";
+        }
+
+        var trimmed = uri.TrimEnd('/');
+        var separatorIndex = trimmed.LastIndexOf('/');
+        if (separatorIndex >= 0 && separatorIndex < trimmed.Length - 1)
+        {
+            return trimmed[(separatorIndex + 1)..];
+        }
+
+        return trimmed;
+    }
 
     private void MarkSyncSettingsDirty()
     {
@@ -967,6 +1217,8 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
 
         MainThread.BeginInvokeOnMainThread(_selectGoogleDriveDocumentCommand.ChangeCanExecute);
         MainThread.BeginInvokeOnMainThread(_clearGoogleDriveDocumentCommand.ChangeCanExecute);
+        MainThread.BeginInvokeOnMainThread(_editSyncSettingsCommand.ChangeCanExecute);
+        MainThread.BeginInvokeOnMainThread(_cancelSyncSettingsCommand.ChangeCanExecute);
         UpdateRemotePasswordCommandStates();
     }
 

@@ -673,25 +673,35 @@ public class PasswordVaultService
     {
         _syncScheduler.Cancel();
 
+        var status = await GetSyncStatusAsync(cancellationToken).ConfigureAwait(false);
+        status.NextAutoSyncUtc = null;
+
         if (!configuration.IsEnabled || !configuration.AutoSyncEnabled)
         {
+            await SaveSyncStatusAsync(status).ConfigureAwait(false);
             return;
         }
 
         if (string.IsNullOrWhiteSpace(configuration.ProviderKey) || !_syncProviders.TryGetValue(configuration.ProviderKey, out var provider))
         {
+            await SaveSyncStatusAsync(status).ConfigureAwait(false);
             return;
         }
 
         if (!provider.SupportsAutomaticSync)
         {
+            await SaveSyncStatusAsync(status).ConfigureAwait(false);
             return;
         }
 
         if (!await provider.IsConfiguredAsync(configuration, cancellationToken).ConfigureAwait(false))
         {
+            await SaveSyncStatusAsync(status).ConfigureAwait(false);
             return;
         }
+
+        status.NextAutoSyncUtc = DateTimeOffset.UtcNow.Add(DefaultAutoSyncInterval);
+        await SaveSyncStatusAsync(status).ConfigureAwait(false);
 
         _syncScheduler.Schedule(DefaultAutoSyncInterval, RunScheduledSyncAsync);
     }
@@ -721,6 +731,10 @@ public class PasswordVaultService
         {
             status.LastError = result.ErrorMessage;
         }
+
+        status.NextAutoSyncUtc = configuration.IsEnabled && configuration.AutoSyncEnabled
+            ? DateTimeOffset.UtcNow.Add(DefaultAutoSyncInterval)
+            : null;
 
         await SaveSyncStatusAsync(status).ConfigureAwait(false);
         NotifySyncStatusChanged(result);
