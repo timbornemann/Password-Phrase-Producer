@@ -628,6 +628,7 @@ public class PasswordVaultService
         }
 
         MessagingCenter.Send(this, VaultMessages.EntriesChanged);
+        TriggerImmediateSyncIfEnabled();
     }
 
     public async Task DeleteEntryAsync(Guid entryId, CancellationToken cancellationToken = default)
@@ -651,6 +652,7 @@ public class PasswordVaultService
         }
 
         MessagingCenter.Send(this, VaultMessages.EntriesChanged);
+        TriggerImmediateSyncIfEnabled();
     }
 
     public async Task<byte[]> CreateBackupAsync(CancellationToken cancellationToken = default)
@@ -827,6 +829,8 @@ public class PasswordVaultService
             status.LastSyncUtc = DateTimeOffset.UtcNow;
             status.LastError = null;
             status.RemoteState = result.RemoteState ?? result.LocalState ?? status.RemoteState;
+            status.LastDownloadedEntries = result.DownloadedEntries;
+            status.LastUploadedEntries = result.UploadedEntries;
         }
         else if (result.Operation == VaultSyncOperation.Error)
         {
@@ -835,6 +839,11 @@ public class PasswordVaultService
         else
         {
             status.LastError = result.ErrorMessage;
+            if (result.Operation is VaultSyncOperation.Disabled or VaultSyncOperation.NoProvider)
+            {
+                status.LastDownloadedEntries = null;
+                status.LastUploadedEntries = null;
+            }
         }
 
         status.NextAutoSyncUtc = configuration.IsEnabled && configuration.AutoSyncEnabled
@@ -856,6 +865,43 @@ public class PasswordVaultService
     {
         var payload = result ?? new VaultSyncResult { Operation = VaultSyncOperation.None };
         MessagingCenter.Send(this, VaultMessages.SyncStatusChanged, payload);
+    }
+
+    private void TriggerImmediateSyncIfEnabled(bool preferDownload = false)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var configuration = await GetSyncConfigurationAsync().ConfigureAwait(false);
+                if (!configuration.IsEnabled
+                    || string.IsNullOrWhiteSpace(configuration.ProviderKey)
+                    || !_syncProviders.TryGetValue(configuration.ProviderKey, out var provider))
+                {
+                    return;
+                }
+
+                if (!await provider.IsConfiguredAsync(configuration).ConfigureAwait(false))
+                {
+                    return;
+                }
+
+                if (RequiresRemotePassword(configuration.ProviderKey)
+                    && !await HasRemotePasswordAsync(configuration.ProviderKey).ConfigureAwait(false))
+                {
+                    return;
+                }
+
+                await SynchronizeAsync(preferDownload).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch
+            {
+                // Synchronisationsfehler werden bereits über den Status gemeldet.
+            }
+        });
     }
 
     private async Task<(byte[] Payload, VaultSyncRemoteState LocalState)> PrepareSyncPayloadAsync(VaultSyncConfiguration configuration, CancellationToken cancellationToken)

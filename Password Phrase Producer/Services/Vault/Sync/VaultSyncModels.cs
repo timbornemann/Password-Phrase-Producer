@@ -111,4 +111,8 @@ public sealed class VaultSyncStatus
     public VaultSyncRemoteState? RemoteState { get; set; }
 
     public DateTimeOffset? NextAutoSyncUtc { get; set; }
+
+    public int? LastDownloadedEntries { get; set; }
+
+    public int? LastUploadedEntries { get; set; }
 }

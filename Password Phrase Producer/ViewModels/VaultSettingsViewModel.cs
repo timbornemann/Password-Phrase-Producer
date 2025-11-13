@@ -897,22 +897,37 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         var remoteState = await _vaultService.TryGetRemoteStateAsync(configuration, cancellationToken).ConfigureAwait(false);
         await MainThread.InvokeOnMainThreadAsync(() => UpdateRemoteVaultExistence(remoteState is not null)).ConfigureAwait(false);
 
-        if (!remotePasswordChanged)
+        var remoteExists = remoteState is not null;
+
+        if (remotePasswordChanged && remoteExists)
         {
-            return null;
+            return await ValidateRemotePasswordAndSyncAsync(configuration, cancellationToken).ConfigureAwait(false);
         }
 
-        if (remoteState is null)
+        if (remotePasswordChanged && !remoteExists)
         {
             await MainThread.InvokeOnMainThreadAsync(() =>
             {
                 RemotePasswordError = null;
-                RemotePasswordSuccess = "Remote-Passwort gespeichert. Die Cloud-Datei wird beim ersten Synchronisieren erstellt.";
+                RemotePasswordSuccess = "Remote-Passwort gespeichert. Erster Abgleich wird gestartet.";
             }).ConfigureAwait(false);
+        }
+
+        if (!configuration.IsEnabled)
+        {
             return null;
         }
 
-        return await ValidateRemotePasswordAndSyncAsync(configuration, cancellationToken).ConfigureAwait(false);
+        await MainThread.InvokeOnMainThreadAsync(() => IsSyncBusy = true).ConfigureAwait(false);
+        try
+        {
+            var result = await _vaultService.SynchronizeAsync(preferDownload: remoteExists, cancellationToken: cancellationToken).ConfigureAwait(false);
+            return result;
+        }
+        finally
+        {
+            await MainThread.InvokeOnMainThreadAsync(() => IsSyncBusy = false).ConfigureAwait(false);
+        }
     }
 
     private async Task<VaultSyncResult?> ValidateRemotePasswordAndSyncAsync(VaultSyncConfiguration configuration, CancellationToken cancellationToken = default)
@@ -1211,7 +1226,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         }
         else
         {
-            var changeSummary = BuildSyncChangeSummary(result);
+            var changeSummary = BuildSyncChangeSummary(status, result);
             if (!string.IsNullOrWhiteSpace(changeSummary))
             {
                 builder.Append(" • ").Append(changeSummary);
@@ -1228,36 +1243,35 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         UpdateSyncSummaryDetails(status);
     }
 
-    private static string? BuildSyncChangeSummary(VaultSyncResult? result)
+    private static string? BuildSyncChangeSummary(VaultSyncStatus status, VaultSyncResult? result)
     {
-        if (result is null)
-        {
-            return null;
-        }
-
         var parts = new List<string>();
 
-        if (result.DownloadedEntries is int downloaded)
+        var operation = result?.Operation ?? status.LastOperation;
+        var downloadedEntries = result?.DownloadedEntries ?? status.LastDownloadedEntries;
+        var uploadedEntries = result?.UploadedEntries ?? status.LastUploadedEntries;
+
+        if (downloadedEntries is int downloaded)
         {
             parts.Add(downloaded == 1 ? "1 Eintrag geladen" : $"{downloaded} Einträge geladen");
         }
-        else if (result.Operation == VaultSyncOperation.Downloaded)
+        else if (operation == VaultSyncOperation.Downloaded)
         {
             parts.Add("Einträge geladen: Anzahl unbekannt (Tresor gesperrt)");
         }
 
-        if (result.UploadedEntries is int uploaded)
+        if (uploadedEntries is int uploaded)
         {
             parts.Add(uploaded == 1 ? "1 Eintrag hochgeladen" : $"{uploaded} Einträge hochgeladen");
         }
-        else if (result.Operation == VaultSyncOperation.Uploaded)
+        else if (operation == VaultSyncOperation.Uploaded)
         {
             parts.Add("Einträge hochgeladen: Anzahl unbekannt (Tresor gesperrt)");
         }
 
         if (parts.Count == 0)
         {
-            if (result.Operation == VaultSyncOperation.UpToDate)
+            if (operation == VaultSyncOperation.UpToDate)
             {
                 parts.Add("Keine Änderungen");
             }
