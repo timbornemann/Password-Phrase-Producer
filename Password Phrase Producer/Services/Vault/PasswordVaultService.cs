@@ -933,6 +933,11 @@ public class PasswordVaultService
             return payload;
         }
 
+        if (!IsRemotePackagePayload(payload))
+        {
+            return payload;
+        }
+
         var remotePassword = await GetRemotePasswordAsync(providerKey, cancellationToken).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(remotePassword))
         {
@@ -1374,6 +1379,40 @@ public class PasswordVaultService
     {
         using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Pbkdf2Iterations, HashAlgorithmName.SHA256);
         return pbkdf2.GetBytes(KeySizeBytes);
+    }
+
+    private static bool IsRemotePackagePayload(byte[] payload)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(payload);
+            var root = document.RootElement;
+
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                return false;
+            }
+
+            if (!root.TryGetProperty("cipherText", out _))
+            {
+                return false;
+            }
+
+            if (root.TryGetProperty("passwordSalt", out _))
+            {
+                return false;
+            }
+
+            return root.TryGetProperty("salt", out _);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+        catch (DecoderFallbackException)
+        {
+            return false;
+        }
     }
 
     private static byte[] CreateVerifier(byte[] key)
