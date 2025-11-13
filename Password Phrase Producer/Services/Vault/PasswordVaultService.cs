@@ -33,6 +33,7 @@ public class PasswordVaultService
     private const string SyncConfigurationStorageKey = "PasswordVaultSyncConfiguration";
     private const string SyncStatusStorageKey = "PasswordVaultSyncStatus";
     private const string RemotePasswordStoragePrefix = "PasswordVaultRemotePassword_";
+    private const string LastEntryCountStorageKey = "PasswordVaultLastEntryCount";
     private const int RemotePackageVersion = 1;
     private static readonly TimeSpan DefaultAutoSyncInterval = TimeSpan.FromMinutes(15);
 
@@ -324,6 +325,11 @@ public class PasswordVaultService
             }
 
             var shouldDownload = preferDownload;
+            if (!shouldDownload && !IsUnlocked && remoteState is not null)
+            {
+                shouldDownload = true;
+            }
+
             if (!shouldDownload)
             {
                 shouldDownload = remoteState.LastModifiedUtc > localState.LastModifiedUtc;
@@ -439,6 +445,7 @@ public class PasswordVaultService
         await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, Convert.ToBase64String(verifier)).ConfigureAwait(false);
 
         _encryptionKey = key;
+        UpdateStoredEntryCount(0);
 
         if (enableBiometrics)
         {
@@ -720,6 +727,7 @@ public class PasswordVaultService
             _syncLock.Release();
         }
 
+        ClearStoredEntryCount();
         MessagingCenter.Send(this, VaultMessages.EntriesChanged);
     }
 
@@ -757,6 +765,15 @@ public class PasswordVaultService
         finally
         {
             _syncLock.Release();
+        }
+
+        if (importedContent.Cipher.Length == 0)
+        {
+            UpdateStoredEntryCount(0);
+        }
+        else
+        {
+            _ = await TryGetEntryCountAsync(importedContent, cancellationToken).ConfigureAwait(false);
         }
 
         await UpdatePasswordMetadataAsync(importedContent).ConfigureAwait(false);
@@ -1013,12 +1030,14 @@ public class PasswordVaultService
         var vaultFile = await ReadVaultFileAsync(cancellationToken).ConfigureAwait(false);
         if (vaultFile.Cipher.Length == 0)
         {
+            UpdateStoredEntryCount(0);
             return new List<PasswordVaultEntry>();
         }
 
         var decryptedBytes = await DecryptAsync(vaultFile.Cipher, cancellationToken).ConfigureAwait(false);
         if (decryptedBytes.Length == 0)
         {
+            UpdateStoredEntryCount(0);
             return new List<PasswordVaultEntry>();
         }
 
@@ -1027,12 +1046,16 @@ public class PasswordVaultService
 
         if (snapshot?.Entries is null)
         {
+            UpdateStoredEntryCount(0);
             return new List<PasswordVaultEntry>();
         }
 
-        return snapshot.Entries
+        var entries = snapshot.Entries
             .Select(dto => dto.ToModel())
             .ToList();
+
+        UpdateStoredEntryCount(entries.Count);
+        return entries;
     }
 
     private async Task SaveEntriesInternalAsync(IList<PasswordVaultEntry> entries, CancellationToken cancellationToken)
@@ -1054,6 +1077,7 @@ public class PasswordVaultService
         var vaultFile = await CreateVaultFileContentAsync(encrypted, cancellationToken).ConfigureAwait(false);
 
         await WriteVaultFileInternalAsync(vaultFile.RawContent, cancellationToken).ConfigureAwait(false);
+        UpdateStoredEntryCount(ordered.Count);
     }
 
     private Task<byte[]> EncryptAsync(byte[] data, CancellationToken cancellationToken)
@@ -1192,6 +1216,7 @@ public class PasswordVaultService
     {
         if (content.Cipher.Length == 0)
         {
+            UpdateStoredEntryCount(0);
             return 0;
         }
 
@@ -1200,15 +1225,18 @@ public class PasswordVaultService
             var decrypted = await DecryptAsync(content.Cipher, cancellationToken).ConfigureAwait(false);
             if (decrypted.Length == 0)
             {
+                UpdateStoredEntryCount(0);
                 return 0;
             }
 
             var snapshot = JsonSerializer.Deserialize<PasswordVaultSnapshotDto>(decrypted, _jsonOptions);
-            return snapshot?.Entries?.Count ?? 0;
+            var count = snapshot?.Entries?.Count ?? 0;
+            UpdateStoredEntryCount(count);
+            return count;
         }
         catch (InvalidOperationException)
         {
-            return null;
+            return GetStoredEntryCount();
         }
         catch (OperationCanceledException)
         {
@@ -1216,8 +1244,24 @@ public class PasswordVaultService
         }
         catch
         {
-            return null;
+            return GetStoredEntryCount();
         }
+    }
+
+    private void UpdateStoredEntryCount(int count)
+    {
+        Preferences.Default.Set(LastEntryCountStorageKey, Math.Max(0, count));
+    }
+
+    private int? GetStoredEntryCount()
+    {
+        var stored = Preferences.Default.Get(LastEntryCountStorageKey, -1);
+        return stored >= 0 ? stored : null;
+    }
+
+    private void ClearStoredEntryCount()
+    {
+        Preferences.Default.Remove(LastEntryCountStorageKey);
     }
 
     private async Task<string?> GetRemotePasswordAsync(string? providerKey, CancellationToken cancellationToken)
