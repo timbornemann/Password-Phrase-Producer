@@ -124,6 +124,100 @@ public class PasswordVaultService
         return !string.IsNullOrEmpty(stored);
     }
 
+    public async Task<VaultSyncRemoteState?> TryGetRemoteStateAsync(VaultSyncConfiguration configuration, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        if (string.IsNullOrWhiteSpace(configuration.ProviderKey)
+            || !_syncProviders.TryGetValue(configuration.ProviderKey, out var provider))
+        {
+            return null;
+        }
+
+        if (!await provider.IsConfiguredAsync(configuration, cancellationToken).ConfigureAwait(false))
+        {
+            return null;
+        }
+
+        try
+        {
+            return await provider.GetRemoteStateAsync(configuration, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<RemoteVaultValidationResult> ValidateRemotePasswordAsync(VaultSyncConfiguration configuration, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        if (string.IsNullOrWhiteSpace(configuration.ProviderKey)
+            || !_syncProviders.TryGetValue(configuration.ProviderKey, out var provider))
+        {
+            throw new InvalidOperationException("Es wurde kein gültiger Synchronisationsanbieter ausgewählt.");
+        }
+
+        if (!await provider.IsConfiguredAsync(configuration, cancellationToken).ConfigureAwait(false))
+        {
+            throw new InvalidOperationException("Der ausgewählte Synchronisationsanbieter ist nicht vollständig konfiguriert.");
+        }
+
+        var remoteState = await provider.GetRemoteStateAsync(configuration, cancellationToken).ConfigureAwait(false);
+        if (remoteState is null)
+        {
+            return new RemoteVaultValidationResult
+            {
+                RemoteExists = false,
+                Success = true
+            };
+        }
+
+        var download = await provider.DownloadAsync(configuration, cancellationToken).ConfigureAwait(false);
+        if (download is null)
+        {
+            return new RemoteVaultValidationResult
+            {
+                RemoteExists = true,
+                Success = false,
+                ErrorMessage = "Die entfernten Tresordaten konnten nicht geladen werden."
+            };
+        }
+
+        try
+        {
+            var localPayload = await ConvertRemotePayloadToLocalAsync(configuration.ProviderKey, download.Payload, cancellationToken).ConfigureAwait(false);
+            var content = ParseVaultFile(localPayload);
+            var entryCount = await TryGetEntryCountAsync(content, cancellationToken).ConfigureAwait(false);
+
+            return new RemoteVaultValidationResult
+            {
+                RemoteExists = true,
+                Success = true,
+                EntryCount = entryCount,
+                RemoteState = download.RemoteState
+            };
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return new RemoteVaultValidationResult
+            {
+                RemoteExists = true,
+                Success = false,
+                ErrorMessage = ex.Message
+            };
+        }
+    }
+
     public async Task UpdateSyncConfigurationAsync(VaultSyncConfiguration configuration, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(configuration);
@@ -180,13 +274,16 @@ public class PasswordVaultService
         {
             var (localPayload, localState) = await PrepareSyncPayloadAsync(configuration, cancellationToken).ConfigureAwait(false);
             var remoteState = await provider.GetRemoteStateAsync(configuration, cancellationToken).ConfigureAwait(false);
+            int? initialEntryCount = null;
 
             if (remoteState is null && localPayload.Length == 0)
             {
                 var emptyResult = new VaultSyncResult
                 {
                     Operation = VaultSyncOperation.UpToDate,
-                    LocalState = localState
+                    LocalState = localState,
+                    DownloadedEntries = 0,
+                    UploadedEntries = 0
                 };
                 await UpdateSyncStatusAsync(configuration, emptyResult, cancellationToken).ConfigureAwait(false);
                 return emptyResult;
@@ -194,6 +291,7 @@ public class PasswordVaultService
 
             if (remoteState is null)
             {
+                initialEntryCount ??= await TryGetLocalEntryCountAsync(cancellationToken).ConfigureAwait(false);
                 await provider.UploadAsync(new VaultSyncUploadRequest
                 {
                     Payload = localPayload,
@@ -204,7 +302,8 @@ public class PasswordVaultService
                 {
                     Operation = VaultSyncOperation.Uploaded,
                     LocalState = localState,
-                    RemoteState = localState
+                    RemoteState = localState,
+                    UploadedEntries = initialEntryCount
                 };
                 await UpdateSyncStatusAsync(configuration, uploadResult, cancellationToken).ConfigureAwait(false);
                 return uploadResult;
@@ -216,7 +315,9 @@ public class PasswordVaultService
                 {
                     Operation = VaultSyncOperation.UpToDate,
                     LocalState = localState,
-                    RemoteState = remoteState
+                    RemoteState = remoteState,
+                    DownloadedEntries = 0,
+                    UploadedEntries = 0
                 };
                 await UpdateSyncStatusAsync(configuration, upToDate, cancellationToken).ConfigureAwait(false);
                 return upToDate;
@@ -256,11 +357,13 @@ public class PasswordVaultService
                 MessagingCenter.Send(this, VaultMessages.EntriesChanged);
 
                 var refreshedState = CreateLocalRemoteState(download.Payload);
+                var downloadedCount = await TryGetLocalEntryCountAsync(cancellationToken).ConfigureAwait(false);
                 var downloadResult = new VaultSyncResult
                 {
                     Operation = VaultSyncOperation.Downloaded,
                     LocalState = refreshedState,
-                    RemoteState = download.RemoteState
+                    RemoteState = download.RemoteState,
+                    DownloadedEntries = downloadedCount
                 };
                 await UpdateSyncStatusAsync(configuration, downloadResult, cancellationToken).ConfigureAwait(false);
                 return downloadResult;
@@ -273,11 +376,13 @@ public class PasswordVaultService
                 RemoteStateBeforeUpload = remoteState
             }, configuration, cancellationToken).ConfigureAwait(false);
 
+            initialEntryCount ??= await TryGetLocalEntryCountAsync(cancellationToken).ConfigureAwait(false);
             var uploadConflictResult = new VaultSyncResult
             {
                 Operation = VaultSyncOperation.Uploaded,
                 LocalState = localState,
-                RemoteState = localState
+                RemoteState = localState,
+                UploadedEntries = initialEntryCount
             };
             await UpdateSyncStatusAsync(configuration, uploadConflictResult, cancellationToken).ConfigureAwait(false);
             return uploadConflictResult;
@@ -1013,6 +1118,55 @@ public class PasswordVaultService
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_vaultFilePath)!);
         await File.WriteAllBytesAsync(_vaultFilePath, rawContent, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<int?> TryGetLocalEntryCountAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var content = await ReadVaultFileAsync(cancellationToken).ConfigureAwait(false);
+            return await TryGetEntryCountAsync(content, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task<int?> TryGetEntryCountAsync(VaultFileContent content, CancellationToken cancellationToken)
+    {
+        if (content.Cipher.Length == 0)
+        {
+            return 0;
+        }
+
+        try
+        {
+            var decrypted = await DecryptAsync(content.Cipher, cancellationToken).ConfigureAwait(false);
+            if (decrypted.Length == 0)
+            {
+                return 0;
+            }
+
+            var snapshot = JsonSerializer.Deserialize<PasswordVaultSnapshotDto>(decrypted, _jsonOptions);
+            return snapshot?.Entries?.Count ?? 0;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private async Task<string?> GetRemotePasswordAsync(string? providerKey, CancellationToken cancellationToken)

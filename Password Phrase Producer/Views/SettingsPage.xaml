@@ -264,7 +264,8 @@
                                     PlaceholderColor="#7F85B2"
                                     TextColor="#CFD3FF"
                                     BackgroundColor="#1B2036"
-                                    IsPassword="True" />
+                                    IsPassword="True"
+                                    IsVisible="{Binding IsRemotePasswordConfirmationVisible}" />
                                 <Label
                                     Text="{Binding RemotePasswordSuccess}"
                                     FontSize="12"

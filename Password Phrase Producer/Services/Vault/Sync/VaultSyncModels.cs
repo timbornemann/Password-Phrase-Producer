@@ -51,10 +51,27 @@ public sealed class VaultSyncResult
 
     public VaultSyncRemoteState? RemoteState { get; init; }
 
+    public int? DownloadedEntries { get; init; }
+
+    public int? UploadedEntries { get; init; }
+
     public string? ErrorMessage { get; init; }
 
     [JsonIgnore]
     public bool Success => Operation is not VaultSyncOperation.Error;
+}
+
+public sealed class RemoteVaultValidationResult
+{
+    public bool RemoteExists { get; init; }
+
+    public bool Success { get; init; }
+
+    public int? EntryCount { get; init; }
+
+    public VaultSyncRemoteState? RemoteState { get; init; }
+
+    public string? ErrorMessage { get; init; }
 }
 
 public sealed class VaultSyncConfiguration
