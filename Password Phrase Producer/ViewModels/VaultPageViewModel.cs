@@ -60,6 +60,8 @@ public class VaultPageViewModel : INotifyPropertyChanged
     private string? _remotePasswordError;
     private string? _remotePasswordSuccess;
     private bool _isRemotePasswordBusy;
+    private bool _hasExistingRemoteVault;
+    private CancellationTokenSource? _remoteStateRefreshCts;
 
     private const string AllCategoriesFilter = "Alle Kategorien";
 
@@ -154,6 +156,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(IsGoogleDriveProviderSelected));
                 OnPropertyChanged(nameof(IsRemotePasswordProviderSelected));
                 OnPropertyChanged(nameof(IsRemotePasswordRequired));
+                OnPropertyChanged(nameof(IsRemotePasswordConfirmationVisible));
 
                 if (!_isLoadingSyncSettings)
                 {
@@ -162,6 +165,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
 
                 UpdateSyncCommandStates();
                 _ = RefreshRemotePasswordStateAsync();
+                ScheduleRemoteVaultStateRefresh();
             }
         }
     }
@@ -179,9 +183,14 @@ public class VaultPageViewModel : INotifyPropertyChanged
         get => _fileSyncPath;
         set
         {
-            if (SetProperty(ref _fileSyncPath, value) && !_isLoadingSyncSettings)
+            if (SetProperty(ref _fileSyncPath, value))
             {
-                MarkSyncSettingsDirty();
+                if (!_isLoadingSyncSettings)
+                {
+                    MarkSyncSettingsDirty();
+                }
+
+                ScheduleRemoteVaultStateRefresh();
             }
         }
     }
@@ -199,6 +208,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
                 }
 
                 UpdateSyncCommandStates();
+                ScheduleRemoteVaultStateRefresh();
             }
         }
     }
@@ -294,6 +304,20 @@ public class VaultPageViewModel : INotifyPropertyChanged
             }
         }
     }
+
+    public bool HasExistingRemoteVault
+    {
+        get => _hasExistingRemoteVault;
+        private set
+        {
+            if (SetProperty(ref _hasExistingRemoteVault, value))
+            {
+                OnPropertyChanged(nameof(IsRemotePasswordConfirmationVisible));
+            }
+        }
+    }
+
+    public bool IsRemotePasswordConfirmationVisible => IsRemotePasswordRequired && !HasExistingRemoteVault;
 
     public DateTimeOffset? LastSyncUtc
     {
@@ -459,6 +483,10 @@ public class VaultPageViewModel : INotifyPropertyChanged
             _isListening = false;
         }
 
+        _remoteStateRefreshCts?.Cancel();
+        _remoteStateRefreshCts?.Dispose();
+        _remoteStateRefreshCts = null;
+
         _vaultService.Lock();
         IsUnlocked = false;
         _hasAttemptedAutoBiometric = false;
@@ -540,6 +568,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
                 UpdateSyncStatusMessage(status, null);
                 IsSyncSettingsDirty = false;
             }).ConfigureAwait(false);
+            MainThread.BeginInvokeOnMainThread(ScheduleRemoteVaultStateRefresh);
         }
         finally
         {
@@ -561,10 +590,11 @@ public class VaultPageViewModel : INotifyPropertyChanged
         {
             var configuration = BuildSyncConfiguration();
             var providerKey = configuration.ProviderKey;
+            var remotePasswordChanged = false;
 
             try
             {
-                await ApplyRemotePasswordUpdatesAsync(providerKey).ConfigureAwait(false);
+                remotePasswordChanged = await ApplyRemotePasswordUpdatesAsync(providerKey).ConfigureAwait(false);
                 await EnsureRemotePasswordConfiguredAsync(providerKey).ConfigureAwait(false);
             }
             catch (Exception ex)
@@ -590,7 +620,8 @@ public class VaultPageViewModel : INotifyPropertyChanged
                 }
                 _isLoadingSyncSettings = previousLoading;
             }).ConfigureAwait(false);
-            await RefreshSyncStatusAsync().ConfigureAwait(false);
+            var syncResult = await PostProcessRemotePasswordAsync(configuration, remotePasswordChanged).ConfigureAwait(false);
+            await RefreshSyncStatusAsync(syncResult).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -746,7 +777,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
             throw new InvalidOperationException("Bitte gib ein Remote-Passwort ein.");
         }
 
-        if (!string.Equals(password, confirm, StringComparison.Ordinal))
+        if (IsRemotePasswordConfirmationVisible && !string.Equals(password, confirm, StringComparison.Ordinal))
         {
             throw new InvalidOperationException("Die Remote-Passwörter stimmen nicht überein.");
         }
@@ -763,7 +794,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
             RemotePassword = string.Empty;
             ConfirmRemotePassword = string.Empty;
             RemotePasswordError = null;
-            RemotePasswordSuccess = "Das Remote-Passwort wurde gespeichert.";
+            RemotePasswordSuccess = null;
             IsRemotePasswordConfigured = true;
         }).ConfigureAwait(false);
 
@@ -793,6 +824,105 @@ public class VaultPageViewModel : INotifyPropertyChanged
             IsRemotePasswordConfigured = true;
         }).ConfigureAwait(false);
     }
+
+    private async Task<VaultSyncResult?> PostProcessRemotePasswordAsync(VaultSyncConfiguration configuration, bool remotePasswordChanged, CancellationToken cancellationToken = default)
+    {
+        if (!IsRemotePasswordProviderSelected)
+        {
+            UpdateRemoteVaultExistence(false);
+            return null;
+        }
+
+        var remoteState = await _vaultService.TryGetRemoteStateAsync(configuration, cancellationToken).ConfigureAwait(false);
+        await MainThread.InvokeOnMainThreadAsync(() => UpdateRemoteVaultExistence(remoteState is not null)).ConfigureAwait(false);
+
+        if (!remotePasswordChanged)
+        {
+            return null;
+        }
+
+        if (remoteState is null)
+        {
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                RemotePasswordError = null;
+                RemotePasswordSuccess = "Remote-Passwort gespeichert. Die Cloud-Datei wird beim ersten Synchronisieren erstellt.";
+            }).ConfigureAwait(false);
+            return null;
+        }
+
+        return await ValidateRemotePasswordAndSyncAsync(configuration, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<VaultSyncResult?> ValidateRemotePasswordAndSyncAsync(VaultSyncConfiguration configuration, CancellationToken cancellationToken = default)
+    {
+        RemoteVaultValidationResult validation;
+
+        try
+        {
+            await MainThread.InvokeOnMainThreadAsync(() => IsRemotePasswordBusy = true).ConfigureAwait(false);
+            validation = await _vaultService.ValidateRemotePasswordAsync(configuration, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                RemotePasswordError = ex.Message;
+                RemotePasswordSuccess = null;
+            }).ConfigureAwait(false);
+            return null;
+        }
+        finally
+        {
+            await MainThread.InvokeOnMainThreadAsync(() => IsRemotePasswordBusy = false).ConfigureAwait(false);
+        }
+
+        await MainThread.InvokeOnMainThreadAsync(() => UpdateRemoteVaultExistence(validation.RemoteExists)).ConfigureAwait(false);
+
+        if (!validation.RemoteExists)
+        {
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                RemotePasswordError = null;
+                RemotePasswordSuccess = "Remote-Passwort gespeichert. Die Cloud-Datei wird beim ersten Synchronisieren erstellt.";
+            }).ConfigureAwait(false);
+            return null;
+        }
+
+        if (!validation.Success)
+        {
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                RemotePasswordError = validation.ErrorMessage ?? "Das Remote-Passwort ist ungültig.";
+                RemotePasswordSuccess = null;
+            }).ConfigureAwait(false);
+            return null;
+        }
+
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            RemotePasswordError = null;
+            RemotePasswordSuccess = validation.EntryCount.HasValue
+                ? FormatRemoteValidationSuccess(validation.EntryCount.Value)
+                : "Remote-Passwort bestätigt.";
+        }).ConfigureAwait(false);
+
+        await MainThread.InvokeOnMainThreadAsync(() => IsSyncBusy = true).ConfigureAwait(false);
+        try
+        {
+            var result = await _vaultService.SynchronizeAsync(preferDownload: true, cancellationToken: cancellationToken).ConfigureAwait(false);
+            return result;
+        }
+        finally
+        {
+            await MainThread.InvokeOnMainThreadAsync(() => IsSyncBusy = false).ConfigureAwait(false);
+        }
+    }
+
+    private static string FormatRemoteValidationSuccess(int entryCount)
+        => entryCount == 1
+            ? "Remote-Passwort bestätigt. 1 Eintrag gefunden."
+            : $"Remote-Passwort bestätigt. {entryCount} Einträge gefunden.";
 
     private async Task RefreshRemotePasswordStateAsync(CancellationToken cancellationToken = default)
     {
@@ -866,6 +996,54 @@ public class VaultPageViewModel : INotifyPropertyChanged
         finally
         {
             await MainThread.InvokeOnMainThreadAsync(() => IsRemotePasswordBusy = false).ConfigureAwait(false);
+        }
+    }
+
+    private void ScheduleRemoteVaultStateRefresh()
+    {
+        _remoteStateRefreshCts?.Cancel();
+        _remoteStateRefreshCts?.Dispose();
+        _remoteStateRefreshCts = null;
+
+        if (!IsRemotePasswordProviderSelected)
+        {
+            UpdateRemoteVaultExistence(false);
+            return;
+        }
+
+        var configuration = BuildSyncConfiguration();
+        if (string.IsNullOrWhiteSpace(configuration.ProviderKey))
+        {
+            UpdateRemoteVaultExistence(false);
+            return;
+        }
+
+        var cts = new CancellationTokenSource();
+        _remoteStateRefreshCts = cts;
+
+        Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(300, cts.Token).ConfigureAwait(false);
+                var remoteState = await _vaultService.TryGetRemoteStateAsync(configuration, cts.Token).ConfigureAwait(false);
+                await MainThread.InvokeOnMainThreadAsync(() => UpdateRemoteVaultExistence(remoteState is not null)).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        });
+    }
+
+    private void UpdateRemoteVaultExistence(bool exists)
+    {
+        if (MainThread.IsMainThread)
+        {
+            HasExistingRemoteVault = exists;
+        }
+        else
+        {
+            MainThread.BeginInvokeOnMainThread(() => HasExistingRemoteVault = exists);
         }
     }
 
@@ -1099,6 +1277,11 @@ public class VaultPageViewModel : INotifyPropertyChanged
         _lastSyncOperation = status.LastOperation;
         _lastSyncError = result?.ErrorMessage ?? status.LastError;
 
+        if (result?.RemoteState is not null || status.RemoteState is not null)
+        {
+            UpdateRemoteVaultExistence(true);
+        }
+
         var builder = new StringBuilder();
         builder.Append("Status: ").Append(DescribeSyncOperation(status.LastOperation));
 
@@ -1112,12 +1295,64 @@ public class VaultPageViewModel : INotifyPropertyChanged
         {
             builder.Append(" • Fehler: ").Append(error);
         }
-        else if (status.RemoteState is { } remote)
+        else
         {
-            builder.Append(" • Remote-Stand: ").Append(remote.LastModifiedUtc.ToLocalTime().ToString("g"));
+            var changeSummary = BuildSyncChangeSummary(result);
+            if (!string.IsNullOrWhiteSpace(changeSummary))
+            {
+                builder.Append(" • ").Append(changeSummary);
+            }
+
+            var remote = result?.RemoteState ?? status.RemoteState;
+            if (remote is not null)
+            {
+                builder.Append(" • Remote-Stand: ").Append(remote.LastModifiedUtc.ToLocalTime().ToString("g"));
+            }
         }
 
         SyncStatusMessage = builder.ToString();
+    }
+
+    private static string? BuildSyncChangeSummary(VaultSyncResult? result)
+    {
+        if (result is null)
+        {
+            return null;
+        }
+
+        var parts = new List<string>();
+
+        if (result.DownloadedEntries is int downloaded)
+        {
+            parts.Add(downloaded == 1 ? "1 Eintrag geladen" : $"{downloaded} Einträge geladen");
+        }
+        else if (result.Operation == VaultSyncOperation.Downloaded)
+        {
+            parts.Add("Einträge geladen: Anzahl unbekannt (Tresor gesperrt)");
+        }
+
+        if (result.UploadedEntries is int uploaded)
+        {
+            parts.Add(uploaded == 1 ? "1 Eintrag hochgeladen" : $"{uploaded} Einträge hochgeladen");
+        }
+        else if (result.Operation == VaultSyncOperation.Uploaded)
+        {
+            parts.Add("Einträge hochgeladen: Anzahl unbekannt (Tresor gesperrt)");
+        }
+
+        if (parts.Count == 0)
+        {
+            if (result.Operation == VaultSyncOperation.UpToDate)
+            {
+                parts.Add("Keine Änderungen");
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        return string.Join(", ", parts);
     }
 
     private static string DescribeSyncOperation(VaultSyncOperation operation)
