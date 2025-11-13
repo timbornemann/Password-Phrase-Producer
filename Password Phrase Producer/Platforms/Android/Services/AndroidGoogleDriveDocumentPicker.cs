@@ -77,6 +77,8 @@ public sealed class AndroidGoogleDriveDocumentPicker : IGoogleDriveDocumentPicke
                     : suggestedFileName.Trim();
                 intent.PutExtra(Intent.ExtraTitle, title);
 
+                intent.AddFlags(ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantWriteUriPermission | ActivityFlags.GrantPersistableUriPermission);
+
                 activity.StartActivityForResult(intent, CreateDocumentRequestCode);
             }).ConfigureAwait(false);
 
@@ -109,7 +111,7 @@ public sealed class AndroidGoogleDriveDocumentPicker : IGoogleDriveDocumentPicke
 
                 if (args.ResultCode == Result.Ok && args.Data?.Data is AndroidUri uri)
                 {
-                    var takeFlags = args.Data.Flags & (ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantWriteUriPermission);
+                    var takeFlags = args.Data.Flags & (ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantWriteUriPermission | ActivityFlags.GrantPersistableUriPermission);
                     try
                     {
                         activity.ContentResolver?.TakePersistableUriPermission(uri, takeFlags);
@@ -141,6 +143,8 @@ public sealed class AndroidGoogleDriveDocumentPicker : IGoogleDriveDocumentPicke
                 intent.AddCategory(Intent.CategoryOpenable);
                 intent.SetType("application/octet-stream");
                 intent.PutExtra(DocumentsContract.ExtraInitialUri, (AndroidUri?)null);
+
+                intent.AddFlags(ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantWriteUriPermission | ActivityFlags.GrantPersistableUriPermission);
 
                 activity.StartActivityForResult(intent, OpenDocumentRequestCode);
             }).ConfigureAwait(false);

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using AndroidContentResolver = global::Android.Content.ContentResolver;
 using AndroidDocumentsContract = global::Android.Provider.DocumentsContract;
 using AndroidUri = global::Android.Net.Uri;
+using AndroidParcelFileDescriptor = global::Android.OS.ParcelFileDescriptor;
 #endif
 
 namespace Password_Phrase_Producer.Services.Vault.Sync;
@@ -130,7 +131,7 @@ public sealed class GoogleDriveVaultSyncProvider : IVaultSyncProvider
         var uri = AndroidUri.Parse(documentUri);
         try
         {
-            await using var stream = resolver.OpenInputStream(uri);
+            await using var stream = OpenInputStream(resolver, uri);
             if (stream is null)
             {
                 return null;
@@ -164,12 +165,7 @@ public sealed class GoogleDriveVaultSyncProvider : IVaultSyncProvider
         var uri = AndroidUri.Parse(documentUri);
         try
         {
-            await using var stream = resolver.OpenOutputStream(uri, "wt");
-            if (stream is null)
-            {
-                throw new InvalidOperationException("Die Google-Drive-Datei konnte nicht geschrieben werden.");
-            }
-
+            await using var stream = OpenOutputStream(resolver, uri);
             await stream.WriteAsync(payload.AsMemory(), cancellationToken).ConfigureAwait(false);
             await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -177,6 +173,40 @@ public sealed class GoogleDriveVaultSyncProvider : IVaultSyncProvider
         {
             throw new InvalidOperationException("Die Google-Drive-Datei konnte nicht geöffnet werden.", ex);
         }
+    }
+
+    private static Stream? OpenInputStream(AndroidContentResolver resolver, AndroidUri uri)
+    {
+        var stream = resolver.OpenInputStream(uri);
+        if (stream is not null)
+        {
+            return stream;
+        }
+
+        var descriptor = resolver.OpenFileDescriptor(uri, "r");
+        if (descriptor is null)
+        {
+            return null;
+        }
+
+        return new AndroidParcelFileDescriptor.AutoCloseInputStream(descriptor);
+    }
+
+    private static Stream OpenOutputStream(AndroidContentResolver resolver, AndroidUri uri)
+    {
+        var stream = resolver.OpenOutputStream(uri, "wt");
+        if (stream is not null)
+        {
+            return stream;
+        }
+
+        var descriptor = resolver.OpenFileDescriptor(uri, "w");
+        if (descriptor is null)
+        {
+            throw new InvalidOperationException("Die Google-Drive-Datei konnte nicht geschrieben werden.");
+        }
+
+        return new AndroidParcelFileDescriptor.AutoCloseOutputStream(descriptor);
     }
 
     private static DocumentMetadata QueryDocumentMetadata(AndroidContentResolver resolver, AndroidUri uri)
