@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -24,6 +25,7 @@ public class PasswordVaultService
     private const string VaultFileName = "vault.json.enc";
     private const string PasswordSaltStorageKey = "PasswordVaultMasterPasswordSalt";
     private const string PasswordVerifierStorageKey = "PasswordVaultMasterPasswordVerifier";
+    private const string PasswordIterationsStorageKey = "PasswordVaultMasterPasswordIterations";
     private const string BiometricKeyStorageKey = "PasswordVaultBiometricKey";
     private const int KeySizeBytes = 32;
     private const int SaltSizeBytes = 16;
@@ -438,11 +440,12 @@ public class PasswordVaultService
         ArgumentException.ThrowIfNullOrWhiteSpace(password);
 
         var salt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
-        var key = DeriveKey(password, salt);
+        var key = DeriveKey(password, salt, Pbkdf2Iterations);
         var verifier = CreateVerifier(key);
 
         await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, Convert.ToBase64String(salt)).ConfigureAwait(false);
         await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, Convert.ToBase64String(verifier)).ConfigureAwait(false);
+        await SetStoredPbkdf2IterationsAsync(Pbkdf2Iterations).ConfigureAwait(false);
 
         _encryptionKey = key;
         UpdateStoredEntryCount(0);
@@ -472,7 +475,8 @@ public class PasswordVaultService
         }
 
         var salt = Convert.FromBase64String(saltBase64);
-        var key = DeriveKey(password, salt);
+        var iterations = await GetStoredPbkdf2IterationsAsync().ConfigureAwait(false);
+        var key = DeriveKey(password, salt, iterations);
         var expectedVerifier = Convert.FromBase64String(verifierBase64);
         var actualVerifier = CreateVerifier(key);
 
@@ -497,7 +501,7 @@ public class PasswordVaultService
             var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
 
             var newSalt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
-            var newKey = DeriveKey(newPassword, newSalt);
+            var newKey = DeriveKey(newPassword, newSalt, Pbkdf2Iterations);
             var newVerifier = CreateVerifier(newKey);
 
             var previousKey = _encryptionKey;
@@ -516,6 +520,7 @@ public class PasswordVaultService
 
             await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, Convert.ToBase64String(newSalt)).ConfigureAwait(false);
             await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, Convert.ToBase64String(newVerifier)).ConfigureAwait(false);
+            await SetStoredPbkdf2IterationsAsync(Pbkdf2Iterations).ConfigureAwait(false);
 
             if (enableBiometrics)
             {
@@ -671,6 +676,7 @@ public class PasswordVaultService
         {
             var vaultFile = await ReadVaultFileAsync(cancellationToken).ConfigureAwait(false);
             var encryptedPayload = vaultFile.Cipher;
+            var iterations = await GetStoredPbkdf2IterationsAsync().ConfigureAwait(false);
             var salt = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false)
                        ?? throw new InvalidOperationException("Kein Master-Passwort konfiguriert.");
             var verifier = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey).ConfigureAwait(false)
@@ -681,7 +687,7 @@ public class PasswordVaultService
                 CipherText = Convert.ToBase64String(encryptedPayload),
                 PasswordSalt = salt,
                 PasswordVerifier = verifier,
-                Pbkdf2Iterations = Pbkdf2Iterations,
+                Pbkdf2Iterations = iterations,
                 CreatedAt = DateTimeOffset.UtcNow
             };
 
@@ -705,13 +711,10 @@ public class PasswordVaultService
 
         var cipher = Convert.FromBase64String(dto.CipherText);
 
-        if (dto.Pbkdf2Iterations != Pbkdf2Iterations)
-        {
-            throw new InvalidOperationException("Das Backup wurde mit einer nicht unterstützten Schlüsselableitung erstellt.");
-        }
-
+        var iterations = dto.Pbkdf2Iterations > 0 ? dto.Pbkdf2Iterations : Pbkdf2Iterations;
         await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, dto.PasswordSalt).ConfigureAwait(false);
         await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, dto.PasswordVerifier).ConfigureAwait(false);
+        await SetStoredPbkdf2IterationsAsync(iterations).ConfigureAwait(false);
         SecureStorage.Default.Remove(BiometricKeyStorageKey);
         _encryptionKey = null;
 
@@ -1175,6 +1178,7 @@ public class PasswordVaultService
                    ?? throw new InvalidOperationException("Kein Master-Passwort konfiguriert.");
         var verifier = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey).ConfigureAwait(false)
                       ?? throw new InvalidOperationException("Kein Master-Passwort konfiguriert.");
+        var iterations = await GetStoredPbkdf2IterationsAsync().ConfigureAwait(false);
 
         var dto = new EncryptedVaultFileDto
         {
@@ -1182,11 +1186,11 @@ public class PasswordVaultService
             CipherText = Convert.ToBase64String(cipher),
             PasswordSalt = salt,
             PasswordVerifier = verifier,
-            Pbkdf2Iterations = Pbkdf2Iterations
+            Pbkdf2Iterations = iterations
         };
 
         var rawContent = JsonSerializer.SerializeToUtf8Bytes(dto, _jsonOptions);
-        return new VaultFileContent(cipher, salt, verifier, Pbkdf2Iterations, rawContent);
+        return new VaultFileContent(cipher, salt, verifier, iterations, rawContent);
     }
 
     private async Task WriteVaultFileInternalAsync(byte[] rawContent, CancellationToken cancellationToken)
@@ -1278,7 +1282,8 @@ public class PasswordVaultService
     private async Task<byte[]> CreateRemotePackageAsync(byte[] payload, string password)
     {
         var salt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
-        var key = DeriveKey(password, salt);
+        var iterations = await GetStoredPbkdf2IterationsAsync().ConfigureAwait(false);
+        var key = DeriveKey(password, salt, iterations);
 
         try
         {
@@ -1287,7 +1292,7 @@ public class PasswordVaultService
             {
                 Version = RemotePackageVersion,
                 Salt = Convert.ToBase64String(salt),
-                Pbkdf2Iterations = Pbkdf2Iterations,
+                Pbkdf2Iterations = iterations,
                 CipherText = Convert.ToBase64String(encrypted)
             };
 
@@ -1314,11 +1319,6 @@ public class PasswordVaultService
                 throw new InvalidOperationException("Das Remote-Tresorformat wird nicht unterstützt.");
             }
 
-            if (dto.Pbkdf2Iterations.HasValue && dto.Pbkdf2Iterations.Value != Pbkdf2Iterations)
-            {
-                throw new InvalidOperationException("Das Remote-Tresorformat verwendet eine nicht unterstützte Schlüsselableitung.");
-            }
-
             return dto;
         }
         catch (JsonException ex)
@@ -1341,7 +1341,10 @@ public class PasswordVaultService
 
         var salt = Convert.FromBase64String(package.Salt);
         var encrypted = Convert.FromBase64String(package.CipherText);
-        var key = DeriveKey(password, salt);
+        var iterations = package.Pbkdf2Iterations.HasValue && package.Pbkdf2Iterations.Value > 0
+            ? package.Pbkdf2Iterations.Value
+            : Pbkdf2Iterations;
+        var key = DeriveKey(password, salt, iterations);
 
         try
         {
@@ -1358,24 +1361,37 @@ public class PasswordVaultService
         var salt = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false);
         var verifier = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey).ConfigureAwait(false);
 
-        if (!string.IsNullOrEmpty(salt) && !string.IsNullOrEmpty(verifier))
+        var iterationsValue = await SecureStorage.Default.GetAsync(PasswordIterationsStorageKey).ConfigureAwait(false);
+        var hasIterations = int.TryParse(iterationsValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var storedIterations) && storedIterations > 0;
+
+        if (!string.IsNullOrEmpty(salt) && !string.IsNullOrEmpty(verifier) && hasIterations)
         {
             return;
         }
 
         var vaultFile = await ReadVaultFileAsync(cancellationToken).ConfigureAwait(false);
-        if (string.IsNullOrWhiteSpace(vaultFile.PasswordSalt) || string.IsNullOrWhiteSpace(vaultFile.PasswordVerifier))
+        var iterations = vaultFile.Pbkdf2Iterations.HasValue && vaultFile.Pbkdf2Iterations.Value > 0
+            ? vaultFile.Pbkdf2Iterations.Value
+            : Pbkdf2Iterations;
+
+        if (!string.IsNullOrEmpty(salt) && !string.IsNullOrEmpty(verifier) && !hasIterations)
         {
+            await SetStoredPbkdf2IterationsAsync(iterations).ConfigureAwait(false);
             return;
         }
 
-        if (vaultFile.Pbkdf2Iterations.HasValue && vaultFile.Pbkdf2Iterations.Value != Pbkdf2Iterations)
+        if (string.IsNullOrWhiteSpace(vaultFile.PasswordSalt) || string.IsNullOrWhiteSpace(vaultFile.PasswordVerifier))
         {
-            throw new InvalidOperationException("Das Tresor-Format verwendet eine nicht unterstützte Schlüsselableitung.");
+            if (!hasIterations)
+            {
+                await SetStoredPbkdf2IterationsAsync(Pbkdf2Iterations).ConfigureAwait(false);
+            }
+            return;
         }
 
         await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, vaultFile.PasswordSalt!).ConfigureAwait(false);
         await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, vaultFile.PasswordVerifier!).ConfigureAwait(false);
+        await SetStoredPbkdf2IterationsAsync(iterations).ConfigureAwait(false);
         SecureStorage.Default.Remove(BiometricKeyStorageKey);
     }
 
@@ -1386,13 +1402,12 @@ public class PasswordVaultService
             return;
         }
 
-        if (content.Pbkdf2Iterations.HasValue && content.Pbkdf2Iterations.Value != Pbkdf2Iterations)
-        {
-            throw new InvalidOperationException("Das Tresor-Format verwendet eine nicht unterstützte Schlüsselableitung.");
-        }
-
         await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, content.PasswordSalt).ConfigureAwait(false);
         await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, content.PasswordVerifier).ConfigureAwait(false);
+        var iterations = content.Pbkdf2Iterations.HasValue && content.Pbkdf2Iterations.Value > 0
+            ? content.Pbkdf2Iterations.Value
+            : Pbkdf2Iterations;
+        await SetStoredPbkdf2IterationsAsync(iterations).ConfigureAwait(false);
         SecureStorage.Default.Remove(BiometricKeyStorageKey);
     }
 
@@ -1419,9 +1434,26 @@ public class PasswordVaultService
         }
     }
 
-    private static byte[] DeriveKey(string password, byte[] salt)
+    private async Task<int> GetStoredPbkdf2IterationsAsync()
     {
-        using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Pbkdf2Iterations, HashAlgorithmName.SHA256);
+        var storedValue = await SecureStorage.Default.GetAsync(PasswordIterationsStorageKey).ConfigureAwait(false);
+        if (int.TryParse(storedValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var iterations) && iterations > 0)
+        {
+            return iterations;
+        }
+
+        return Pbkdf2Iterations;
+    }
+
+    private static Task SetStoredPbkdf2IterationsAsync(int iterations)
+    {
+        var effective = iterations > 0 ? iterations : Pbkdf2Iterations;
+        return SecureStorage.Default.SetAsync(PasswordIterationsStorageKey, effective.ToString(CultureInfo.InvariantCulture));
+    }
+
+    private static byte[] DeriveKey(string password, byte[] salt, int iterations)
+    {
+        using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, iterations, HashAlgorithmName.SHA256);
         return pbkdf2.GetBytes(KeySizeBytes);
     }
 
