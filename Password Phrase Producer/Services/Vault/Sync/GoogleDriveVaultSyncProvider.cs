@@ -189,7 +189,8 @@ public sealed class GoogleDriveVaultSyncProvider : IVaultSyncProvider
             return null;
         }
 
-        return new AndroidParcelFileDescriptor.AutoCloseInputStream(descriptor);
+        var javaStream = new AndroidParcelFileDescriptor.AutoCloseInputStream(descriptor);
+        return new global::Android.Runtime.InputStreamInvoker(javaStream);
     }
 
     private static Stream OpenOutputStream(AndroidContentResolver resolver, AndroidUri uri)
@@ -206,7 +207,8 @@ public sealed class GoogleDriveVaultSyncProvider : IVaultSyncProvider
             throw new InvalidOperationException("Die Google-Drive-Datei konnte nicht geschrieben werden.");
         }
 
-        return new AndroidParcelFileDescriptor.AutoCloseOutputStream(descriptor);
+        var javaStream = new AndroidParcelFileDescriptor.AutoCloseOutputStream(descriptor);
+        return new global::Android.Runtime.OutputStreamInvoker(javaStream);
     }
 
     private static DocumentMetadata QueryDocumentMetadata(AndroidContentResolver resolver, AndroidUri uri)
