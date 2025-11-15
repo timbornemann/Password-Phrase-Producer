@@ -33,7 +33,7 @@
                           Content="Leet-Speak aktivieren (a→4, e→3, etc.)" />
                 <CheckBox x:Name="symbolSubstitutionCheckBox"
                           IsChecked="True"
-                          Content="Wortersetzung aktivieren (and→&, at→@, etc.)" />
+                          Content="Wortersetzung aktivieren (and→&amp;, at→@, etc.)" />
             </VerticalStackLayout>
         </Border>
 

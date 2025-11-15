@@ -43,10 +43,10 @@ public partial class ConcatenationTechniquesUiPage : PasswordGeneratorContentVie
         if (!string.IsNullOrWhiteSpace(resultEntry?.Text))
         {
             await Clipboard.Default.SetTextAsync(resultEntry!.Text);
-            var mainPage = Application.Current?.MainPage;
-            if (mainPage is not null)
+            var page = this.Window?.Page ?? Application.Current?.Windows[0]?.Page;
+            if (page is not null)
             {
-                await mainPage.DisplayAlert("Info", "Password copied to clipboard", "OK");
+                await page.DisplayAlert("Info", "Password copied to clipboard", "OK");
             }
         }
     }

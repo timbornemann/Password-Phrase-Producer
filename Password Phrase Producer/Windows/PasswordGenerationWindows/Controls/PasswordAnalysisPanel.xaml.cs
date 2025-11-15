@@ -74,9 +74,10 @@ public partial class PasswordAnalysisPanel : ContentView
 
         string details = builder.ToString();
 
-        if (Application.Current?.MainPage is not null)
+        var page = this.Window?.Page ?? Application.Current?.Windows[0]?.Page;
+        if (page is not null)
         {
-            await Application.Current.MainPage.DisplayAlert("Detaillierte Analyse", details, "Schließen");
+            await page.DisplayAlert("Detaillierte Analyse", details, "Schließen");
         }
     }
 }
