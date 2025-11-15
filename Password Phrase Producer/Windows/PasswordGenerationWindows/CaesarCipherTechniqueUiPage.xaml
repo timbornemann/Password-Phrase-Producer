@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<local:PasswordGeneratorContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:Password_Phrase_Producer.Windows.PasswordGenerationWindows.Controls"
+             xmlns:local="clr-namespace:Password_Phrase_Producer.Windows.PasswordGenerationWindows"
+             x:Class="Password_Phrase_Producer.Windows.PasswordGenerationWindows.CaesarCipherTechniqueUiPage">
+    <VerticalStackLayout Spacing="24">
+        <Border StrokeThickness="0"
+                Padding="18"
+                BackgroundColor="#1F2438">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="22" />
+            </Border.StrokeShape>
+            <VerticalStackLayout Spacing="14">
+                <Label Text="Eingabe"
+                       FontSize="18"
+                       FontAttributes="Bold"
+                       TextColor="White"/>
+                <Label Text="Gib einen Text ein, der mit Caesar-Verschlüsselung transformiert wird."
+                       TextColor="#BDC2E8"
+                       FontSize="14"
+                       LineBreakMode="WordWrap"/>
+                <Entry x:Name="passwordEntry"
+                       Placeholder="Eingabetext"
+                       Style="{StaticResource DarkEntryStyle}" />
+                <Label Text="Verschiebung"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       TextColor="White"/>
+                <Label Text="Wähle die Anzahl der Zeichen, um die verschoben werden soll (0-25)."
+                       TextColor="#BDC2E8"
+                       FontSize="14"
+                       LineBreakMode="WordWrap"/>
+                <Entry x:Name="shiftEntry"
+                       Placeholder="Verschiebung (z.B. 3)"
+                       Keyboard="Numeric"
+                       Style="{StaticResource DarkEntryStyle}"
+                       Text="3" />
+            </VerticalStackLayout>
+        </Border>
+
+        <Border StrokeThickness="0"
+                Padding="18"
+                BackgroundColor="#1F2438">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="22" />
+            </Border.StrokeShape>
+            <VerticalStackLayout Spacing="16">
+                <Label Text="Verschlüsseltes Ergebnis"
+                       FontSize="18"
+                       FontAttributes="Bold"
+                       TextColor="White"/>
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <Entry x:Name="resultEntry"
+                           Placeholder="Verschlüsselte Ausgabe"
+                           Style="{StaticResource DarkEntryStyle}"
+                           IsReadOnly="True" />
+                    <Button Grid.Column="1"
+                            Text="Kopieren"
+                            Style="{StaticResource PrimaryActionButtonStyle}"
+                            Clicked="OnCopyClicked"
+                            HorizontalOptions="End" />
+                </Grid>
+                <Button Text="Verschlüsseln"
+                        Style="{StaticResource PrimaryActionButtonStyle}"
+                        Clicked="OnCreateClicked" />
+                <ContentView x:Name="addToVaultHost"
+                             IsVisible="False" />
+                <controls:PasswordAnalysisPanel x:Name="analysisPanel"
+                                                 IsVisible="False" />
+            </VerticalStackLayout>
+        </Border>
+    </VerticalStackLayout>
+</local:PasswordGeneratorContentView>
+

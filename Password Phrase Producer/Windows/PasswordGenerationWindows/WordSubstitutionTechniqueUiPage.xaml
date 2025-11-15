@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<local:PasswordGeneratorContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:Password_Phrase_Producer.Windows.PasswordGenerationWindows.Controls"
+             xmlns:local="clr-namespace:Password_Phrase_Producer.Windows.PasswordGenerationWindows"
+             x:Class="Password_Phrase_Producer.Windows.PasswordGenerationWindows.WordSubstitutionTechniqueUiPage">
+    <VerticalStackLayout Spacing="24">
+        <Border StrokeThickness="0"
+                Padding="18"
+                BackgroundColor="#1F2438">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="22" />
+            </Border.StrokeShape>
+            <VerticalStackLayout Spacing="14">
+                <Label Text="Eingabe"
+                       FontSize="18"
+                       FontAttributes="Bold"
+                       TextColor="White"/>
+                <Label Text="Gib einen Text ein, der durch Leet-Speak und Symbolersetzung transformiert wird."
+                       TextColor="#BDC2E8"
+                       FontSize="14"
+                       LineBreakMode="WordWrap"/>
+                <Entry x:Name="passwordEntry"
+                       Placeholder="Eingabetext"
+                       Style="{StaticResource DarkEntryStyle}" />
+                <Label Text="Transformationsoptionen"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       Margin="0,8,0,0"/>
+                <CheckBox x:Name="leetSpeakCheckBox"
+                          IsChecked="True"
+                          Content="Leet-Speak aktivieren (a→4, e→3, etc.)" />
+                <CheckBox x:Name="symbolSubstitutionCheckBox"
+                          IsChecked="True"
+                          Content="Wortersetzung aktivieren (and→&, at→@, etc.)" />
+            </VerticalStackLayout>
+        </Border>
+
+        <Border StrokeThickness="0"
+                Padding="18"
+                BackgroundColor="#1F2438">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="22" />
+            </Border.StrokeShape>
+            <VerticalStackLayout Spacing="16">
+                <Label Text="Transformiertes Ergebnis"
+                       FontSize="18"
+                       FontAttributes="Bold"
+                       TextColor="White"/>
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <Entry x:Name="resultEntry"
+                           Placeholder="Transformierte Ausgabe"
+                           Style="{StaticResource DarkEntryStyle}"
+                           IsReadOnly="True" />
+                    <Button Grid.Column="1"
+                            Text="Kopieren"
+                            Style="{StaticResource PrimaryActionButtonStyle}"
+                            Clicked="OnCopyClicked"
+                            HorizontalOptions="End" />
+                </Grid>
+                <Button Text="Transformieren"
+                        Style="{StaticResource PrimaryActionButtonStyle}"
+                        Clicked="OnCreateClicked" />
+                <ContentView x:Name="addToVaultHost"
+                             IsVisible="False" />
+                <controls:PasswordAnalysisPanel x:Name="analysisPanel"
+                                                 IsVisible="False" />
+            </VerticalStackLayout>
+        </Border>
+    </VerticalStackLayout>
+</local:PasswordGeneratorContentView>
+

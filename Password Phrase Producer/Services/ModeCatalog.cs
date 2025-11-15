@@ -6,6 +6,10 @@ using Password_Phrase_Producer.PasswordGenerationTechniques.MirrorLockTechnique;
 using Password_Phrase_Producer.PasswordGenerationTechniques.PatternCascadeTechnique;
 using Password_Phrase_Producer.PasswordGenerationTechniques.SegmentRotationTechnique;
 using Password_Phrase_Producer.PasswordGenerationTechniques.SymbolInjectionTechnique;
+using Password_Phrase_Producer.PasswordGenerationTechniques.CaesarCipherTechnique;
+using Password_Phrase_Producer.PasswordGenerationTechniques.RandomPasswordTechnique;
+using Password_Phrase_Producer.PasswordGenerationTechniques.Base64EncoderTechnique;
+using Password_Phrase_Producer.PasswordGenerationTechniques.WordSubstitutionTechnique;
 using Password_Phrase_Producer.Windows.PasswordGenerationWindows;
 using PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques;
 using Password_Phrase_Producer.Services.EntropyAnalyzer;
@@ -94,6 +98,34 @@ public static class ModeCatalog
             "Kaskadiere Wörter und Zahlen zu einer wiederholbaren Struktur.",
             () => new PatternCascadeTechniqueUiPage(new PatternCascadeTechnique(), EntropyAnalyzer),
             "mode-pattern-cascade",
-            "🧬")
+            "🧬"),
+        new(
+            "caesar-cipher",
+            "Caesar Cipher",
+            "Verschlüssele Text mit der klassischen Caesar-Verschlüsselung.",
+            () => new CaesarCipherTechniqueUiPage(new CaesarCipherTechnique(), EntropyAnalyzer),
+            "mode-caesar-cipher",
+            "🔑"),
+        new(
+            "random-password",
+            "Random Password",
+            "Generiere zufällige Passwörter mit konfigurierbaren Zeichentypen und Länge.",
+            () => new RandomPasswordTechniqueUiPage(new RandomPasswordTechnique(), EntropyAnalyzer),
+            "mode-random-password",
+            "🎲"),
+        new(
+            "base64-encoder",
+            "Base64 Encoder",
+            "Kodiere Text zu Base64 für sichere Passwort-Generierung.",
+            () => new Base64EncoderTechniqueUiPage(new Base64EncoderTechnique(), EntropyAnalyzer),
+            "mode-base64-encoder",
+            "📦"),
+        new(
+            "word-substitution",
+            "Word Substitution",
+            "Transformiere Text mit Leet-Speak und intelligenten Wortersetzungen.",
+            () => new WordSubstitutionTechniqueUiPage(new WordSubstitutionTechnique(), EntropyAnalyzer),
+            "mode-word-substitution",
+            "🔄")
     };
 }
