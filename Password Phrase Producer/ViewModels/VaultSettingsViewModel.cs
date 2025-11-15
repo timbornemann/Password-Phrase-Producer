@@ -697,9 +697,29 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         {
             await MainThread.InvokeOnMainThreadAsync(() => IsSyncBusy = true).ConfigureAwait(false);
             
+            // Wenn die Konfiguration geändert wurde, speichere sie zuerst, damit SynchronizeAsync() die aktuelle Konfiguration verwendet
+            if (IsSyncSettingsDirty)
+            {
+                var configuration = BuildSyncConfiguration();
+                var providerKey = configuration.ProviderKey;
+                
+                // Stelle sicher, dass das Remote-Passwort konfiguriert ist, falls erforderlich
+                if (RequiresRemotePassword(providerKey))
+                {
+                    await EnsureRemotePasswordConfiguredAsync(providerKey).ConfigureAwait(false);
+                }
+                
+                // Speichere die Konfiguration
+                await _vaultService.UpdateSyncConfigurationAsync(configuration).ConfigureAwait(false);
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    IsSyncSettingsDirty = false;
+                }).ConfigureAwait(false);
+            }
+            
             // Prüfe, ob ein Remote-Vault existiert, um preferDownload entsprechend zu setzen
-            var configuration = BuildSyncConfiguration();
-            var remoteState = await _vaultService.TryGetRemoteStateAsync(configuration).ConfigureAwait(false);
+            var configurationForSync = BuildSyncConfiguration();
+            var remoteState = await _vaultService.TryGetRemoteStateAsync(configurationForSync).ConfigureAwait(false);
             var preferDownload = remoteState is not null;
             
             var result = await _vaultService.SynchronizeAsync(preferDownload: preferDownload).ConfigureAwait(false);
@@ -924,10 +944,27 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             return null;
         }
 
+        // Wenn ein Remote-Vault existiert und Sync aktiviert ist, immer synchronisieren
+        // Dies stellt sicher, dass nach dem Verbinden eines externen Vaults die Daten sofort geladen werden
+        if (remoteExists)
+        {
+            await MainThread.InvokeOnMainThreadAsync(() => IsSyncBusy = true).ConfigureAwait(false);
+            try
+            {
+                var result = await _vaultService.SynchronizeAsync(preferDownload: true, cancellationToken: cancellationToken).ConfigureAwait(false);
+                return result;
+            }
+            finally
+            {
+                await MainThread.InvokeOnMainThreadAsync(() => IsSyncBusy = false).ConfigureAwait(false);
+            }
+        }
+
+        // Wenn kein Remote-Vault existiert, aber Sync aktiviert ist, initiale Synchronisation durchführen (Upload)
         await MainThread.InvokeOnMainThreadAsync(() => IsSyncBusy = true).ConfigureAwait(false);
         try
         {
-            var result = await _vaultService.SynchronizeAsync(preferDownload: remoteExists, cancellationToken: cancellationToken).ConfigureAwait(false);
+            var result = await _vaultService.SynchronizeAsync(preferDownload: false, cancellationToken: cancellationToken).ConfigureAwait(false);
             return result;
         }
         finally
