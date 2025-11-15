@@ -236,6 +236,10 @@ public class PasswordVaultService
         await SaveSyncStatusAsync(status).ConfigureAwait(false);
 
         await ConfigureSchedulerAsync(clone, cancellationToken).ConfigureAwait(false);
+        if (clone.IsEnabled)
+        {
+            TriggerImmediateSyncIfEnabled(preferDownload: true);
+        }
         NotifySyncStatusChanged();
     }
 
@@ -358,13 +362,14 @@ public class PasswordVaultService
 
                 var localFileContent = await ConvertRemotePayloadToLocalAsync(configuration.ProviderKey, download.Payload, cancellationToken).ConfigureAwait(false);
                 var downloadedContent = ParseVaultFile(localFileContent);
-                await WriteVaultFileInternalAsync(localFileContent, cancellationToken).ConfigureAwait(false);
+                var normalizedContent = await NormalizeDownloadedContentAsync(downloadedContent, cancellationToken).ConfigureAwait(false);
+                await WriteVaultFileInternalAsync(normalizedContent.RawContent, cancellationToken).ConfigureAwait(false);
                 File.SetLastWriteTimeUtc(_vaultFilePath, download.RemoteState.LastModifiedUtc.UtcDateTime);
-                await UpdatePasswordMetadataAsync(downloadedContent).ConfigureAwait(false);
+                await UpdatePasswordMetadataAsync(normalizedContent).ConfigureAwait(false);
 
                 MessagingCenter.Send(this, VaultMessages.EntriesChanged);
 
-                var refreshedState = CreateLocalRemoteState(download.Payload);
+                var (_, refreshedState) = await PrepareSyncPayloadAsync(configuration, cancellationToken).ConfigureAwait(false);
                 var downloadedCount = await TryGetLocalEntryCountAsync(cancellationToken).ConfigureAwait(false);
                 var downloadResult = new VaultSyncResult
                 {
@@ -1409,6 +1414,69 @@ public class PasswordVaultService
             : Pbkdf2Iterations;
         await SetStoredPbkdf2IterationsAsync(iterations).ConfigureAwait(false);
         SecureStorage.Default.Remove(BiometricKeyStorageKey);
+    }
+
+    private async Task<VaultFileContent> NormalizeDownloadedContentAsync(VaultFileContent downloadedContent, CancellationToken cancellationToken)
+    {
+        if (downloadedContent.Cipher.Length == 0)
+        {
+            return downloadedContent;
+        }
+
+        var hasRemoteMetadata = !string.IsNullOrWhiteSpace(downloadedContent.PasswordSalt)
+                                 && !string.IsNullOrWhiteSpace(downloadedContent.PasswordVerifier);
+        if (!hasRemoteMetadata)
+        {
+            return downloadedContent;
+        }
+
+        var storedSalt = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false);
+        var storedVerifier = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey).ConfigureAwait(false);
+        var storedIterationsValue = await SecureStorage.Default.GetAsync(PasswordIterationsStorageKey).ConfigureAwait(false);
+        var hasStoredIterations = int.TryParse(storedIterationsValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var storedIterations)
+                                  && storedIterations > 0;
+
+        if (string.IsNullOrEmpty(storedSalt) || string.IsNullOrEmpty(storedVerifier))
+        {
+            return downloadedContent;
+        }
+
+        var remoteIterations = downloadedContent.Pbkdf2Iterations.HasValue && downloadedContent.Pbkdf2Iterations.Value > 0
+            ? downloadedContent.Pbkdf2Iterations.Value
+            : (hasStoredIterations ? storedIterations : Pbkdf2Iterations);
+
+        var metadataMatches = string.Equals(storedSalt, downloadedContent.PasswordSalt, StringComparison.Ordinal)
+                              && string.Equals(storedVerifier, downloadedContent.PasswordVerifier, StringComparison.Ordinal)
+                              && (!hasStoredIterations || storedIterations == remoteIterations);
+
+        if (metadataMatches)
+        {
+            return downloadedContent;
+        }
+
+        if (!IsUnlocked)
+        {
+            throw new InvalidOperationException("Der entfernte Tresor verwendet ein anderes Master-Passwort. Bitte entsperre den lokalen Tresor mit dem aktuellen Passwort und starte die Synchronisation erneut.");
+        }
+
+        byte[]? decrypted = null;
+        try
+        {
+            decrypted = await DecryptAsync(downloadedContent.Cipher, cancellationToken).ConfigureAwait(false);
+        }
+        catch (CryptographicException ex)
+        {
+            throw new InvalidOperationException("Der entfernte Tresor verwendet ein anderes Master-Passwort. Bitte stelle sicher, dass beide Tresore dasselbe Master-Passwort verwenden, bevor du synchronisierst.", ex);
+        }
+        finally
+        {
+            if (decrypted is not null)
+            {
+                Array.Clear(decrypted);
+            }
+        }
+
+        return await CreateVaultFileContentAsync(downloadedContent.Cipher, cancellationToken).ConfigureAwait(false);
     }
 
     private sealed record VaultFileContent(byte[] Cipher, string? PasswordSalt, string? PasswordVerifier, int? Pbkdf2Iterations, byte[] RawContent)
