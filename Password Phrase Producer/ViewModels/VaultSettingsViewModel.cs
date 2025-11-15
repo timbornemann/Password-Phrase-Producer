@@ -696,7 +696,13 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         try
         {
             await MainThread.InvokeOnMainThreadAsync(() => IsSyncBusy = true).ConfigureAwait(false);
-            var result = await _vaultService.SynchronizeAsync().ConfigureAwait(false);
+            
+            // Prüfe, ob ein Remote-Vault existiert, um preferDownload entsprechend zu setzen
+            var configuration = BuildSyncConfiguration();
+            var remoteState = await _vaultService.TryGetRemoteStateAsync(configuration).ConfigureAwait(false);
+            var preferDownload = remoteState is not null;
+            
+            var result = await _vaultService.SynchronizeAsync(preferDownload: preferDownload).ConfigureAwait(false);
             await RefreshSyncStatusAsync(result).ConfigureAwait(false);
         }
         catch (Exception ex)
