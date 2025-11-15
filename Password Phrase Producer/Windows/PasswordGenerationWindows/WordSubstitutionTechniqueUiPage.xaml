@@ -28,12 +28,20 @@
                        FontAttributes="Bold"
                        TextColor="White"
                        Margin="0,8,0,0"/>
-                <CheckBox x:Name="leetSpeakCheckBox"
-                          IsChecked="True"
-                          Content="Leet-Speak aktivieren (a→4, e→3, etc.)" />
-                <CheckBox x:Name="symbolSubstitutionCheckBox"
-                          IsChecked="True"
-                          Content="Wortersetzung aktivieren (and→&amp;, at→@, etc.)" />
+                <HorizontalStackLayout Spacing="8">
+                    <CheckBox x:Name="leetSpeakCheckBox"
+                              IsChecked="True" />
+                    <Label Text="Leet-Speak aktivieren (a→4, e→3, etc.)"
+                           VerticalOptions="Center"
+                           TextColor="White" />
+                </HorizontalStackLayout>
+                <HorizontalStackLayout Spacing="8">
+                    <CheckBox x:Name="symbolSubstitutionCheckBox"
+                              IsChecked="True" />
+                    <Label Text="Wortersetzung aktivieren (and→&amp;, at→@, etc.)"
+                           VerticalOptions="Center"
+                           TextColor="White" />
+                </HorizontalStackLayout>
             </VerticalStackLayout>
         </Border>
 
