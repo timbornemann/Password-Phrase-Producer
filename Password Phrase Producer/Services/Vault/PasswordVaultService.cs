@@ -36,7 +36,6 @@ public class PasswordVaultService
     private const string SyncStatusStorageKey = "PasswordVaultSyncStatus";
     private const string RemotePasswordStoragePrefix = "PasswordVaultRemotePassword_";
     private const string LastEntryCountStorageKey = "PasswordVaultLastEntryCount";
-    private const int RemotePackageVersion = 1;
     private static readonly TimeSpan DefaultAutoSyncInterval = TimeSpan.FromMinutes(15);
 
     private readonly SemaphoreSlim _syncLock = new(1, 1);
@@ -194,9 +193,17 @@ public class PasswordVaultService
 
         try
         {
-            var localPayload = await ConvertRemotePayloadToLocalAsync(configuration.ProviderKey, download.Payload, cancellationToken).ConfigureAwait(false);
-            var content = ParseVaultFile(localPayload);
-            var entryCount = await TryGetEntryCountAsync(content, cancellationToken).ConfigureAwait(false);
+            int? entryCount;
+            if (RequiresRemotePassword(configuration.ProviderKey))
+            {
+                var snapshot = await ConvertRemotePayloadToLocalAsync(configuration.ProviderKey, download.Payload, cancellationToken).ConfigureAwait(false);
+                entryCount = snapshot.Entries?.Count ?? 0;
+            }
+            else
+            {
+                var content = ParseVaultFile(download.Payload);
+                entryCount = await TryGetEntryCountAsync(content, cancellationToken).ConfigureAwait(false);
+            }
 
             return new RemoteVaultValidationResult
             {
@@ -210,13 +217,22 @@ public class PasswordVaultService
         {
             throw;
         }
-        catch (Exception ex)
+        catch (LegacyRemoteVaultFormatException legacyEx)
         {
             return new RemoteVaultValidationResult
             {
                 RemoteExists = true,
                 Success = false,
-                ErrorMessage = ex.Message
+                ErrorMessage = legacyEx.Message
+            };
+        }
+        catch (Exception)
+        {
+            return new RemoteVaultValidationResult
+            {
+                RemoteExists = true,
+                Success = false,
+                ErrorMessage = "Remote-Passwort falsch oder Datei beschädigt."
             };
         }
     }
@@ -279,6 +295,18 @@ public class PasswordVaultService
         await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            var requiresRemotePassword = RequiresRemotePassword(configuration.ProviderKey);
+            if (requiresRemotePassword && !IsUnlocked)
+            {
+                var lockedResult = new VaultSyncResult
+                {
+                    Operation = VaultSyncOperation.Error,
+                    ErrorMessage = "Bitte entsperre den Tresor, bevor du die Synchronisation ausführst."
+                };
+                await UpdateSyncStatusAsync(configuration, lockedResult, cancellationToken).ConfigureAwait(false);
+                return lockedResult;
+            }
+
             var (localPayload, localState) = await PrepareSyncPayloadAsync(configuration, cancellationToken).ConfigureAwait(false);
             var remoteState = await provider.GetRemoteStateAsync(configuration, cancellationToken).ConfigureAwait(false);
             int? initialEntryCount = null;
@@ -331,7 +359,7 @@ public class PasswordVaultService
             }
 
             var shouldDownload = preferDownload;
-            if (!shouldDownload && !IsUnlocked && remoteState is not null)
+            if (!shouldDownload && !requiresRemotePassword && !IsUnlocked && remoteState is not null)
             {
                 shouldDownload = true;
             }
@@ -360,12 +388,42 @@ public class PasswordVaultService
                     return error;
                 }
 
-                var localFileContent = await ConvertRemotePayloadToLocalAsync(configuration.ProviderKey, download.Payload, cancellationToken).ConfigureAwait(false);
-                var downloadedContent = ParseVaultFile(localFileContent);
-                var normalizedContent = await NormalizeDownloadedContentAsync(downloadedContent, cancellationToken).ConfigureAwait(false);
-                await WriteVaultFileInternalAsync(normalizedContent.RawContent, cancellationToken).ConfigureAwait(false);
+                if (requiresRemotePassword)
+                {
+                    var snapshot = await ConvertRemotePayloadToLocalAsync(configuration.ProviderKey, download.Payload, cancellationToken).ConfigureAwait(false);
+                    var mergedEntries = await MergeRemoteEntriesAsync(snapshot, cancellationToken).ConfigureAwait(false);
+
+                    if (mergedEntries > 0)
+                    {
+                        MessagingCenter.Send(this, VaultMessages.EntriesChanged);
+                    }
+
+                    var (refreshedPayload, refreshedState) = await PrepareSyncPayloadAsync(configuration, cancellationToken).ConfigureAwait(false);
+
+                    await provider.UploadAsync(new VaultSyncUploadRequest
+                    {
+                        Payload = refreshedPayload,
+                        LocalState = refreshedState,
+                        RemoteStateBeforeUpload = download.RemoteState
+                    }, configuration, cancellationToken).ConfigureAwait(false);
+
+                    var totalEntries = await TryGetLocalEntryCountAsync(cancellationToken).ConfigureAwait(false);
+                    var mergedResult = new VaultSyncResult
+                    {
+                        Operation = VaultSyncOperation.Downloaded,
+                        LocalState = refreshedState,
+                        RemoteState = refreshedState,
+                        DownloadedEntries = mergedEntries,
+                        UploadedEntries = totalEntries
+                    };
+                    await UpdateSyncStatusAsync(configuration, mergedResult, cancellationToken).ConfigureAwait(false);
+                    return mergedResult;
+                }
+
+                var localFileContent = ParseVaultFile(download.Payload);
+                await WriteVaultFileInternalAsync(localFileContent.RawContent, cancellationToken).ConfigureAwait(false);
                 File.SetLastWriteTimeUtc(_vaultFilePath, download.RemoteState.LastModifiedUtc.UtcDateTime);
-                await UpdatePasswordMetadataAsync(normalizedContent).ConfigureAwait(false);
+                await UpdatePasswordMetadataAsync(localFileContent).ConfigureAwait(false);
 
                 MessagingCenter.Send(this, VaultMessages.EntriesChanged);
 
@@ -911,6 +969,11 @@ public class PasswordVaultService
                     return;
                 }
 
+                if (RequiresRemotePassword(configuration.ProviderKey) && !IsUnlocked)
+                {
+                    return;
+                }
+
                 if (RequiresRemotePassword(configuration.ProviderKey)
                     && !await HasRemotePasswordAsync(configuration.ProviderKey).ConfigureAwait(false))
                 {
@@ -931,11 +994,10 @@ public class PasswordVaultService
 
     private async Task<(byte[] Payload, VaultSyncRemoteState LocalState)> PrepareSyncPayloadAsync(VaultSyncConfiguration configuration, CancellationToken cancellationToken)
     {
-        var rawPayload = await ReadEncryptedFileAsync(cancellationToken).ConfigureAwait(false);
         var providerKey = configuration.ProviderKey;
-
-        if (!RequiresRemotePassword(providerKey) || rawPayload.Length == 0)
+        if (!RequiresRemotePassword(providerKey))
         {
+            var rawPayload = await ReadEncryptedFileAsync(cancellationToken).ConfigureAwait(false);
             var state = CreateLocalRemoteState(rawPayload);
             return (rawPayload, state);
         }
@@ -946,21 +1008,26 @@ public class PasswordVaultService
             throw new InvalidOperationException("Für die ausgewählte Synchronisation ist ein Remote-Passwort erforderlich. Bitte lege in den Einstellungen eines fest.");
         }
 
-        var remotePayload = await CreateRemotePackageAsync(rawPayload, remotePassword).ConfigureAwait(false);
+        var remotePayload = await CreateRemotePackageAsync(remotePassword, cancellationToken).ConfigureAwait(false);
         var remoteState = CreateLocalRemoteState(remotePayload);
         return (remotePayload, remoteState);
     }
 
-    private async Task<byte[]> ConvertRemotePayloadToLocalAsync(string? providerKey, byte[] payload, CancellationToken cancellationToken)
+    private async Task<RemoteVaultSnapshotDto> ConvertRemotePayloadToLocalAsync(string? providerKey, byte[] payload, CancellationToken cancellationToken)
     {
-        if (!RequiresRemotePassword(providerKey) || payload.Length == 0)
+        if (!RequiresRemotePassword(providerKey))
         {
-            return payload;
+            throw new InvalidOperationException("Der ausgewählte Synchronisationsanbieter unterstützt keine Remote-Snapshots.");
+        }
+
+        if (payload.Length == 0)
+        {
+            return new RemoteVaultSnapshotDto();
         }
 
         if (!IsRemotePackagePayload(payload))
         {
-            return payload;
+            throw new InvalidOperationException("Die entfernten Tresordaten haben ein unbekanntes Format.");
         }
 
         var remotePassword = await GetRemotePasswordAsync(providerKey, cancellationToken).ConfigureAwait(false);
@@ -969,8 +1036,40 @@ public class PasswordVaultService
             throw new InvalidOperationException("Für die ausgewählte Synchronisation ist ein Remote-Passwort erforderlich. Bitte lege in den Einstellungen eines fest.");
         }
 
-        var package = ParseRemotePackage(payload);
-        return DecryptRemotePackage(package, remotePassword);
+        return RemoteVaultPackageHelper.DecryptPackage(payload, remotePassword, Pbkdf2Iterations, KeySizeBytes, _jsonOptions);
+    }
+
+    private async Task<RemoteVaultSnapshotDto> CreateRemoteSnapshotAsync(CancellationToken cancellationToken)
+    {
+        EnsureUnlocked();
+        var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+        var dtoList = entries
+            .OrderBy(e => e.DisplayCategory, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(e => e.Label, StringComparer.CurrentCultureIgnoreCase)
+            .Select(PasswordVaultEntryDto.FromModel)
+            .ToList();
+
+        return new RemoteVaultSnapshotDto
+        {
+            Entries = dtoList,
+            ExportedAt = DateTimeOffset.UtcNow
+        };
+    }
+
+    private async Task<int> MergeRemoteEntriesAsync(RemoteVaultSnapshotDto snapshot, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+
+        var remoteEntries = snapshot.Entries ?? new List<PasswordVaultEntryDto>();
+        var localEntries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+        var merged = RemoteVaultEntryMerger.MergeInPlace(localEntries, remoteEntries);
+
+        if (merged > 0)
+        {
+            await SaveEntriesInternalAsync(localEntries, cancellationToken).ConfigureAwait(false);
+        }
+
+        return merged;
     }
 
     private VaultSyncRemoteState CreateLocalRemoteState(byte[] payload)
@@ -1284,81 +1383,11 @@ public class PasswordVaultService
         return await SecureStorage.Default.GetAsync(GetRemotePasswordStorageKey(key)).ConfigureAwait(false);
     }
 
-    private async Task<byte[]> CreateRemotePackageAsync(byte[] payload, string password)
+    private async Task<byte[]> CreateRemotePackageAsync(string password, CancellationToken cancellationToken)
     {
-        var salt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
+        var snapshot = await CreateRemoteSnapshotAsync(cancellationToken).ConfigureAwait(false);
         var iterations = await GetStoredPbkdf2IterationsAsync().ConfigureAwait(false);
-        var key = DeriveKey(password, salt, iterations);
-
-        try
-        {
-            var encrypted = EncryptWithKey(payload, key);
-            var dto = new RemoteVaultPackageDto
-            {
-                Version = RemotePackageVersion,
-                Salt = Convert.ToBase64String(salt),
-                Pbkdf2Iterations = iterations,
-                CipherText = Convert.ToBase64String(encrypted)
-            };
-
-            return JsonSerializer.SerializeToUtf8Bytes(dto, _jsonOptions);
-        }
-        finally
-        {
-            Array.Clear(key);
-        }
-    }
-
-    private RemoteVaultPackageDto ParseRemotePackage(byte[] payload)
-    {
-        try
-        {
-            var dto = JsonSerializer.Deserialize<RemoteVaultPackageDto>(payload, _jsonOptions);
-            if (dto is null || string.IsNullOrWhiteSpace(dto.CipherText))
-            {
-                throw new InvalidOperationException("Das Remote-Tresorformat ist ungültig.");
-            }
-
-            if (dto.Version != RemotePackageVersion)
-            {
-                throw new InvalidOperationException("Das Remote-Tresorformat wird nicht unterstützt.");
-            }
-
-            return dto;
-        }
-        catch (JsonException ex)
-        {
-            throw new InvalidOperationException("Die entfernten Tresordaten konnten nicht interpretiert werden.", ex);
-        }
-    }
-
-    private byte[] DecryptRemotePackage(RemoteVaultPackageDto package, string password)
-    {
-        if (string.IsNullOrWhiteSpace(package.CipherText))
-        {
-            return Array.Empty<byte>();
-        }
-
-        if (string.IsNullOrWhiteSpace(package.Salt))
-        {
-            throw new InvalidOperationException("Das Remote-Tresorformat enthält keine Salt-Informationen.");
-        }
-
-        var salt = Convert.FromBase64String(package.Salt);
-        var encrypted = Convert.FromBase64String(package.CipherText);
-        var iterations = package.Pbkdf2Iterations.HasValue && package.Pbkdf2Iterations.Value > 0
-            ? package.Pbkdf2Iterations.Value
-            : Pbkdf2Iterations;
-        var key = DeriveKey(password, salt, iterations);
-
-        try
-        {
-            return DecryptWithKey(encrypted, key);
-        }
-        finally
-        {
-            Array.Clear(key);
-        }
+        return RemoteVaultPackageHelper.CreatePackage(snapshot, password, iterations, SaltSizeBytes, KeySizeBytes, _jsonOptions);
     }
 
     private async Task EnsurePasswordMetadataAsync(CancellationToken cancellationToken)
@@ -1414,69 +1443,6 @@ public class PasswordVaultService
             : Pbkdf2Iterations;
         await SetStoredPbkdf2IterationsAsync(iterations).ConfigureAwait(false);
         SecureStorage.Default.Remove(BiometricKeyStorageKey);
-    }
-
-    private async Task<VaultFileContent> NormalizeDownloadedContentAsync(VaultFileContent downloadedContent, CancellationToken cancellationToken)
-    {
-        if (downloadedContent.Cipher.Length == 0)
-        {
-            return downloadedContent;
-        }
-
-        var hasRemoteMetadata = !string.IsNullOrWhiteSpace(downloadedContent.PasswordSalt)
-                                 && !string.IsNullOrWhiteSpace(downloadedContent.PasswordVerifier);
-        if (!hasRemoteMetadata)
-        {
-            return downloadedContent;
-        }
-
-        var storedSalt = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false);
-        var storedVerifier = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey).ConfigureAwait(false);
-        var storedIterationsValue = await SecureStorage.Default.GetAsync(PasswordIterationsStorageKey).ConfigureAwait(false);
-        var hasStoredIterations = int.TryParse(storedIterationsValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var storedIterations)
-                                  && storedIterations > 0;
-
-        if (string.IsNullOrEmpty(storedSalt) || string.IsNullOrEmpty(storedVerifier))
-        {
-            return downloadedContent;
-        }
-
-        var remoteIterations = downloadedContent.Pbkdf2Iterations.HasValue && downloadedContent.Pbkdf2Iterations.Value > 0
-            ? downloadedContent.Pbkdf2Iterations.Value
-            : (hasStoredIterations ? storedIterations : Pbkdf2Iterations);
-
-        var metadataMatches = string.Equals(storedSalt, downloadedContent.PasswordSalt, StringComparison.Ordinal)
-                              && string.Equals(storedVerifier, downloadedContent.PasswordVerifier, StringComparison.Ordinal)
-                              && (!hasStoredIterations || storedIterations == remoteIterations);
-
-        if (metadataMatches)
-        {
-            return downloadedContent;
-        }
-
-        if (!IsUnlocked)
-        {
-            throw new InvalidOperationException("Der entfernte Tresor verwendet ein anderes Master-Passwort. Bitte entsperre den lokalen Tresor mit dem aktuellen Passwort und starte die Synchronisation erneut.");
-        }
-
-        byte[]? decrypted = null;
-        try
-        {
-            decrypted = await DecryptAsync(downloadedContent.Cipher, cancellationToken).ConfigureAwait(false);
-        }
-        catch (CryptographicException ex)
-        {
-            throw new InvalidOperationException("Der entfernte Tresor verwendet ein anderes Master-Passwort. Bitte stelle sicher, dass beide Tresore dasselbe Master-Passwort verwenden, bevor du synchronisierst.", ex);
-        }
-        finally
-        {
-            if (decrypted is not null)
-            {
-                Array.Clear(decrypted);
-            }
-        }
-
-        return await CreateVaultFileContentAsync(downloadedContent.Cipher, cancellationToken).ConfigureAwait(false);
     }
 
     private sealed record VaultFileContent(byte[] Cipher, string? PasswordSalt, string? PasswordVerifier, int? Pbkdf2Iterations, byte[] RawContent)
@@ -1621,14 +1587,4 @@ public class PasswordVaultService
         => string.Equals(providerKey, GoogleDriveVaultSyncProvider.ProviderKey, StringComparison.OrdinalIgnoreCase)
             || string.Equals(providerKey, FileSystemVaultSyncProvider.ProviderKey, StringComparison.OrdinalIgnoreCase);
 
-    private sealed record RemoteVaultPackageDto
-    {
-        public int Version { get; init; }
-
-        public string? Salt { get; init; }
-
-        public int? Pbkdf2Iterations { get; init; }
-
-        public string CipherText { get; init; } = string.Empty;
-    }
 }
