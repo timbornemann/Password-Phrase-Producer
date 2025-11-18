@@ -98,6 +98,6 @@ public class RemoteVaultSyncFlowTests
     private static void ApplyPackage(IList<PasswordVaultEntry> localEntries, byte[] package, string password, int iterations, int keySizeBytes)
     {
         var snapshot = RemoteVaultPackageHelper.DecryptPackage(package, password, iterations, keySizeBytes, JsonOptions);
-        RemoteVaultEntryMerger.MergeInPlace(localEntries, snapshot.Entries ?? Array.Empty<PasswordVaultEntryDto>());
+        RemoteVaultEntryMerger.MergeInPlace(localEntries, snapshot.Entries ?? Enumerable.Empty<PasswordVaultEntryDto>());
     }
 }
