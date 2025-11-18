@@ -10,5 +10,5 @@ public sealed class RemoteVaultSnapshotDto
 
     public DateTimeOffset ExportedAt { get; init; } = DateTimeOffset.UtcNow;
 
-    public List<PasswordVaultEntryDto> Entries { get; init; } = new();
+    public List<PasswordVaultEntryDto> Entries { get; set; } = new();
 }

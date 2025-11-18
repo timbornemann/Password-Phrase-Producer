@@ -144,7 +144,7 @@ internal static class RemoteVaultPackageHelper
     {
         try
         {
-            using var document = JsonDocument.Parse(plain);
+            using var document = JsonDocument.Parse(plain.ToArray());
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object)
             {
