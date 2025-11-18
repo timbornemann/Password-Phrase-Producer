@@ -427,12 +427,12 @@ public class PasswordVaultService
 
                 MessagingCenter.Send(this, VaultMessages.EntriesChanged);
 
-                var (_, refreshedState) = await PrepareSyncPayloadAsync(configuration, cancellationToken).ConfigureAwait(false);
+                var (_, downloadedState) = await PrepareSyncPayloadAsync(configuration, cancellationToken).ConfigureAwait(false);
                 var downloadedCount = await TryGetLocalEntryCountAsync(cancellationToken).ConfigureAwait(false);
                 var downloadResult = new VaultSyncResult
                 {
                     Operation = VaultSyncOperation.Downloaded,
-                    LocalState = refreshedState,
+                    LocalState = downloadedState,
                     RemoteState = download.RemoteState,
                     DownloadedEntries = downloadedCount
                 };
