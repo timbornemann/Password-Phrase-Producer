@@ -51,9 +51,8 @@ public class PasswordVaultService
 
     public async Task<bool> HasMasterPasswordAsync(CancellationToken cancellationToken = default)
     {
-        await EnsurePasswordMetadataAsync(cancellationToken).ConfigureAwait(false);
-        var salt = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false);
-        return !string.IsNullOrEmpty(salt);
+        var metadata = await GetPasswordMetadataAsync(cancellationToken).ConfigureAwait(false);
+        return !string.IsNullOrEmpty(metadata.Salt);
     }
 
     public async Task<bool> HasBiometricKeyAsync(CancellationToken cancellationToken = default)
@@ -102,20 +101,16 @@ public class PasswordVaultService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(password);
 
-        await EnsurePasswordMetadataAsync(cancellationToken).ConfigureAwait(false);
-
-        var saltBase64 = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false);
-        var verifierBase64 = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey).ConfigureAwait(false);
-
-        if (string.IsNullOrEmpty(saltBase64) || string.IsNullOrEmpty(verifierBase64))
+        var metadata = await GetPasswordMetadataAsync(cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrEmpty(metadata.Salt) || string.IsNullOrEmpty(metadata.Verifier))
         {
             return false;
         }
 
-        var salt = Convert.FromBase64String(saltBase64);
-        var iterations = await GetStoredPbkdf2IterationsAsync().ConfigureAwait(false);
+        var salt = Convert.FromBase64String(metadata.Salt);
+        var iterations = metadata.Iterations;
         var key = DeriveKey(password, salt, iterations);
-        var expectedVerifier = Convert.FromBase64String(verifierBase64);
+        var expectedVerifier = Convert.FromBase64String(metadata.Verifier);
         var actualVerifier = CreateVerifier(key);
 
         if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
@@ -182,18 +177,16 @@ public class PasswordVaultService
 
     public async Task<bool> TryUnlockWithStoredKeyAsync(CancellationToken cancellationToken = default)
     {
-        await EnsurePasswordMetadataAsync(cancellationToken).ConfigureAwait(false);
-
         var storedKeyBase64 = await SecureStorage.Default.GetAsync(BiometricKeyStorageKey).ConfigureAwait(false);
-        var verifierBase64 = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey).ConfigureAwait(false);
+        var metadata = await GetPasswordMetadataAsync(cancellationToken).ConfigureAwait(false);
 
-        if (string.IsNullOrEmpty(storedKeyBase64) || string.IsNullOrEmpty(verifierBase64))
+        if (string.IsNullOrEmpty(storedKeyBase64) || string.IsNullOrEmpty(metadata.Verifier))
         {
             return false;
         }
 
         var key = Convert.FromBase64String(storedKeyBase64);
-        var expectedVerifier = Convert.FromBase64String(verifierBase64);
+        var expectedVerifier = Convert.FromBase64String(metadata.Verifier);
         var actualVerifier = CreateVerifier(key);
 
         if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
@@ -642,44 +635,30 @@ public class PasswordVaultService
         Preferences.Default.Remove(LastEntryCountStorageKey);
     }
 
-    private async Task EnsurePasswordMetadataAsync(CancellationToken cancellationToken)
+    private async Task<PasswordMetadata> GetPasswordMetadataAsync(CancellationToken cancellationToken)
     {
         var salt = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false);
         var verifier = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey).ConfigureAwait(false);
+        var iterations = await GetStoredPbkdf2IterationsAsync().ConfigureAwait(false);
 
-        var iterationsValue = await SecureStorage.Default.GetAsync(PasswordIterationsStorageKey).ConfigureAwait(false);
-        var hasIterations = int.TryParse(iterationsValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var storedIterations) && storedIterations > 0;
-
-        if (!string.IsNullOrEmpty(salt) && !string.IsNullOrEmpty(verifier) && hasIterations)
+        if (!string.IsNullOrEmpty(salt) && !string.IsNullOrEmpty(verifier))
         {
-            return;
+            return new PasswordMetadata(salt, verifier, iterations);
         }
 
         var vaultFile = await ReadVaultFileAsync(cancellationToken).ConfigureAwait(false);
-        var iterations = vaultFile.Pbkdf2Iterations.HasValue && vaultFile.Pbkdf2Iterations.Value > 0
-            ? vaultFile.Pbkdf2Iterations.Value
-            : Pbkdf2Iterations;
-
-        if (!string.IsNullOrEmpty(salt) && !string.IsNullOrEmpty(verifier) && !hasIterations)
+        if (!string.IsNullOrWhiteSpace(vaultFile.PasswordSalt) && !string.IsNullOrWhiteSpace(vaultFile.PasswordVerifier))
         {
-            await SetStoredPbkdf2IterationsAsync(iterations).ConfigureAwait(false);
-            return;
+            var vaultIterations = vaultFile.Pbkdf2Iterations.HasValue && vaultFile.Pbkdf2Iterations.Value > 0
+                ? vaultFile.Pbkdf2Iterations.Value
+                : Pbkdf2Iterations;
+            return new PasswordMetadata(vaultFile.PasswordSalt, vaultFile.PasswordVerifier, vaultIterations);
         }
 
-        if (string.IsNullOrWhiteSpace(vaultFile.PasswordSalt) || string.IsNullOrWhiteSpace(vaultFile.PasswordVerifier))
-        {
-            if (!hasIterations)
-            {
-                await SetStoredPbkdf2IterationsAsync(Pbkdf2Iterations).ConfigureAwait(false);
-            }
-            return;
-        }
-
-        await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, vaultFile.PasswordSalt!).ConfigureAwait(false);
-        await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, vaultFile.PasswordVerifier!).ConfigureAwait(false);
-        await SetStoredPbkdf2IterationsAsync(iterations).ConfigureAwait(false);
-        SecureStorage.Default.Remove(BiometricKeyStorageKey);
+        return new PasswordMetadata(null, null, iterations);
     }
+
+    private sealed record PasswordMetadata(string? Salt, string? Verifier, int Iterations);
 
     private async Task UpdatePasswordMetadataAsync(VaultFileContent content)
     {
