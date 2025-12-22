@@ -2,7 +2,6 @@ using CommunityToolkit.Maui;
 using Microsoft.Extensions.Logging;
 using Password_Phrase_Producer.Services.Security;
 using Password_Phrase_Producer.Services.Vault;
-using Password_Phrase_Producer.Services.Vault.Sync;
 using Password_Phrase_Producer.ViewModels;
 using Password_Phrase_Producer.Views;
 
@@ -26,20 +25,6 @@ public static class MauiProgram
         builder.Logging.AddDebug();
 #endif
 
-        builder.Services.AddSingleton<IVaultSyncProvider, FileSystemVaultSyncProvider>();
-        builder.Services.AddSingleton<IVaultSyncProvider, GoogleDriveVaultSyncProvider>();
-#if ANDROID
-        builder.Services.AddSingleton<IGoogleDriveDocumentPicker, Password_Phrase_Producer.Platforms.Android.Services.AndroidGoogleDriveDocumentPicker>();
-#else
-        builder.Services.AddSingleton<IGoogleDriveDocumentPicker, NoOpGoogleDriveDocumentPicker>();
-#endif
-#if ANDROID
-        builder.Services.AddSingleton<IVaultSyncScheduler, Password_Phrase_Producer.Platforms.Android.VaultSyncScheduler>();
-#elif WINDOWS
-        builder.Services.AddSingleton<IVaultSyncScheduler, Password_Phrase_Producer.Platforms.Windows.VaultSyncScheduler>();
-#else
-        builder.Services.AddSingleton<IVaultSyncScheduler, NoOpVaultSyncScheduler>();
-#endif
         builder.Services.AddSingleton<PasswordVaultService>();
         builder.Services.AddSingleton<IBiometricAuthenticationService, BiometricAuthenticationService>();
         builder.Services.AddTransient<VaultPageViewModel>();
