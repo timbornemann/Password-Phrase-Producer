@@ -6,10 +6,151 @@
     xmlns:local="clr-namespace:Password_Phrase_Producer"
     xmlns:views="clr-namespace:Password_Phrase_Producer.Views"
     Title="Password Phrase Producer"
-    FlyoutBackgroundColor="#1A1A1A">
+    FlyoutBehavior="Flyout"
+    FlyoutWidth="320"
+    FlyoutBackgroundColor="Transparent"
+    Shell.NavBarIsVisible="False"
+    FlyoutIcon="{x:Null}">
+
+    <Shell.FlyoutBackdrop>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#0D0D12" Offset="0" />
+            <GradientStop Color="#14141E" Offset="1" />
+        </LinearGradientBrush>
+    </Shell.FlyoutBackdrop>
+
+    <Shell.FlyoutBackground>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="0.3,1">
+            <GradientStop Color="#1A1A24" Offset="0" />
+            <GradientStop Color="#12121A" Offset="1" />
+        </LinearGradientBrush>
+    </Shell.FlyoutBackground>
+
+    <Shell.FlyoutHeader>
+        <Grid Padding="24,48,24,24" RowDefinitions="Auto,Auto" RowSpacing="8">
+            <Border 
+                WidthRequest="64" 
+                HeightRequest="64" 
+                StrokeThickness="0"
+                HorizontalOptions="Start">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="20" />
+                </Border.StrokeShape>
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#4A5CFF" Offset="0" />
+                        <GradientStop Color="#3B4AD1" Offset="1" />
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Border.Shadow>
+                    <Shadow Brush="#404A5CFF" Radius="16" Offset="0,8" />
+                </Border.Shadow>
+                <Label 
+                    Text="🔐" 
+                    FontSize="28" 
+                    HorizontalOptions="Center" 
+                    VerticalOptions="Center" />
+            </Border>
+            <VerticalStackLayout Grid.Row="1" Spacing="4" Margin="0,8,0,0">
+                <Label 
+                    Text="Password Phrase" 
+                    FontSize="22" 
+                    FontAttributes="Bold" 
+                    TextColor="White" />
+                <Label 
+                    Text="Producer" 
+                    FontSize="22" 
+                    FontAttributes="Bold" 
+                    TextColor="#7B8CFF" />
+            </VerticalStackLayout>
+        </Grid>
+    </Shell.FlyoutHeader>
+
+    <Shell.ItemTemplate>
+        <DataTemplate>
+            <Grid 
+                Padding="16,6" 
+                ColumnDefinitions="Auto,*,Auto" 
+                ColumnSpacing="16"
+                HeightRequest="56">
+                <Border 
+                    WidthRequest="40" 
+                    HeightRequest="40" 
+                    BackgroundColor="#252538" 
+                    StrokeThickness="0"
+                    VerticalOptions="Center">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="14" />
+                    </Border.StrokeShape>
+                    <Label 
+                        Text="{Binding FlyoutIcon}" 
+                        FontSize="18" 
+                        HorizontalOptions="Center" 
+                        VerticalOptions="Center" />
+                </Border>
+                <Label 
+                    Grid.Column="1" 
+                    Text="{Binding Title}" 
+                    FontSize="16" 
+                    TextColor="#E8EBFF" 
+                    VerticalOptions="Center" />
+                <Label 
+                    Grid.Column="2" 
+                    Text="›" 
+                    FontSize="20" 
+                    TextColor="#5A6080" 
+                    VerticalOptions="Center" 
+                    Margin="0,0,8,0" />
+            </Grid>
+        </DataTemplate>
+    </Shell.ItemTemplate>
+
+    <Shell.MenuItemTemplate>
+        <DataTemplate>
+            <Grid 
+                Padding="16,6" 
+                ColumnDefinitions="Auto,*" 
+                ColumnSpacing="16"
+                HeightRequest="56">
+                <Border 
+                    WidthRequest="40" 
+                    HeightRequest="40" 
+                    BackgroundColor="#252538" 
+                    StrokeThickness="0"
+                    VerticalOptions="Center">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="14" />
+                    </Border.StrokeShape>
+                    <Label 
+                        Text="{Binding Icon}" 
+                        FontSize="18" 
+                        HorizontalOptions="Center" 
+                        VerticalOptions="Center" />
+                </Border>
+                <Label 
+                    Grid.Column="1" 
+                    Text="{Binding Text}" 
+                    FontSize="16" 
+                    TextColor="#E8EBFF" 
+                    VerticalOptions="Center" />
+            </Grid>
+        </DataTemplate>
+    </Shell.MenuItemTemplate>
+
+    <Shell.FlyoutFooter>
+        <VerticalStackLayout Padding="24,16,24,32" Spacing="8">
+            <BoxView HeightRequest="1" Color="#2A2A3A" Margin="0,0,0,16" />
+            <Label 
+                Text="Version 1.0" 
+                FontSize="12" 
+                TextColor="#5A6080" 
+                HorizontalOptions="Center" />
+        </VerticalStackLayout>
+    </Shell.FlyoutFooter>
 
     <FlyoutItem Title="Startseite"
                 Route="home"
+                FlyoutIcon="🏠"
                 FlyoutDisplayOptions="AsSingleItem">
         <ShellContent
             Title="Startseite"
@@ -18,6 +159,7 @@
 
     <FlyoutItem Title="Tresor"
                 Route="vault"
+                FlyoutIcon="🔐"
                 FlyoutDisplayOptions="AsSingleItem">
         <ShellContent
             Title="Tresor"
@@ -26,6 +168,7 @@
 
     <FlyoutItem Title="Einstellungen"
                 Route="settings"
+                FlyoutIcon="⚙️"
                 FlyoutDisplayOptions="AsSingleItem">
         <ShellContent
             Title="Einstellungen"

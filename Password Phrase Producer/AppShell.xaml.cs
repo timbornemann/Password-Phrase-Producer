@@ -9,12 +9,21 @@ public partial class AppShell : Shell
     {
         InitializeComponent();
         BuildModeMenu();
+        
+        // Hide default flyout icon on all platforms - we use custom menu buttons
+        SetValue(Shell.FlyoutIconProperty, null);
     }
 
     private void BuildModeMenu()
     {
+        var modeIcons = new[] { "🎲", "🔀", "🔢", "📝", "🔤", "💉", "🪞", "🔁", "📐", "🧩" };
+        var iconIndex = 0;
+
         foreach (var mode in ModeCatalog.AllModes)
         {
+            var icon = iconIndex < modeIcons.Length ? modeIcons[iconIndex] : "📦";
+            iconIndex++;
+
             var shellContent = new ShellContent
             {
                 Title = mode.Title,
@@ -26,6 +35,7 @@ public partial class AppShell : Shell
             {
                 Title = mode.Title,
                 Route = mode.Route,
+                FlyoutIcon = icon,
                 FlyoutDisplayOptions = FlyoutDisplayOptions.AsSingleItem
             };
 
