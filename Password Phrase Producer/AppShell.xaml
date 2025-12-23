@@ -27,79 +27,33 @@
     </Shell.FlyoutBackground>
 
     <Shell.FlyoutHeader>
-        <Grid Padding="16,28,16,16" RowDefinitions="Auto,Auto" RowSpacing="4">
-            <Border 
-                WidthRequest="36" 
-                HeightRequest="36" 
-                StrokeThickness="0"
-                HorizontalOptions="Start">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="12" />
-                </Border.StrokeShape>
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#4A5CFF" Offset="0" />
-                        <GradientStop Color="#3B4AD1" Offset="1" />
-                    </LinearGradientBrush>
-                </Border.Background>
-                <Border.Shadow>
-                    <Shadow Brush="#404A5CFF" Radius="10" Offset="0,4" />
-                </Border.Shadow>
-                <Label 
-                    Text="P" 
-                    FontSize="18"
-                    FontAttributes="Bold"
-                    HorizontalOptions="Center" 
-                    VerticalOptions="Center"
-                    TextColor="White" />
-            </Border>
-            <VerticalStackLayout Grid.Row="1" Spacing="1" Margin="0,4,0,0">
-                <Label 
-                    Text="Password Phrase" 
-                    FontSize="15" 
-                    FontAttributes="Bold" 
-                    TextColor="White" />
-                <Label 
-                    Text="Producer" 
-                    FontSize="15" 
-                    FontAttributes="Bold" 
-                    TextColor="#7B8CFF" />
-            </VerticalStackLayout>
-        </Grid>
+        <VerticalStackLayout Padding="16,28,16,16" Spacing="1">
+            <Label 
+                Text="Password Phrase" 
+                FontSize="15" 
+                FontAttributes="Bold" 
+                TextColor="White" />
+            <Label 
+                Text="Producer" 
+                FontSize="15" 
+                FontAttributes="Bold" 
+                TextColor="#7B8CFF" />
+        </VerticalStackLayout>
     </Shell.FlyoutHeader>
 
     <Shell.ItemTemplate>
         <DataTemplate>
             <Grid 
-                Padding="14,3" 
-                ColumnDefinitions="Auto,*,Auto" 
-                ColumnSpacing="10"
+                Padding="16,10" 
+                ColumnDefinitions="*,Auto" 
                 HeightRequest="40">
-                <Border 
-                    WidthRequest="28" 
-                    HeightRequest="28" 
-                    BackgroundColor="#252538" 
-                    StrokeThickness="0"
-                    VerticalOptions="Center">
-                    <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="8" />
-                    </Border.StrokeShape>
-                    <Label 
-                        Text="{Binding FlyoutIcon}" 
-                        FontSize="11"
-                        FontAttributes="Bold"
-                        TextColor="#CFD3FF"
-                        HorizontalOptions="Center" 
-                        VerticalOptions="Center" />
-                </Border>
                 <Label 
-                    Grid.Column="1" 
                     Text="{Binding Title}" 
-                    FontSize="13" 
+                    FontSize="14" 
                     TextColor="#E8EBFF" 
                     VerticalOptions="Center" />
                 <Label 
-                    Grid.Column="2" 
+                    Grid.Column="1" 
                     Text="›" 
                     FontSize="16" 
                     TextColor="#5A6080" 
@@ -112,31 +66,11 @@
     <Shell.MenuItemTemplate>
         <DataTemplate>
             <Grid 
-                Padding="14,3" 
-                ColumnDefinitions="Auto,*" 
-                ColumnSpacing="10"
+                Padding="16,10" 
                 HeightRequest="40">
-                <Border 
-                    WidthRequest="28" 
-                    HeightRequest="28" 
-                    BackgroundColor="#252538" 
-                    StrokeThickness="0"
-                    VerticalOptions="Center">
-                    <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="8" />
-                    </Border.StrokeShape>
-                    <Label 
-                        Text="{Binding Icon}" 
-                        FontSize="11"
-                        FontAttributes="Bold"
-                        TextColor="#CFD3FF"
-                        HorizontalOptions="Center" 
-                        VerticalOptions="Center" />
-                </Border>
                 <Label 
-                    Grid.Column="1" 
                     Text="{Binding Text}" 
-                    FontSize="13" 
+                    FontSize="14" 
                     TextColor="#E8EBFF" 
                     VerticalOptions="Center" />
             </Grid>
@@ -159,32 +93,14 @@
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnSettingsTapped" />
                 </Border.GestureRecognizers>
-                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                    <Border 
-                        WidthRequest="28" 
-                        HeightRequest="28" 
-                        BackgroundColor="#252538" 
-                        StrokeThickness="0"
-                        VerticalOptions="Center">
-                        <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="8" />
-                        </Border.StrokeShape>
-                        <Label 
-                            Text="S" 
-                            FontSize="11"
-                            FontAttributes="Bold"
-                            TextColor="#CFD3FF"
-                            HorizontalOptions="Center" 
-                            VerticalOptions="Center" />
-                    </Border>
+                <Grid ColumnDefinitions="*,Auto">
                     <Label 
-                        Grid.Column="1" 
                         Text="Einstellungen" 
-                        FontSize="13" 
+                        FontSize="14" 
                         TextColor="#E8EBFF" 
                         VerticalOptions="Center" />
                     <Label 
-                        Grid.Column="2" 
+                        Grid.Column="1" 
                         Text="›" 
                         FontSize="16" 
                         TextColor="#5A6080" 

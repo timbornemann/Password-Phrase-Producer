@@ -93,7 +93,7 @@
                     <DataTemplate x:DataType="local:PasswordModeOption">
                         <Border Padding="0"
                                 StrokeThickness="0"
-                                MinimumHeightRequest="110">
+                                MinimumHeightRequest="80">
                             <Border.StrokeShape>
                                 <RoundRectangle CornerRadius="16" />
                             </Border.StrokeShape>
@@ -111,50 +111,22 @@
                                                      CommandParameter="{Binding}"/>
                             </Border.GestureRecognizers>
                             
-                            <Grid Padding="12"
-                                  RowDefinitions="Auto,*,Auto"
-                                  RowSpacing="6">
-                                
-                                <Border Padding="8"
-                                        StrokeThickness="0"
-                                        WidthRequest="36"
-                                        HeightRequest="36"
-                                        HorizontalOptions="Start"
-                                        VerticalOptions="Start">
-                                    <Border.StrokeShape>
-                                        <RoundRectangle CornerRadius="10" />
-                                    </Border.StrokeShape>
-                                    <Border.Background>
-                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                            <GradientStop Color="#4A5CFF" Offset="0" />
-                                            <GradientStop Color="#3B4AD1" Offset="1" />
-                                        </LinearGradientBrush>
-                                    </Border.Background>
-                                    <Label Text="{Binding Icon}"
-                                           FontSize="14"
-                                           FontAttributes="Bold"
-                                           TextColor="White"
-                                           HorizontalOptions="Center"
-                                           VerticalOptions="Center"/>
-                                </Border>
-
-                                <Label Grid.Row="1"
-                                       Text="{Binding Title}"
-                                       FontSize="13"
+                            <VerticalStackLayout Padding="14" 
+                                                 Spacing="6"
+                                                 VerticalOptions="Center">
+                                <Label Text="{Binding Title}"
+                                       FontSize="14"
                                        FontAttributes="Bold"
                                        TextColor="White"
                                        LineBreakMode="TailTruncation"
-                                       MaxLines="2"
-                                       VerticalOptions="End"/>
+                                       MaxLines="2"/>
                                 
-                                <Label Grid.Row="2"
-                                       Text="{Binding Description}"
-                                       FontSize="10"
+                                <Label Text="{Binding Description}"
+                                       FontSize="11"
                                        TextColor="#9EA3C4"
                                        LineBreakMode="TailTruncation"
-                                       MaxLines="2"
-                                       VerticalOptions="Start"/>
-                            </Grid>
+                                       MaxLines="2"/>
+                            </VerticalStackLayout>
                         </Border>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>

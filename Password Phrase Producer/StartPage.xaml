@@ -67,7 +67,7 @@
                 
                 <!-- Vault Option -->
                 <Border StrokeThickness="0"
-                        HeightRequest="90"
+                        HeightRequest="70"
                         BackgroundColor="Transparent">
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="16" />
@@ -85,60 +85,32 @@
                         <TapGestureRecognizer Command="{Binding NavigateToVaultCommand}" />
                     </Border.GestureRecognizers>
                     
-                    <Grid Padding="14" ColumnDefinitions="Auto, *" RowDefinitions="*,Auto">
-                        <!-- Icon -->
-                        <Border Grid.RowSpan="2"
-                                WidthRequest="40"
-                                HeightRequest="40"
-                                VerticalOptions="Center"
-                                StrokeThickness="0">
-                            <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="12" />
-                            </Border.StrokeShape>
-                            <Border.Background>
-                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                    <GradientStop Color="#4A5CFF" Offset="0" />
-                                    <GradientStop Color="#3B4AD1" Offset="1" />
-                                </LinearGradientBrush>
-                            </Border.Background>
-                            <Label Text="T"
-                                   FontSize="18"
-                                   FontAttributes="Bold"
-                                   TextColor="White"
-                                   HorizontalOptions="Center"
-                                   VerticalOptions="Center"/>
-                        </Border>
-
+                    <Grid Padding="16" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="4">
                         <!-- Text -->
-                        <VerticalStackLayout Grid.Column="1" 
-                                             Grid.Row="0" 
-                                             VerticalOptions="Center"
-                                             Padding="12,0,0,0"
-                                             Spacing="2">
-                            <Label Text="Tresor öffnen"
-                                   FontSize="15"
-                                   FontAttributes="Bold"
-                                   TextColor="White"/>
-                            <Label Text="Verwalte deine Passwörter."
-                                   FontSize="12"
-                                   TextColor="#9EA3C4"
-                                   LineBreakMode="WordWrap"/>
-                        </VerticalStackLayout>
+                        <Label Grid.Row="0"
+                               Text="Tresor öffnen"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               TextColor="White"/>
+                        <Label Grid.Row="1"
+                               Text="Verwalte deine Passwörter."
+                               FontSize="12"
+                               TextColor="#9EA3C4"
+                               LineBreakMode="WordWrap"/>
                         
                         <!-- Arrow -->
                         <Label Grid.Column="1"
-                               Grid.Row="1"
+                               Grid.RowSpan="2"
                                Text="→"
-                               FontSize="14"
+                               FontSize="16"
                                TextColor="#4A5CFF"
-                               HorizontalOptions="End"
-                               VerticalOptions="End"/>
+                               VerticalOptions="Center"/>
                     </Grid>
                 </Border>
 
                 <!-- Generate Option -->
                 <Border StrokeThickness="0"
-                        HeightRequest="90"
+                        HeightRequest="70"
                         BackgroundColor="Transparent">
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="16" />
@@ -156,54 +128,26 @@
                         <TapGestureRecognizer Command="{Binding NavigateToGenerationCommand}" />
                     </Border.GestureRecognizers>
 
-                    <Grid Padding="14" ColumnDefinitions="Auto, *" RowDefinitions="*,Auto">
-                        <!-- Icon -->
-                        <Border Grid.RowSpan="2"
-                                WidthRequest="40"
-                                HeightRequest="40"
-                                VerticalOptions="Center"
-                                StrokeThickness="0">
-                            <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="12" />
-                            </Border.StrokeShape>
-                            <Border.Background>
-                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                    <GradientStop Color="#4A5CFF" Offset="0" />
-                                    <GradientStop Color="#3B4AD1" Offset="1" />
-                                </LinearGradientBrush>
-                            </Border.Background>
-                            <Label Text="G"
-                                   FontSize="18"
-                                   FontAttributes="Bold"
-                                   TextColor="White"
-                                   HorizontalOptions="Center"
-                                   VerticalOptions="Center"/>
-                        </Border>
-
+                    <Grid Padding="16" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="4">
                         <!-- Text -->
-                        <VerticalStackLayout Grid.Column="1" 
-                                             Grid.Row="0" 
-                                             VerticalOptions="Center"
-                                             Padding="12,0,0,0"
-                                             Spacing="2">
-                            <Label Text="Passwort erstellen"
-                                   FontSize="15"
-                                   FontAttributes="Bold"
-                                   TextColor="White"/>
-                            <Label Text="Neue, sichere Passwörter."
-                                   FontSize="12"
-                                   TextColor="#9EA3C4"
-                                   LineBreakMode="WordWrap"/>
-                        </VerticalStackLayout>
+                        <Label Grid.Row="0"
+                               Text="Passwort erstellen"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               TextColor="White"/>
+                        <Label Grid.Row="1"
+                               Text="Neue, sichere Passwörter."
+                               FontSize="12"
+                               TextColor="#9EA3C4"
+                               LineBreakMode="WordWrap"/>
 
                         <!-- Arrow -->
                         <Label Grid.Column="1"
-                               Grid.Row="1"
+                               Grid.RowSpan="2"
                                Text="→"
-                               FontSize="14"
+                               FontSize="16"
                                TextColor="#4A5CFF"
-                               HorizontalOptions="End"
-                               VerticalOptions="End"/>
+                               VerticalOptions="Center"/>
                     </Grid>
                 </Border>
 
