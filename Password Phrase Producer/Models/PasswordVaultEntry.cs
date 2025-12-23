@@ -47,7 +47,7 @@ public class PasswordVaultEntry : INotifyPropertyChanged
     public string Category
     {
         get => _category;
-        set => SetProperty(ref _category, value);
+        set => SetProperty(ref _category, value ?? string.Empty);
     }
 
     public string Url
@@ -75,7 +75,7 @@ public class PasswordVaultEntry : INotifyPropertyChanged
     }
 
     [JsonIgnore]
-    public string DisplayCategory => string.IsNullOrWhiteSpace(Category) ? "Allgemein" : Category.Trim();
+    public string DisplayCategory => string.IsNullOrWhiteSpace(Category) ? "Allgemein" : Category?.Trim() ?? "Allgemein";
 
     [JsonIgnore]
     public DateTimeOffset LocalModifiedAt => ModifiedAt.ToLocalTime();

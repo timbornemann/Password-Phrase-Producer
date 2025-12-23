@@ -43,7 +43,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
     {
         _vaultService = vaultService;
         _biometricAuthenticationService = biometricAuthenticationService;
-        EntryGroups = new ObservableCollection<VaultEntryGroup>();
+        _entryGroups = new ObservableCollection<VaultEntryGroup>();
         CategoryFilterOptions = new ObservableCollection<string> { AllCategoriesFilter };
 
         UnlockCommand = new Command(async () => await UnlockAsync(), () => !IsBusy);
@@ -52,7 +52,19 @@ public class VaultPageViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public ObservableCollection<VaultEntryGroup> EntryGroups { get; }
+    private ObservableCollection<VaultEntryGroup> _entryGroups;
+    public ObservableCollection<VaultEntryGroup> EntryGroups
+    {
+        get => _entryGroups;
+        private set
+        {
+            if (_entryGroups != value)
+            {
+                _entryGroups = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
     public ObservableCollection<string> CategoryFilterOptions { get; }
 
@@ -209,7 +221,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
         _availableCategories.Clear();
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            EntryGroups.Clear();
+            EntryGroups = new ObservableCollection<VaultEntryGroup>();
             CategoryFilterOptions.Clear();
             CategoryFilterOptions.Add(AllCategoriesFilter);
             _selectedCategory = AllCategoriesFilter;
@@ -298,7 +310,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
             _availableCategories.Clear();
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                EntryGroups.Clear();
+                EntryGroups = new ObservableCollection<VaultEntryGroup>();
                 CategoryFilterOptions.Clear();
                 CategoryFilterOptions.Add(AllCategoriesFilter);
                 _selectedCategory = AllCategoriesFilter;
@@ -498,13 +510,11 @@ public class VaultPageViewModel : INotifyPropertyChanged
         var grouped = filtered
             .GroupBy(entry => entry.DisplayCategory, StringComparer.CurrentCultureIgnoreCase)
             .OrderBy(group => group.Key, StringComparer.CurrentCultureIgnoreCase)
-            .Select(group => new VaultEntryGroup(group.Key, group.OrderBy(entry => entry.Label, StringComparer.CurrentCultureIgnoreCase)));
+            .Select(group => new VaultEntryGroup(group.Key, group.OrderBy(entry => entry.Label, StringComparer.CurrentCultureIgnoreCase).ToList()))
+            .ToList();
 
-        EntryGroups.Clear();
-        foreach (var group in grouped)
-        {
-            EntryGroups.Add(group);
-        }
+        // Replace entire collection instead of Clear/Add to avoid MAUI CollectionView grouping bug
+        EntryGroups = new ObservableCollection<VaultEntryGroup>(grouped);
     }
 
     private void UpdateCategoryFiltersOnMainThread()
