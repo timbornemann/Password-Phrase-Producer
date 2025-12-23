@@ -508,17 +508,14 @@
         </Grid>
 
         <!-- Lock Screen / Access -->
-        <Border
-            Padding="18"
-            BackgroundColor="#CC0B0D1A"
+        <Grid
             IsVisible="{Binding IsLocked}"
-            HorizontalOptions="FillAndExpand"
-            VerticalOptions="FillAndExpand">
-            <Border.StrokeShape>
-                <RoundRectangle CornerRadius="0" />
-            </Border.StrokeShape>
-            <ScrollView>
-                <VerticalStackLayout Spacing="16" VerticalOptions="Center" HorizontalOptions="Center" MaximumWidthRequest="360">
+            BackgroundColor="#CC0B0D1A"
+            HorizontalOptions="Fill"
+            VerticalOptions="Fill">
+            <ScrollView HorizontalOptions="Fill" VerticalOptions="Fill">
+                <Grid HorizontalOptions="Fill" VerticalOptions="Center" MinimumHeightRequest="400">
+                    <VerticalStackLayout Spacing="16" HorizontalOptions="Center" VerticalOptions="Center" MaximumWidthRequest="360" Padding="18">
                     <Border
                         Padding="10,6"
                         StrokeThickness="0"
@@ -632,7 +629,8 @@
                             IsVisible="{Binding CanUseBiometric}" />
                     </VerticalStackLayout>
                 </VerticalStackLayout>
+                </Grid>
             </ScrollView>
-        </Border>
+        </Grid>
     </Grid>
 </ContentPage>

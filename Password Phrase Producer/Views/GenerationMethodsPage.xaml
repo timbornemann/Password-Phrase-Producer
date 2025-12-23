@@ -83,11 +83,7 @@
                             SelectionMode="None"
                             ItemSizingStrategy="MeasureAllItems">
                 <CollectionView.ItemsLayout>
-                    <GridItemsLayout x:Name="ModeGridLayout"
-                                     Orientation="Vertical"
-                                     VerticalItemSpacing="10"
-                                     HorizontalItemSpacing="10"
-                                     Span="2" />
+                    <LinearItemsLayout Orientation="Vertical" ItemSpacing="10" />
                 </CollectionView.ItemsLayout>
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="local:PasswordModeOption">

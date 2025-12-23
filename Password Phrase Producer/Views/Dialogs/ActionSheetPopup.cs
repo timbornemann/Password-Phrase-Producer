@@ -39,12 +39,13 @@ public sealed class ActionSheetPopup : Popup
 
         _cancelText = cancelText;
 
-        Color = Color.FromRgba(0, 0, 0, 0.65);
+        // Transparent background - no black overlay
+        Color = Colors.Transparent;
         CanBeDismissedByTappingOutsideOfPopup = cancelText is not null;
 
         var contentStack = new VerticalStackLayout
         {
-            Spacing = 16
+            Spacing = 12
         };
 
         if (!string.IsNullOrWhiteSpace(title))
@@ -77,23 +78,24 @@ public sealed class ActionSheetPopup : Popup
         var card = new Border
         {
             BackgroundColor = BackgroundCard,
-            StrokeShape = new RoundRectangle { CornerRadius = 16 },
-            StrokeThickness = 0,
-            Padding = new Thickness(16, 16, 16, 20),
+            StrokeShape = new RoundRectangle { CornerRadius = 20 },
+            StrokeThickness = 1,
+            Stroke = new SolidColorBrush(Color.FromArgb("#2A2F4A")),
+            Padding = new Thickness(18, 18, 18, 22),
             Content = contentStack
         };
 
         card.Shadow = new Shadow
         {
-            Brush = new SolidColorBrush(Color.FromArgb("#25000000")),
-            Radius = 12,
-            Offset = new Point(0, 6)
+            Brush = new SolidColorBrush(Color.FromArgb("#50000000")),
+            Radius = 20,
+            Offset = new Point(0, 8)
         };
 
         var rootStack = new VerticalStackLayout
         {
-            Spacing = 12,
-            Margin = new Thickness(16, 0, 16, 24),
+            Spacing = 10,
+            Margin = new Thickness(20, 0, 20, 32),
             HorizontalOptions = LayoutOptions.Fill,
             VerticalOptions = LayoutOptions.End
         };
@@ -105,12 +107,31 @@ public sealed class ActionSheetPopup : Popup
             rootStack.Children.Add(CreateCancelButton(cancelText));
         }
 
+        // Wrap in a Grid with subtle backdrop
+        var backdrop = new BoxView
+        {
+            Color = Color.FromRgba(0, 0, 0, 0.4),
+            HorizontalOptions = LayoutOptions.Fill,
+            VerticalOptions = LayoutOptions.Fill
+        };
+        backdrop.GestureRecognizers.Add(new TapGestureRecognizer
+        {
+            Command = new Command(() =>
+            {
+                if (CanBeDismissedByTappingOutsideOfPopup)
+                {
+                    Close(null);
+                }
+            })
+        });
+
         Content = new Grid
         {
             HorizontalOptions = LayoutOptions.Fill,
             VerticalOptions = LayoutOptions.Fill,
             Children =
             {
+                backdrop,
                 rootStack
             }
         };
@@ -195,10 +216,11 @@ public sealed class ActionSheetPopup : Popup
     {
         var cancelBorder = new Border
         {
-            BackgroundColor = BackgroundOption,
-            StrokeShape = new RoundRectangle { CornerRadius = 12 },
-            StrokeThickness = 0,
-            Padding = new Thickness(14, 12),
+            BackgroundColor = BackgroundCard,
+            StrokeShape = new RoundRectangle { CornerRadius = 16 },
+            StrokeThickness = 1,
+            Stroke = new SolidColorBrush(Color.FromArgb("#2A2F4A")),
+            Padding = new Thickness(16, 14),
             Content = new Label
             {
                 Text = cancelText,
@@ -207,6 +229,13 @@ public sealed class ActionSheetPopup : Popup
                 TextColor = TextSecondary,
                 HorizontalTextAlignment = TextAlignment.Center
             }
+        };
+
+        cancelBorder.Shadow = new Shadow
+        {
+            Brush = new SolidColorBrush(Color.FromArgb("#40000000")),
+            Radius = 16,
+            Offset = new Point(0, 6)
         };
 
         cancelBorder.GestureRecognizers.Add(new TapGestureRecognizer

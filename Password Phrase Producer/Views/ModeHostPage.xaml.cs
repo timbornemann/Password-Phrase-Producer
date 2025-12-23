@@ -27,4 +27,10 @@ public partial class ModeHostPage : ContentPage
             Shell.Current.FlyoutIsPresented = true;
         }
     }
+
+    protected override bool OnBackButtonPressed()
+    {
+        Dispatcher.Dispatch(async () => await Shell.Current.GoToAsync("//home"));
+        return true;
+    }
 }

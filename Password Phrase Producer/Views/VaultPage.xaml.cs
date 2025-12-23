@@ -592,4 +592,16 @@ public partial class VaultPage : ContentPage
             await DisplayAlert("Fehler", ex.Message, "OK");
         }
     }
+
+    protected override bool OnBackButtonPressed()
+    {
+        Dispatcher.Dispatch(async () =>
+        {
+            if (Shell.Current is not null)
+            {
+                await Shell.Current.GoToAsync("//home");
+            }
+        });
+        return true;
+    }
 }

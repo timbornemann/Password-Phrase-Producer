@@ -41,6 +41,18 @@ public partial class SettingsPage : ContentPage
         }
     }
 
+    protected override bool OnBackButtonPressed()
+    {
+        Dispatcher.Dispatch(async () =>
+        {
+            if (Shell.Current is not null)
+            {
+                await Shell.Current.GoToAsync("//home");
+            }
+        });
+        return true;
+    }
+
     private void OnOpenFlyoutTapped(object? sender, TappedEventArgs e)
     {
         if (Shell.Current is not null)
