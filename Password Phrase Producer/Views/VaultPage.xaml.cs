@@ -357,6 +357,22 @@ public partial class VaultPage : ContentPage
             return;
         }
 
+        // Visual feedback - find the Border element
+        Border? border = null;
+        if (sender is TapGestureRecognizer tapRecognizer && tapRecognizer.Parent is Border b)
+        {
+            border = b;
+        }
+        else if (sender is Border borderDirect)
+        {
+            border = borderDirect;
+        }
+
+        if (border is not null)
+        {
+            await AnimateCopyButton(border);
+        }
+
         await Clipboard.Default.SetTextAsync(entry.Password);
         await ToastService.ShowCopiedAsync("Passwort");
     }
@@ -373,8 +389,73 @@ public partial class VaultPage : ContentPage
             return;
         }
 
+        // Visual feedback - find the Border element
+        Border? border = null;
+        if (sender is TapGestureRecognizer tapRecognizer && tapRecognizer.Parent is Border b)
+        {
+            border = b;
+        }
+        else if (sender is Border borderDirect)
+        {
+            border = borderDirect;
+        }
+
+        if (border is not null)
+        {
+            await AnimateCopyButton(border);
+        }
+
         await Clipboard.Default.SetTextAsync(entry.Username);
         await ToastService.ShowCopiedAsync("Benutzername");
+    }
+
+    private static async Task AnimateCopyButton(Border border)
+    {
+        var originalColor = border.BackgroundColor ?? Microsoft.Maui.Graphics.Color.FromArgb("#2A2F4A");
+        var highlightColor = Microsoft.Maui.Graphics.Color.FromArgb("#4A5CFF");
+
+        // Cancel any existing animations
+        border.AbortAnimation("CopyButtonAnimation1");
+        border.AbortAnimation("CopyButtonAnimation2");
+
+        // Animate to highlight color
+        var animation1 = new Animation(
+            value => border.BackgroundColor = LerpColor(originalColor, highlightColor, value),
+            0, 1, Easing.CubicOut);
+        animation1.Commit(border, "CopyButtonAnimation1", 16, 150, Easing.CubicOut, (v, c) =>
+        {
+            // Ensure we're at highlight color when animation completes
+            border.BackgroundColor = highlightColor;
+        });
+
+        await Task.Delay(150);
+
+        // Animate back to original color
+        var animation2 = new Animation(
+            value => border.BackgroundColor = LerpColor(highlightColor, originalColor, value),
+            0, 1, Easing.CubicIn);
+        animation2.Commit(border, "CopyButtonAnimation2", 16, 200, Easing.CubicIn, (v, c) =>
+        {
+            // Ensure we're back to original color when animation completes
+            border.BackgroundColor = originalColor;
+        });
+
+        await Task.Delay(200);
+        
+        // Final safety check - ensure original color is set
+        border.BackgroundColor = originalColor;
+    }
+
+    private static Microsoft.Maui.Graphics.Color LerpColor(
+        Microsoft.Maui.Graphics.Color from,
+        Microsoft.Maui.Graphics.Color to,
+        double t)
+    {
+        var r = (int)(from.Red + (to.Red - from.Red) * t);
+        var g = (int)(from.Green + (to.Green - from.Green) * t);
+        var b = (int)(from.Blue + (to.Blue - from.Blue) * t);
+        var a = (int)(from.Alpha + (to.Alpha - from.Alpha) * t);
+        return Microsoft.Maui.Graphics.Color.FromRgba(r, g, b, a);
     }
 
     private void OnTogglePasswordVisibilityTapped(object? sender, TappedEventArgs e)

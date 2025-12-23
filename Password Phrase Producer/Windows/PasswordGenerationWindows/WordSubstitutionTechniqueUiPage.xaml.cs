@@ -59,6 +59,12 @@ public partial class WordSubstitutionTechniqueUiPage : PasswordGeneratorContentV
     {
         if (!string.IsNullOrWhiteSpace(resultEntry?.Text))
         {
+            // Visual feedback
+            if (sender is Button button)
+            {
+                await AnimateCopyButton(button);
+            }
+
             await Clipboard.Default.SetTextAsync(resultEntry!.Text);
             await ToastService.ShowCopiedAsync("Passwort");
         }
