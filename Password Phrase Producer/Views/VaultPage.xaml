@@ -202,6 +202,9 @@
                 VerticalOptions="FillAndExpand"
                 VerticalScrollBarVisibility="Never"
                 IsGrouped="True">
+            <CollectionView.ItemsLayout>
+                <LinearItemsLayout Orientation="Vertical" ItemSpacing="12" />
+            </CollectionView.ItemsLayout>
             <CollectionView.GroupHeaderTemplate>
                 <DataTemplate x:DataType="viewmodels:VaultEntryGroup">
                     <Label
@@ -251,7 +254,6 @@
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="models:PasswordVaultEntry">
                     <Border
-                        Margin="0,0,0,10"
                         Padding="12"
                         StrokeThickness="0"
                         BackgroundColor="#1B2036">
