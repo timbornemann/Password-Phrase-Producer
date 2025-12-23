@@ -53,12 +53,12 @@
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Tapped="OnOpenMenuTapped" />
                         </Border.GestureRecognizers>
-                        <Label
-                            Text="☰"
-                            FontSize="15"
+                        <Image
+                            Source="menu.png"
+                            WidthRequest="18"
+                            HeightRequest="18"
                             HorizontalOptions="Center"
-                            VerticalOptions="Center"
-                            TextColor="#CFD3FF" />
+                            VerticalOptions="Center" />
                     </Border>
 
                     <Label
@@ -70,23 +70,30 @@
                         TextColor="White" />
 
                     <!-- Add Button -->
-                    <Button
+                    <Border
                         Grid.Column="2"
-                        Text="+"
-                        Clicked="OnAddEntryClicked"
                         WidthRequest="34"
                         HeightRequest="34"
-                        Padding="0"
                         BackgroundColor="#4A5CFF"
-                        TextColor="White"
-                        FontSize="18"
-                        CornerRadius="10"
-                        IsVisible="{Binding IsUnlocked}"
-                        SemanticProperties.Hint="Neuen Tresor-Eintrag hinzufügen">
-                        <Button.Shadow>
+                        StrokeThickness="0"
+                        VerticalOptions="Center"
+                        IsVisible="{Binding IsUnlocked}">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="10" />
+                        </Border.StrokeShape>
+                        <Border.Shadow>
                             <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
-                        </Button.Shadow>
-                    </Button>
+                        </Border.Shadow>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnAddEntryClicked" />
+                        </Border.GestureRecognizers>
+                        <Image
+                            Source="plus.png"
+                            WidthRequest="18"
+                            HeightRequest="18"
+                            HorizontalOptions="Center"
+                            VerticalOptions="Center" />
+                    </Border>
 
                     <!-- Back Button -->
                     <Border
@@ -106,12 +113,13 @@
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Tapped="OnBackTapped" />
                         </Border.GestureRecognizers>
-                        <Label
-                            Text="→"
-                            FontSize="15"
+                        <Image
+                            Source="chevronright.png"
+                            WidthRequest="18"
+                            HeightRequest="18"
                             HorizontalOptions="Center"
                             VerticalOptions="Center"
-                            TextColor="#CFD3FF" />
+                            Rotation="0" />
                     </Border>
                 </Grid>
 
@@ -128,11 +136,11 @@
                             <RoundRectangle CornerRadius="10" />
                         </Border.StrokeShape>
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                            <Label
-                                Text="◎"
-                                FontSize="12"
-                                VerticalOptions="Center"
-                                TextColor="#CFD3FF" />
+                            <Image
+                                Source="search.png"
+                                WidthRequest="14"
+                                HeightRequest="14"
+                                VerticalOptions="Center" />
                             <Entry
                                 Grid.Column="1"
                                 Text="{Binding SearchQuery}"
@@ -161,12 +169,12 @@
                             <TapGestureRecognizer Tapped="OnCategoryFilterTapped" />
                         </Border.GestureRecognizers>
                         <Grid>
-                            <Label
-                                Text="≡"
-                                FontSize="15"
+                            <Image
+                                Source="funnel.png"
+                                WidthRequest="18"
+                                HeightRequest="18"
                                 HorizontalOptions="Center"
-                                VerticalOptions="Center"
-                                TextColor="#CFD3FF" />
+                                VerticalOptions="Center" />
                             <Border
                                 WidthRequest="7"
                                 HeightRequest="7"
@@ -307,12 +315,12 @@
                                                 Tapped="OnShowDetailTapped"
                                                 CommandParameter="{Binding .}" />
                                         </Border.GestureRecognizers>
-                                        <Label
-                                            Text="⤢"
-                                            FontSize="14"
+                                        <Image
+                                            Source="maximize.png"
+                                            WidthRequest="16"
+                                            HeightRequest="16"
                                             HorizontalOptions="Center"
-                                            VerticalOptions="Center"
-                                            TextColor="#CFD3FF" />
+                                            VerticalOptions="Center" />
                                     </Border>
                                     <Border
                                         WidthRequest="30"
@@ -328,12 +336,12 @@
                                                 Tapped="OnEditEntryTapped"
                                                 CommandParameter="{Binding .}" />
                                         </Border.GestureRecognizers>
-                                        <Label
-                                            Text="✎"
-                                            FontSize="12"
+                                        <Image
+                                            Source="pencil.png"
+                                            WidthRequest="14"
+                                            HeightRequest="14"
                                             HorizontalOptions="Center"
-                                            VerticalOptions="Center"
-                                            TextColor="#CFD3FF" />
+                                            VerticalOptions="Center" />
                                     </Border>
                                     <Border
                                         WidthRequest="30"
@@ -349,12 +357,12 @@
                                                 Tapped="OnDeleteEntryTapped"
                                                 CommandParameter="{Binding .}" />
                                         </Border.GestureRecognizers>
-                                        <Label
-                                            Text="✕"
-                                            FontSize="12"
+                                        <Image
+                                            Source="trash.png"
+                                            WidthRequest="14"
+                                            HeightRequest="14"
                                             HorizontalOptions="Center"
-                                            VerticalOptions="Center"
-                                            TextColor="#FF7474" />
+                                            VerticalOptions="Center" />
                                     </Border>
                                 </HorizontalStackLayout>
                             </Grid>
@@ -393,10 +401,10 @@
                                             Tapped="OnCopyUsernameTapped"
                                             CommandParameter="{Binding .}" />
                                     </Border.GestureRecognizers>
-                                    <Label
-                                        Text="❏"
-                                        FontSize="12"
-                                        TextColor="#CFD3FF"
+                                    <Image
+                                        Source="copy.png"
+                                        WidthRequest="14"
+                                        HeightRequest="14"
                                         HorizontalOptions="Center"
                                         VerticalOptions="Center" />
                                 </Border>
@@ -444,18 +452,18 @@
                                                 Tapped="OnTogglePasswordVisibilityTapped"
                                                 CommandParameter="{Binding .}" />
                                         </Border.GestureRecognizers>
-                                        <Label
-                                            FontSize="11"
-                                            TextColor="#CFD3FF"
+                                        <Image
+                                            Source="eyeoff.png"
+                                            WidthRequest="14"
+                                            HeightRequest="14"
                                             HorizontalOptions="Center"
-                                            VerticalOptions="Center"
-                                            Text="◉">
-                                            <Label.Triggers>
-                                                <DataTrigger TargetType="Label" Binding="{Binding IsPasswordVisible}" Value="True">
-                                                    <Setter Property="Text" Value="◎" />
+                                            VerticalOptions="Center">
+                                            <Image.Triggers>
+                                                <DataTrigger TargetType="Image" Binding="{Binding IsPasswordVisible}" Value="True">
+                                                    <Setter Property="Source" Value="eye.png" />
                                                 </DataTrigger>
-                                            </Label.Triggers>
-                                        </Label>
+                                            </Image.Triggers>
+                                        </Image>
                                     </Border>
                                     <Border
                                         Grid.Column="2"
@@ -472,10 +480,10 @@
                                                 Tapped="OnCopyPasswordTapped"
                                                 CommandParameter="{Binding .}" />
                                         </Border.GestureRecognizers>
-                                        <Label
-                                            Text="❏"
-                                            FontSize="12"
-                                            TextColor="#CFD3FF"
+                                        <Image
+                                            Source="copy.png"
+                                            WidthRequest="14"
+                                            HeightRequest="14"
                                             HorizontalOptions="Center"
                                             VerticalOptions="Center" />
                                     </Border>
@@ -574,10 +582,12 @@
                             <TapGestureRecognizer Tapped="OnBackTapped" />
                         </Border.GestureRecognizers>
                         <HorizontalStackLayout Spacing="5" VerticalOptions="Center">
-                            <Label
-                                Text="←"
-                                FontSize="12"
-                                TextColor="#CFD3FF" />
+                            <Image
+                                Source="chevronright.png"
+                                WidthRequest="12"
+                                HeightRequest="12"
+                                VerticalOptions="Center"
+                                Rotation="180" />
                             <Label
                                 Text="Zurück"
                                 FontSize="12"

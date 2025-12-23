@@ -33,11 +33,11 @@
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnOpenMenuTapped" />
                 </Border.GestureRecognizers>
-                <Label Text="☰"
-                       FontSize="15"
+                <Image Source="menu.png"
+                       WidthRequest="18"
+                       HeightRequest="18"
                        HorizontalOptions="Center"
-                       VerticalOptions="Center"
-                       TextColor="#CFD3FF"/>
+                       VerticalOptions="Center"/>
             </Border>
 
             <VerticalStackLayout Grid.Column="1"
@@ -68,11 +68,12 @@
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnBackTapped" />
                 </Border.GestureRecognizers>
-                <Label Text="→"
-                       FontSize="15"
+                <Image Source="chevronright.png"
+                       WidthRequest="18"
+                       HeightRequest="18"
                        HorizontalOptions="Center"
                        VerticalOptions="Center"
-                       TextColor="#CFD3FF"/>
+                       Rotation="0"/>
             </Border>
         </Grid>
 

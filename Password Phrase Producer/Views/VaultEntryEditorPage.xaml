@@ -93,12 +93,12 @@
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnCloseTapped" />
                 </Border.GestureRecognizers>
-                <Label
-                    Text="✕"
-                    FontSize="15"
+                <Image
+                    Source="x.png"
+                    WidthRequest="18"
+                    HeightRequest="18"
                     HorizontalOptions="Center"
-                    VerticalOptions="Center"
-                    TextColor="#CFD3FF" />
+                    VerticalOptions="Center" />
             </Border>
         </Grid>
 

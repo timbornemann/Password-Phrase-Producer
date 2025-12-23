@@ -62,12 +62,13 @@
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnCloseTapped" />
                 </Border.GestureRecognizers>
-                <Label
-                    Text="←"
-                    FontSize="15"
+                <Image
+                    Source="chevronright.png"
+                    WidthRequest="18"
+                    HeightRequest="18"
                     HorizontalOptions="Center"
                     VerticalOptions="Center"
-                    TextColor="#CFD3FF" />
+                    Rotation="180" />
             </Border>
             
             <VerticalStackLayout Grid.Column="1" Spacing="2" Margin="12,0,0,0" VerticalOptions="Center">
@@ -101,12 +102,12 @@
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnEditTapped" />
                 </Border.GestureRecognizers>
-                <Label
-                    Text="✎"
-                    FontSize="14"
+                <Image
+                    Source="pencil.png"
+                    WidthRequest="16"
+                    HeightRequest="16"
                     HorizontalOptions="Center"
-                    VerticalOptions="Center"
-                    TextColor="#CFD3FF" />
+                    VerticalOptions="Center" />
             </Border>
         </Grid>
 
@@ -148,10 +149,10 @@
                                     <Border.GestureRecognizers>
                                         <TapGestureRecognizer Tapped="OnCopyUsernameTapped" />
                                     </Border.GestureRecognizers>
-                                    <Label
-                                        Text="❏"
-                                        FontSize="13"
-                                        TextColor="#CFD3FF"
+                                    <Image
+                                        Source="copy.png"
+                                        WidthRequest="15"
+                                        HeightRequest="15"
                                         HorizontalOptions="Center"
                                         VerticalOptions="Center" />
                                 </Border>
@@ -192,11 +193,11 @@
                                     <Border.GestureRecognizers>
                                         <TapGestureRecognizer Tapped="OnTogglePasswordTapped" />
                                     </Border.GestureRecognizers>
-                                    <Label
+                                    <Image
                                         x:Name="TogglePasswordIcon"
-                                        Text="◎"
-                                        FontSize="12"
-                                        TextColor="#CFD3FF"
+                                        Source="eye.png"
+                                        WidthRequest="14"
+                                        HeightRequest="14"
                                         HorizontalOptions="Center"
                                         VerticalOptions="Center" />
                                 </Border>
@@ -213,10 +214,10 @@
                                     <Border.GestureRecognizers>
                                         <TapGestureRecognizer Tapped="OnCopyPasswordTapped" />
                                     </Border.GestureRecognizers>
-                                    <Label
-                                        Text="❏"
-                                        FontSize="13"
-                                        TextColor="#CFD3FF"
+                                    <Image
+                                        Source="copy.png"
+                                        WidthRequest="15"
+                                        HeightRequest="15"
                                         HorizontalOptions="Center"
                                         VerticalOptions="Center" />
                                 </Border>

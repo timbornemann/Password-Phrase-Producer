@@ -67,12 +67,12 @@ public partial class VaultEntryDetailPage : ContentPage
         if (_isPasswordVisible)
         {
             PasswordLabel.Text = _entry.Password;
-            TogglePasswordIcon.Text = "◎";
+            TogglePasswordIcon.Source = "eye.png";
         }
         else
         {
             PasswordLabel.Text = new string('•', Math.Min(_entry.Password?.Length ?? 0, 20));
-            TogglePasswordIcon.Text = "◉";
+            TogglePasswordIcon.Source = "eyeoff.png";
         }
     }
 
