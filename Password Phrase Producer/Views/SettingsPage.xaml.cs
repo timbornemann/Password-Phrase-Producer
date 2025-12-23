@@ -37,7 +37,7 @@ public partial class SettingsPage : ContentPage
     {
         if (Shell.Current is not null)
         {
-            await Shell.Current.GoToAsync("//vault");
+            await Shell.Current.GoToAsync("//home");
         }
     }
 

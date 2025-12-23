@@ -22,65 +22,65 @@
     </ContentPage.Background>
 
     <Grid RowDefinitions="Auto,*">
+        <!-- Header: Hamburger links, Titel, Zurück rechts -->
         <Grid
-            Padding="16,24,16,12"
+            Padding="16,16,16,10"
             ColumnDefinitions="Auto,*,Auto"
-            ColumnSpacing="12">
+            ColumnSpacing="10">
+            
+            <!-- Hamburger Menu (links) -->
             <Border
-                WidthRequest="38"
-                HeightRequest="38"
+                WidthRequest="34"
+                HeightRequest="34"
                 BackgroundColor="#1F2338"
                 StrokeThickness="0"
                 VerticalOptions="Center">
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="12" />
+                    <RoundRectangle CornerRadius="10" />
                 </Border.StrokeShape>
                 <Border.Shadow>
-                    <Shadow Brush="#25000000" Radius="8" Offset="0,4" />
-                </Border.Shadow>
-                <Border.GestureRecognizers>
-                    <TapGestureRecognizer Tapped="OnBackTapped" />
-                </Border.GestureRecognizers>
-                <Label
-                    Text="←"
-                    FontSize="16"
-                    HorizontalOptions="Center"
-                    VerticalOptions="Center"
-                    TextColor="#CFD3FF" />
-            </Border>
-
-            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
-                <Label
-                    Text="Einstellungen"
-                    FontSize="20"
-                    FontAttributes="Bold"
-                    TextColor="White" />
-                <Label
-                    Text="Verwalte Backups und dein Master-Passwort"
-                    FontSize="12"
-                    TextColor="#9EA3C4" />
-            </VerticalStackLayout>
-
-            <Border
-                Grid.Column="2"
-                WidthRequest="38"
-                HeightRequest="38"
-                BackgroundColor="#1F2338"
-                StrokeThickness="0"
-                HorizontalOptions="End"
-                VerticalOptions="Center">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="12" />
-                </Border.StrokeShape>
-                <Border.Shadow>
-                    <Shadow Brush="#25000000" Radius="8" Offset="0,4" />
+                    <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
                 </Border.Shadow>
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnOpenFlyoutTapped" />
                 </Border.GestureRecognizers>
                 <Label
                     Text="☰"
-                    FontSize="16"
+                    FontSize="15"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"
+                    TextColor="#CFD3FF" />
+            </Border>
+
+            <Label 
+                Grid.Column="1"
+                Text="Einstellungen"
+                FontSize="18"
+                FontAttributes="Bold"
+                TextColor="White"
+                VerticalOptions="Center" />
+
+            <!-- Zurück Button (rechts) -->
+            <Border
+                Grid.Column="2"
+                WidthRequest="34"
+                HeightRequest="34"
+                BackgroundColor="#1F2338"
+                StrokeThickness="0"
+                HorizontalOptions="End"
+                VerticalOptions="Center">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="10" />
+                </Border.StrokeShape>
+                <Border.Shadow>
+                    <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
+                </Border.Shadow>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnBackTapped" />
+                </Border.GestureRecognizers>
+                <Label
+                    Text="→"
+                    FontSize="15"
                     HorizontalOptions="Center"
                     VerticalOptions="Center"
                     TextColor="#CFD3FF" />

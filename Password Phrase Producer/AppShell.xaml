@@ -138,25 +138,72 @@
     </Shell.MenuItemTemplate>
 
     <Shell.FlyoutFooter>
-        <VerticalStackLayout Padding="16,10,16,20" Spacing="4">
-            <BoxView HeightRequest="1" Color="#2A2A3A" Margin="0,0,0,8" />
+        <VerticalStackLayout Padding="16,10,16,20" Spacing="8">
+            <BoxView HeightRequest="1" Color="#2A2A3A" Margin="0,0,0,4" />
+            
+            <!-- Einstellungen Button im Footer -->
+            <Border 
+                BackgroundColor="#1F2338" 
+                StrokeThickness="0"
+                Padding="12,10"
+                Margin="0,4,0,0">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="10" />
+                </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSettingsTapped" />
+                </Border.GestureRecognizers>
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                    <Border 
+                        WidthRequest="28" 
+                        HeightRequest="28" 
+                        BackgroundColor="#252538" 
+                        StrokeThickness="0"
+                        VerticalOptions="Center">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="8" />
+                        </Border.StrokeShape>
+                        <Label 
+                            Text="⚙️" 
+                            FontSize="12" 
+                            HorizontalOptions="Center" 
+                            VerticalOptions="Center" />
+                    </Border>
+                    <Label 
+                        Grid.Column="1" 
+                        Text="Einstellungen" 
+                        FontSize="13" 
+                        TextColor="#E8EBFF" 
+                        VerticalOptions="Center" />
+                    <Label 
+                        Grid.Column="2" 
+                        Text="›" 
+                        FontSize="16" 
+                        TextColor="#5A6080" 
+                        VerticalOptions="Center" />
+                </Grid>
+            </Border>
+            
             <Label 
                 Text="Version 1.0" 
                 FontSize="10" 
                 TextColor="#5A6080" 
-                HorizontalOptions="Center" />
+                HorizontalOptions="Center"
+                Margin="0,4,0,0" />
         </VerticalStackLayout>
     </Shell.FlyoutFooter>
 
+    <!-- Startseite (versteckt im Flyout, aber als Route verfügbar) -->
     <FlyoutItem Title="Startseite"
                 Route="home"
                 FlyoutIcon="🏠"
-                FlyoutDisplayOptions="AsSingleItem">
+                FlyoutItemIsVisible="False">
         <ShellContent
             Title="Startseite"
             ContentTemplate="{DataTemplate local:StartPage}" />
     </FlyoutItem>
 
+    <!-- Tresor -->
     <FlyoutItem Title="Tresor"
                 Route="vault"
                 FlyoutIcon="🔐"
@@ -166,10 +213,21 @@
             ContentTemplate="{DataTemplate views:VaultPage}" />
     </FlyoutItem>
 
+    <!-- Passwort erstellen -->
+    <FlyoutItem Title="Passwort erstellen"
+                Route="generate"
+                FlyoutIcon="🎲"
+                FlyoutDisplayOptions="AsSingleItem">
+        <ShellContent
+            Title="Passwort erstellen"
+            ContentTemplate="{DataTemplate views:GenerationMethodsPage}" />
+    </FlyoutItem>
+
+    <!-- Einstellungen (versteckt im Flyout, Navigation über Footer) -->
     <FlyoutItem Title="Einstellungen"
                 Route="settings"
                 FlyoutIcon="⚙️"
-                FlyoutDisplayOptions="AsSingleItem">
+                FlyoutItemIsVisible="False">
         <ShellContent
             Title="Einstellungen"
             ContentTemplate="{DataTemplate views:SettingsPage}" />

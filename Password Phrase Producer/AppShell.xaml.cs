@@ -8,7 +8,7 @@ public partial class AppShell : Shell
     public AppShell()
     {
         InitializeComponent();
-        BuildModeMenu();
+        RegisterModeRoutes();
         
         // Register route for Generation Methods Page
         Routing.RegisterRoute("generation", typeof(GenerationMethodsPage));
@@ -17,16 +17,11 @@ public partial class AppShell : Shell
         SetValue(Shell.FlyoutIconProperty, null);
     }
 
-    private void BuildModeMenu()
+    private void RegisterModeRoutes()
     {
-        var modeIcons = new[] { "🎲", "🔀", "🔢", "📝", "🔤", "💉", "🪞", "🔁", "📐", "🧩" };
-        var iconIndex = 0;
-
+        // Register routes for all modes (hidden from flyout, accessible via GenerationMethodsPage)
         foreach (var mode in ModeCatalog.AllModes)
         {
-            var icon = iconIndex < modeIcons.Length ? modeIcons[iconIndex] : "📦";
-            iconIndex++;
-
             var shellContent = new ShellContent
             {
                 Title = mode.Title,
@@ -38,12 +33,21 @@ public partial class AppShell : Shell
             {
                 Title = mode.Title,
                 Route = mode.Route,
-                FlyoutIcon = icon,
                 FlyoutDisplayOptions = FlyoutDisplayOptions.AsSingleItem
             };
+            
+            // Hide from flyout menu - only accessible via navigation
+            Shell.SetFlyoutItemIsVisible(flyoutItem, false);
 
             flyoutItem.Items.Add(shellContent);
             Items.Add(flyoutItem);
         }
+    }
+
+    private async void OnSettingsTapped(object? sender, EventArgs e)
+    {
+        // Close flyout and navigate to settings
+        FlyoutIsPresented = false;
+        await GoToAsync("//settings");
     }
 }
