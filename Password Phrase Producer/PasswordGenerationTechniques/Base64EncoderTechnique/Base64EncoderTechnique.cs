@@ -20,3 +20,4 @@ internal class Base64EncoderTechnique : IBase64EncoderTechnique
     }
 }
 
+

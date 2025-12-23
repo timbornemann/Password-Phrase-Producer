@@ -521,26 +521,6 @@
             </CollectionView>
         </Grid>
 
-        <Grid HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand">
-            <Button
-                HorizontalOptions="End"
-                VerticalOptions="End"
-                Margin="0,0,24,32"
-                WidthRequest="64"
-                HeightRequest="64"
-                CornerRadius="32"
-                BackgroundColor="#4A5CFF"
-                Text="＋"
-                FontSize="28"
-                TextColor="White"
-                Clicked="OnAddEntryClicked"
-                IsVisible="{Binding IsUnlocked}"
-                SemanticProperties.Hint="Neuen Tresor-Eintrag hinzufügen">
-                <Button.Shadow>
-                    <Shadow Brush="#55000000" Radius="24" Offset="0,12" />
-                </Button.Shadow>
-            </Button>
-        </Grid>
 
         <Border
             Padding="24,48,24,32"

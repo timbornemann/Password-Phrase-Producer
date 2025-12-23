@@ -5,3 +5,4 @@ public interface ICaesarCipherTechnique
     string GeneratePassword(string input, int shift);
 }
 
+

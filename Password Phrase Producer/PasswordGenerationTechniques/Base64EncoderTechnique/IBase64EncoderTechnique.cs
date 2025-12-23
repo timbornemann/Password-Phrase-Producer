@@ -5,3 +5,4 @@ public interface IBase64EncoderTechnique
     string GeneratePassword(string input);
 }
 
+

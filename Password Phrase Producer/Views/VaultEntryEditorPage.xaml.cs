@@ -379,12 +379,19 @@ public partial class VaultEntryEditorPage : ContentPage
         try
         {
             var stack = stackAccessor();
+            if (stack is null)
+            {
+                builder.Append("• ")
+                    .Append(name)
+                    .AppendLine(": null");
+                return;
+            }
             builder.Append("• ")
                 .Append(name)
                 .Append(": Anzahl=")
                 .Append(stack.Count)
                 .AppendLine(stack.Count > 0
-                    ? $", Top={stack[^1].GetType().FullName}"
+                    ? $", Top={stack[^1]?.GetType().FullName ?? "null"}"
                     : ", leer");
         }
         catch (Exception ex)
