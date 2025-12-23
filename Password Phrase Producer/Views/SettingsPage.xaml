@@ -15,20 +15,20 @@
 
     <ContentPage.Background>
         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#0F111A" Offset="0" />
-            <GradientStop Color="#151728" Offset="0.5" />
-            <GradientStop Color="#111322" Offset="1" />
+            <GradientStop Color="#101018" Offset="0" />
+            <GradientStop Color="#141426" Offset="0.6" />
+            <GradientStop Color="#0F111A" Offset="1" />
         </LinearGradientBrush>
     </ContentPage.Background>
 
     <Grid RowDefinitions="Auto,*">
-        <!-- Header: Hamburger links, Titel, Zurück rechts -->
+        <!-- Header -->
         <Grid
             Padding="16,16,16,10"
             ColumnDefinitions="Auto,*,Auto"
             ColumnSpacing="10">
             
-            <!-- Hamburger Menu (links) -->
+            <!-- Hamburger Menu -->
             <Border
                 WidthRequest="34"
                 HeightRequest="34"
@@ -60,7 +60,7 @@
                 TextColor="White"
                 VerticalOptions="Center" />
 
-            <!-- Zurück Button (rechts) -->
+            <!-- Back Button -->
             <Border
                 Grid.Column="2"
                 WidthRequest="34"
@@ -90,19 +90,19 @@
         <ScrollView Grid.Row="1">
             <VerticalStackLayout Padding="16,0,16,24" Spacing="16">
                 <Border
-                    BackgroundColor="#1F2338"
+                    BackgroundColor="#1B2036"
                     Padding="14"
                     StrokeThickness="0">
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="16" />
                     </Border.StrokeShape>
                     <Border.Shadow>
-                        <Shadow Brush="#1A000000" Radius="12" Offset="0,6" />
+                        <Shadow Brush="#25000000" Radius="12" Offset="0,6" />
                     </Border.Shadow>
                     <VerticalStackLayout Spacing="10">
                         <Label
                             Text="Datensicherung"
-                            FontSize="17"
+                            FontSize="16"
                             FontAttributes="Bold"
                             TextColor="White" />
                         <Label
@@ -113,7 +113,7 @@
                             <Button
                                 Text="Backup exportieren"
                                 Clicked="OnExportBackupClicked"
-                                BackgroundColor="#3B4AD1"
+                                BackgroundColor="#4A5CFF"
                                 TextColor="White"
                                 FontSize="11"
                                 Padding="8,6"
@@ -122,7 +122,7 @@
                                 Grid.Column="1"
                                 Text="Backup importieren"
                                 Clicked="OnImportBackupClicked"
-                                BackgroundColor="#2D3A7C"
+                                BackgroundColor="#1F2338"
                                 TextColor="White"
                                 FontSize="11"
                                 Padding="8,6"
@@ -131,7 +131,7 @@
                                 Grid.Row="1"
                                 Text="Tresor exportieren"
                                 Clicked="OnExportEncryptedClicked"
-                                BackgroundColor="#3B4AD1"
+                                BackgroundColor="#4A5CFF"
                                 TextColor="White"
                                 FontSize="11"
                                 Padding="8,6"
@@ -141,7 +141,7 @@
                                 Grid.Column="1"
                                 Text="Tresor importieren"
                                 Clicked="OnImportEncryptedClicked"
-                                BackgroundColor="#2D3A7C"
+                                BackgroundColor="#1F2338"
                                 TextColor="White"
                                 FontSize="11"
                                 Padding="8,6"
@@ -151,19 +151,19 @@
                 </Border>
 
                 <Border
-                    BackgroundColor="#1F2338"
+                    BackgroundColor="#1B2036"
                     Padding="14"
                     StrokeThickness="0">
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="16" />
                     </Border.StrokeShape>
                     <Border.Shadow>
-                        <Shadow Brush="#1A000000" Radius="12" Offset="0,6" />
+                        <Shadow Brush="#25000000" Radius="12" Offset="0,6" />
                     </Border.Shadow>
                     <VerticalStackLayout Spacing="10">
                         <Label
                             Text="Master-Passwort"
-                            FontSize="17"
+                            FontSize="16"
                             FontAttributes="Bold"
                             TextColor="White" />
                         <Label
@@ -182,7 +182,7 @@
                             Placeholder="Neues Master-Passwort"
                             PlaceholderColor="#7F85B2"
                             TextColor="White"
-                            BackgroundColor="#1B2036"
+                            BackgroundColor="#1F2338"
                             IsPassword="True"
                             IsEnabled="{Binding IsVaultUnlocked}"
                             FontSize="13"
@@ -192,7 +192,7 @@
                             Placeholder="Passwort bestätigen"
                             PlaceholderColor="#7F85B2"
                             TextColor="White"
-                            BackgroundColor="#1B2036"
+                            BackgroundColor="#1F2338"
                             IsPassword="True"
                             IsEnabled="{Binding IsVaultUnlocked}"
                             FontSize="13"
@@ -207,7 +207,7 @@
                                 Grid.Column="1"
                                 Text="Biometrische Anmeldung speichern"
                                 FontSize="11"
-                                TextColor="#D7DBF7"
+                                TextColor="#E8EBFF"
                                 Margin="10,0,0,0"
                                 VerticalOptions="Center"
                                 LineBreakMode="WordWrap" />
@@ -215,7 +215,7 @@
 
                         <Label
                             Text="{Binding ChangePasswordError}"
-                            TextColor="#FF9A9A"
+                            TextColor="#FF7474"
                             FontSize="11"
                             IsVisible="{Binding ChangePasswordError, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}" />
                         <Label
@@ -228,7 +228,7 @@
                             <Button
                                 Text="Passwort aktualisieren"
                                 Command="{Binding ChangePasswordCommand}"
-                                BackgroundColor="#3B4AD1"
+                                BackgroundColor="#4A5CFF"
                                 TextColor="White"
                                 FontSize="13"
                                 CornerRadius="12"

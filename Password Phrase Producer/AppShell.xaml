@@ -46,10 +46,12 @@
                     <Shadow Brush="#404A5CFF" Radius="10" Offset="0,4" />
                 </Border.Shadow>
                 <Label 
-                    Text="🔐" 
-                    FontSize="18" 
+                    Text="P" 
+                    FontSize="18"
+                    FontAttributes="Bold"
                     HorizontalOptions="Center" 
-                    VerticalOptions="Center" />
+                    VerticalOptions="Center"
+                    TextColor="White" />
             </Border>
             <VerticalStackLayout Grid.Row="1" Spacing="1" Margin="0,4,0,0">
                 <Label 
@@ -84,7 +86,9 @@
                     </Border.StrokeShape>
                     <Label 
                         Text="{Binding FlyoutIcon}" 
-                        FontSize="12" 
+                        FontSize="11"
+                        FontAttributes="Bold"
+                        TextColor="#CFD3FF"
                         HorizontalOptions="Center" 
                         VerticalOptions="Center" />
                 </Border>
@@ -123,7 +127,9 @@
                     </Border.StrokeShape>
                     <Label 
                         Text="{Binding Icon}" 
-                        FontSize="12" 
+                        FontSize="11"
+                        FontAttributes="Bold"
+                        TextColor="#CFD3FF"
                         HorizontalOptions="Center" 
                         VerticalOptions="Center" />
                 </Border>
@@ -164,8 +170,10 @@
                             <RoundRectangle CornerRadius="8" />
                         </Border.StrokeShape>
                         <Label 
-                            Text="⚙️" 
-                            FontSize="12" 
+                            Text="S" 
+                            FontSize="11"
+                            FontAttributes="Bold"
+                            TextColor="#CFD3FF"
                             HorizontalOptions="Center" 
                             VerticalOptions="Center" />
                     </Border>
@@ -196,7 +204,7 @@
     <!-- Startseite (versteckt im Flyout, aber als Route verfügbar) -->
     <FlyoutItem Title="Startseite"
                 Route="home"
-                FlyoutIcon="🏠"
+                FlyoutIcon="H"
                 FlyoutItemIsVisible="False">
         <ShellContent
             Title="Startseite"
@@ -206,7 +214,7 @@
     <!-- Tresor -->
     <FlyoutItem Title="Tresor"
                 Route="vault"
-                FlyoutIcon="🔐"
+                FlyoutIcon="T"
                 FlyoutDisplayOptions="AsSingleItem">
         <ShellContent
             Title="Tresor"
@@ -216,7 +224,7 @@
     <!-- Passwort erstellen -->
     <FlyoutItem Title="Passwort erstellen"
                 Route="generate"
-                FlyoutIcon="🎲"
+                FlyoutIcon="G"
                 FlyoutDisplayOptions="AsSingleItem">
         <ShellContent
             Title="Passwort erstellen"
@@ -226,7 +234,7 @@
     <!-- Einstellungen (versteckt im Flyout, Navigation über Footer) -->
     <FlyoutItem Title="Einstellungen"
                 Route="settings"
-                FlyoutIcon="⚙️"
+                FlyoutIcon="S"
                 FlyoutItemIsVisible="False">
         <ShellContent
             Title="Einstellungen"

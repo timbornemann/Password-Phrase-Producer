@@ -25,7 +25,7 @@
 
     <Grid>
         <Grid RowDefinitions="Auto,*">
-            <!-- Compact Header Area -->
+            <!-- Header Area -->
             <Grid
                 Padding="16,16,16,10"
                 RowSpacing="10"
@@ -37,7 +37,7 @@
                     ColumnSpacing="10"
                     VerticalOptions="Center">
                     
-                    <!-- Menu Button (links) -->
+                    <!-- Menu Button -->
                     <Border
                         WidthRequest="34"
                         HeightRequest="34"
@@ -72,12 +72,12 @@
                     <!-- Add Button -->
                     <Button
                         Grid.Column="2"
-                        Text="＋"
+                        Text="+"
                         Clicked="OnAddEntryClicked"
                         WidthRequest="34"
                         HeightRequest="34"
                         Padding="0"
-                        BackgroundColor="#3B4AD1"
+                        BackgroundColor="#4A5CFF"
                         TextColor="White"
                         FontSize="18"
                         CornerRadius="10"
@@ -88,7 +88,7 @@
                         </Button.Shadow>
                     </Button>
 
-                    <!-- Back Button (rechts) -->
+                    <!-- Back Button -->
                     <Border
                         Grid.Column="3"
                         WidthRequest="34"
@@ -129,7 +129,7 @@
                         </Border.StrokeShape>
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
                             <Label
-                                Text="🔍"
+                                Text="◎"
                                 FontSize="12"
                                 VerticalOptions="Center"
                                 TextColor="#CFD3FF" />
@@ -162,7 +162,7 @@
                         </Border.GestureRecognizers>
                         <Grid>
                             <Label
-                                Text="🗂"
+                                Text="≡"
                                 FontSize="15"
                                 HorizontalOptions="Center"
                                 VerticalOptions="Center"
@@ -208,7 +208,7 @@
                         Text="{Binding Category}"
                         FontSize="12"
                         FontAttributes="Bold"
-                        TextColor="#D8DCFF"
+                        TextColor="#E8EBFF"
                         Margin="0,12,0,6" />
                 </DataTemplate>
             </CollectionView.GroupHeaderTemplate>
@@ -227,8 +227,10 @@
                             <RoundRectangle CornerRadius="16" />
                         </Border.StrokeShape>
                         <Label
-                            Text="🔐"
+                            Text="T"
                             FontSize="22"
+                            FontAttributes="Bold"
+                            TextColor="#CFD3FF"
                             HorizontalOptions="Center"
                             VerticalOptions="Center" />
                     </Border>
@@ -237,12 +239,12 @@
                         FontSize="14"
                         FontAttributes="Bold"
                         HorizontalTextAlignment="Center"
-                        TextColor="#DDE1FF" />
+                        TextColor="#E8EBFF" />
                     <Label
                         Text="Füge deinen ersten Zugang hinzu."
                         FontSize="12"
                         HorizontalTextAlignment="Center"
-                        TextColor="#AEB5DA" />
+                        TextColor="#9EA3C4" />
                 </VerticalStackLayout>
             </CollectionView.EmptyView>
 
@@ -279,7 +281,7 @@
                                         <Label
                                             Text="{Binding DisplayCategory}"
                                             FontSize="10"
-                                            TextColor="#B6BCE3" />
+                                            TextColor="#9EA3C4" />
                                     </Border>
                                 </VerticalStackLayout>
 
@@ -292,7 +294,7 @@
                                     <Border
                                         WidthRequest="30"
                                         HeightRequest="30"
-                                        BackgroundColor="#2C3352"
+                                        BackgroundColor="#2A2F4A"
                                         StrokeThickness="0"
                                         VerticalOptions="Center">
                                         <Border.StrokeShape>
@@ -304,11 +306,11 @@
                                                 CommandParameter="{Binding .}" />
                                         </Border.GestureRecognizers>
                                         <Label
-                                            Text="✏"
+                                            Text="✎"
                                             FontSize="12"
                                             HorizontalOptions="Center"
                                             VerticalOptions="Center"
-                                            TextColor="#DCE0FF" />
+                                            TextColor="#CFD3FF" />
                                     </Border>
                                     <Border
                                         WidthRequest="30"
@@ -325,11 +327,11 @@
                                                 CommandParameter="{Binding .}" />
                                         </Border.GestureRecognizers>
                                         <Label
-                                            Text="🗑"
+                                            Text="✕"
                                             FontSize="12"
                                             HorizontalOptions="Center"
                                             VerticalOptions="Center"
-                                            TextColor="#FFD6D6" />
+                                            TextColor="#FF7474" />
                                     </Border>
                                 </HorizontalStackLayout>
                             </Grid>
@@ -343,14 +345,14 @@
                                 <Label
                                     Text="Benutzer"
                                     FontSize="11"
-                                    TextColor="#A8ACCD"
+                                    TextColor="#9EA3C4"
                                     FontAttributes="Bold"
                                     VerticalOptions="Center" />
                                 <Label
                                     Grid.Column="1"
                                     Text="{Binding Username}"
                                     FontSize="12"
-                                    TextColor="#ECEFFF"
+                                    TextColor="#E8EBFF"
                                     LineBreakMode="TailTruncation" />
                             </Grid>
 
@@ -363,13 +365,13 @@
                                 <Label
                                     Text="Passwort"
                                     FontSize="11"
-                                    TextColor="#A8ACCD"
+                                    TextColor="#9EA3C4"
                                     FontAttributes="Bold"
                                     VerticalOptions="Center" />
                                 <Grid Grid.Column="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
                                     <Label
                                         FontSize="12"
-                                        TextColor="#ECEFFF"
+                                        TextColor="#E8EBFF"
                                         LineBreakMode="NoWrap"
                                         VerticalOptions="Center">
                                         <Label.Triggers>
@@ -385,7 +387,7 @@
                                         Grid.Column="1"
                                         WidthRequest="30"
                                         HeightRequest="30"
-                                        BackgroundColor="#2C3352"
+                                        BackgroundColor="#2A2F4A"
                                         StrokeThickness="0"
                                         VerticalOptions="Center">
                                         <Border.StrokeShape>
@@ -397,14 +399,14 @@
                                                 CommandParameter="{Binding .}" />
                                         </Border.GestureRecognizers>
                                         <Label
-                                            FontSize="12"
-                                            TextColor="#CED4FF"
+                                            FontSize="11"
+                                            TextColor="#CFD3FF"
                                             HorizontalOptions="Center"
                                             VerticalOptions="Center"
-                                            Text="👁">
+                                            Text="◉">
                                             <Label.Triggers>
                                                 <DataTrigger TargetType="Label" Binding="{Binding IsPasswordVisible}" Value="True">
-                                                    <Setter Property="Text" Value="🙈" />
+                                                    <Setter Property="Text" Value="◎" />
                                                 </DataTrigger>
                                             </Label.Triggers>
                                         </Label>
@@ -413,7 +415,7 @@
                                         Grid.Column="2"
                                         WidthRequest="30"
                                         HeightRequest="30"
-                                        BackgroundColor="#2C3352"
+                                        BackgroundColor="#2A2F4A"
                                         StrokeThickness="0"
                                         VerticalOptions="Center">
                                         <Border.StrokeShape>
@@ -425,9 +427,9 @@
                                                 CommandParameter="{Binding .}" />
                                         </Border.GestureRecognizers>
                                         <Label
-                                            Text="📋"
+                                            Text="❏"
                                             FontSize="12"
-                                            TextColor="#CED4FF"
+                                            TextColor="#CFD3FF"
                                             HorizontalOptions="Center"
                                             VerticalOptions="Center" />
                                     </Border>
@@ -443,7 +445,7 @@
                                 <Label
                                     Text="URL"
                                     FontSize="11"
-                                    TextColor="#A8ACCD"
+                                    TextColor="#9EA3C4"
                                     FontAttributes="Bold"
                                     VerticalOptions="Center" />
                                 <Label
@@ -465,7 +467,7 @@
                                 <Label
                                     Text="{Binding Notes}"
                                     FontSize="11"
-                                    TextColor="#C9CCE8"
+                                    TextColor="#9EA3C4"
                                     LineBreakMode="WordWrap">
                                     <Label.Triggers>
                                         <Trigger TargetType="Label" Property="Text" Value="">
@@ -480,7 +482,7 @@
                                 <Label
                                     Text="{Binding FreeText}"
                                     FontSize="11"
-                                    TextColor="#C9CCE8"
+                                    TextColor="#9EA3C4"
                                     LineBreakMode="WordWrap">
                                     <Label.Triggers>
                                         <Trigger TargetType="Label" Property="Text" Value="">
@@ -495,7 +497,7 @@
                                 <Label
                                     Text="{Binding LocalModifiedAt, StringFormat='Aktualisiert: {0:d}'}"
                                     FontSize="9"
-                                    TextColor="#8E93BA"
+                                    TextColor="#5A6080"
                                     HorizontalOptions="End" />
                             </VerticalStackLayout>
                         </Grid>
@@ -550,13 +552,13 @@
                         <Label
                             Text="Bitte gib dein Master-Passwort ein."
                             FontSize="12"
-                            TextColor="#C4C8E8"
+                            TextColor="#9EA3C4"
                             HorizontalTextAlignment="Center" />
                         <Button
                             Text="Einstellungen öffnen"
                             Clicked="OnSettingsButtonClicked"
-                            BackgroundColor="#1F243C"
-                            TextColor="#D7DBF7"
+                            BackgroundColor="#1F2338"
+                            TextColor="#E8EBFF"
                             CornerRadius="10"
                             HeightRequest="36"
                             Padding="14,6"
@@ -569,9 +571,9 @@
                             Text="{Binding Password}"
                             IsPassword="True"
                             Placeholder="Master-Passwort"
-                            PlaceholderColor="#8489B0"
+                            PlaceholderColor="#7F85B2"
                             TextColor="White"
-                            BackgroundColor="#1F243C"
+                            BackgroundColor="#1F2338"
                             HeightRequest="40"
                             Margin="0,3"
                             HorizontalOptions="Fill" />
@@ -580,16 +582,16 @@
                             IsVisible="{Binding IsNewVault}"
                             IsPassword="True"
                             Placeholder="Passwort bestätigen"
-                            PlaceholderColor="#8489B0"
+                            PlaceholderColor="#7F85B2"
                             TextColor="White"
-                            BackgroundColor="#1F243C"
+                            BackgroundColor="#1F2338"
                             HeightRequest="40"
                             Margin="0,3"
                             HorizontalOptions="Fill" />
 
                         <Label
                             Text="{Binding UnlockError}"
-                            TextColor="#FF9A9A"
+                            TextColor="#FF7474"
                             FontSize="11"
                             IsVisible="{Binding UnlockError, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}"
                             HorizontalTextAlignment="Center" />
@@ -604,7 +606,7 @@
                                 Grid.Column="1"
                                 Text="Biometrisch entsperren"
                                 FontSize="12"
-                                TextColor="#D7DBF7"
+                                TextColor="#E8EBFF"
                                 Margin="10,0,0,0"
                                 VerticalOptions="Center" />
                         </Grid>
@@ -623,9 +625,9 @@
                             Command="{Binding UnlockWithBiometricCommand}"
                             HeightRequest="40"
                             CornerRadius="10"
-                            BackgroundColor="#1F243C"
-                            TextColor="#D7DBF7"
-                            BorderColor="#3B4AD1"
+                            BackgroundColor="#1F2338"
+                            TextColor="#E8EBFF"
+                            BorderColor="#4A5CFF"
                             BorderWidth="1"
                             IsVisible="{Binding CanUseBiometric}" />
                     </VerticalStackLayout>

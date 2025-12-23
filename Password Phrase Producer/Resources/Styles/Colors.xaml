@@ -4,21 +4,56 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
 
-    <!-- Note: For Android please see also Platforms\Android\Resources\values\colors.xml -->
+    <!-- ========================================== -->
+    <!-- Design System - Unified Color Palette     -->
+    <!-- ========================================== -->
 
-    <Color x:Key="Primary">#353B48</Color>
-    <!-- Dunkles Blau-Grau, modern und schlicht -->
-    <Color x:Key="PrimaryDark">#2C3A47</Color>
-    <!-- Etwas dunkler für tiefere Akzente -->
+    <!-- Primary Brand Colors -->
+    <Color x:Key="BrandPrimary">#4A5CFF</Color>
+    <Color x:Key="BrandPrimaryDark">#3B4AD1</Color>
+    <Color x:Key="BrandAccent">#7B8CFF</Color>
+    <Color x:Key="BrandSuccess">#63F5A8</Color>
+    <Color x:Key="BrandError">#FF7474</Color>
+    <Color x:Key="BrandWarning">#FFB84A</Color>
+    <Color x:Key="BrandLink">#58A7FF</Color>
+
+    <!-- Background Colors -->
+    <Color x:Key="BackgroundDark1">#101018</Color>
+    <Color x:Key="BackgroundDark2">#141426</Color>
+    <Color x:Key="BackgroundDark3">#0F111A</Color>
+    <Color x:Key="BackgroundCard">#1B2036</Color>
+    <Color x:Key="BackgroundInput">#1F2338</Color>
+    <Color x:Key="BackgroundElevated">#252538</Color>
+    <Color x:Key="BackgroundOverlay">#CC0B0D1A</Color>
+
+    <!-- Text Colors -->
+    <Color x:Key="TextPrimary">#FFFFFF</Color>
+    <Color x:Key="TextSecondary">#E8EBFF</Color>
+    <Color x:Key="TextTertiary">#9EA3C4</Color>
+    <Color x:Key="TextDisabled">#5A6080</Color>
+    <Color x:Key="TextMuted">#7F85B2</Color>
+    <Color x:Key="TextPlaceholder">#7F85B2</Color>
+
+    <!-- Icon Button Colors -->
+    <Color x:Key="IconButtonBackground">#1F2338</Color>
+    <Color x:Key="IconButtonText">#CFD3FF</Color>
+    <Color x:Key="IconButtonDestructive">#3B2232</Color>
+
+    <!-- Border/Divider Colors -->
+    <Color x:Key="BorderSubtle">#2A2A3A</Color>
+    <Color x:Key="BorderDefault">#2A2F4A</Color>
+
+    <!-- Shadow Colors -->
+    <Color x:Key="ShadowColor">#25000000</Color>
+    <Color x:Key="ShadowColorStrong">#40000000</Color>
+
+    <!-- Legacy Colors (for compatibility) -->
+    <Color x:Key="Primary">#4A5CFF</Color>
+    <Color x:Key="PrimaryDark">#3B4AD1</Color>
     <Color x:Key="PrimaryDarkText">#F5F6FA</Color>
-    <!-- Helles Grau für Kontrast im dunklen Design -->
     <Color x:Key="Secondary">#4BCFFA</Color>
-    <!-- Dezentes Blau für sekundäre Highlights -->
     <Color x:Key="SecondaryDarkText">#00A8FF</Color>
-    <!-- Hellblau für sekundäre Texte oder Akzente -->
     <Color x:Key="Tertiary">#1E272E</Color>
-    <!-- Sehr dunkles Grau, fast schwarz, für Elemente wie Hintergrund oder Ränder -->
-
 
     <Color x:Key="White">White</Color>
     <Color x:Key="Black">Black</Color>
@@ -35,6 +70,16 @@
     <Color x:Key="Gray900">#212121</Color>
     <Color x:Key="Gray950">#141414</Color>
 
+    <!-- Brushes -->
+    <SolidColorBrush x:Key="BrandPrimaryBrush" Color="{StaticResource BrandPrimary}"/>
+    <SolidColorBrush x:Key="BrandPrimaryDarkBrush" Color="{StaticResource BrandPrimaryDark}"/>
+    <SolidColorBrush x:Key="BackgroundCardBrush" Color="{StaticResource BackgroundCard}"/>
+    <SolidColorBrush x:Key="BackgroundInputBrush" Color="{StaticResource BackgroundInput}"/>
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimary}"/>
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondary}"/>
+    <SolidColorBrush x:Key="TextTertiaryBrush" Color="{StaticResource TextTertiary}"/>
+    <SolidColorBrush x:Key="ShadowBrush" Color="{StaticResource ShadowColor}"/>
+
     <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource Primary}"/>
     <SolidColorBrush x:Key="SecondaryBrush" Color="{StaticResource Secondary}"/>
     <SolidColorBrush x:Key="TertiaryBrush" Color="{StaticResource Tertiary}"/>
@@ -49,4 +94,45 @@
     <SolidColorBrush x:Key="Gray600Brush" Color="{StaticResource Gray600}"/>
     <SolidColorBrush x:Key="Gray900Brush" Color="{StaticResource Gray900}"/>
     <SolidColorBrush x:Key="Gray950Brush" Color="{StaticResource Gray950}"/>
+
+    <!-- ========================================== -->
+    <!-- Design System - Spacing Values            -->
+    <!-- ========================================== -->
+    <x:Double x:Key="SpacingXS">4</x:Double>
+    <x:Double x:Key="SpacingSM">8</x:Double>
+    <x:Double x:Key="SpacingMD">12</x:Double>
+    <x:Double x:Key="SpacingLG">16</x:Double>
+    <x:Double x:Key="SpacingXL">24</x:Double>
+    <x:Double x:Key="SpacingXXL">32</x:Double>
+
+    <!-- ========================================== -->
+    <!-- Design System - Corner Radius             -->
+    <!-- ========================================== -->
+    <x:Double x:Key="RadiusSM">8</x:Double>
+    <x:Double x:Key="RadiusMD">10</x:Double>
+    <x:Double x:Key="RadiusLG">12</x:Double>
+    <x:Double x:Key="RadiusXL">16</x:Double>
+    <x:Double x:Key="RadiusXXL">18</x:Double>
+    <x:Double x:Key="RadiusDialog">26</x:Double>
+
+    <!-- ========================================== -->
+    <!-- Design System - Component Sizes           -->
+    <!-- ========================================== -->
+    <x:Double x:Key="IconButtonSize">34</x:Double>
+    <x:Double x:Key="IconButtonSizeLarge">40</x:Double>
+    <x:Double x:Key="ButtonHeightDefault">40</x:Double>
+    <x:Double x:Key="ButtonHeightCompact">36</x:Double>
+    <x:Double x:Key="InputHeight">40</x:Double>
+
+    <!-- ========================================== -->
+    <!-- Design System - Typography Sizes          -->
+    <!-- ========================================== -->
+    <x:Double x:Key="FontSizeHeadline">20</x:Double>
+    <x:Double x:Key="FontSizeSubheadline">18</x:Double>
+    <x:Double x:Key="FontSizeTitle">16</x:Double>
+    <x:Double x:Key="FontSizeBody">14</x:Double>
+    <x:Double x:Key="FontSizeSmall">12</x:Double>
+    <x:Double x:Key="FontSizeTiny">10</x:Double>
+    <x:Double x:Key="FontSizeMicro">9</x:Double>
+
 </ResourceDictionary>

@@ -98,7 +98,7 @@ public class PasswordGeneratorHostView : ContentView
         var border = new Border
         {
             StrokeThickness = 0,
-            BackgroundColor = Color.FromArgb("#1F2438"),
+            BackgroundColor = Color.FromArgb("#1B2036"),
             Padding = new Thickness(18, 16),
             StrokeShape = new RoundRectangle { CornerRadius = 20 }
         };

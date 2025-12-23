@@ -9,9 +9,9 @@
     
     <ContentPage.Background>
         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#121212" Offset="0" />
-            <GradientStop Color="#1C1C24" Offset="0.5" />
-            <GradientStop Color="#101018" Offset="1" />
+            <GradientStop Color="#101018" Offset="0" />
+            <GradientStop Color="#141426" Offset="0.6" />
+            <GradientStop Color="#0F111A" Offset="1" />
         </LinearGradientBrush>
     </ContentPage.Background>
 
@@ -21,7 +21,7 @@
               ColumnSpacing="10"
               Padding="16,16,16,10">
             
-            <!-- Hamburger Menu (links) -->
+            <!-- Hamburger Menu -->
             <Border WidthRequest="34"
                     HeightRequest="34"
                     BackgroundColor="#1F2338"
@@ -50,7 +50,7 @@
                    TextColor="White"
                    VerticalOptions="Center"/>
             
-            <!-- Zurück Button (rechts) -->
+            <!-- Back Button -->
             <Border Grid.Column="2"
                     WidthRequest="34"
                     HeightRequest="34"
@@ -99,8 +99,8 @@
                             </Border.StrokeShape>
                             <Border.Background>
                                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                    <GradientStop Color="#2D3252" Offset="0" />
-                                    <GradientStop Color="#1B1E30" Offset="1" />
+                                    <GradientStop Color="#1F2540" Offset="0" />
+                                    <GradientStop Color="#1B2036" Offset="1" />
                                 </LinearGradientBrush>
                             </Border.Background>
                             <Border.Shadow>
@@ -122,16 +122,18 @@
                                         HorizontalOptions="Start"
                                         VerticalOptions="Start">
                                     <Border.StrokeShape>
-                                        <RoundRectangle CornerRadius="12" />
+                                        <RoundRectangle CornerRadius="10" />
                                     </Border.StrokeShape>
                                     <Border.Background>
                                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                            <GradientStop Color="#3E4266" Offset="0" />
-                                            <GradientStop Color="#272B43" Offset="1" />
+                                            <GradientStop Color="#4A5CFF" Offset="0" />
+                                            <GradientStop Color="#3B4AD1" Offset="1" />
                                         </LinearGradientBrush>
                                     </Border.Background>
                                     <Label Text="{Binding Icon}"
-                                           FontSize="16"
+                                           FontSize="14"
+                                           FontAttributes="Bold"
+                                           TextColor="White"
                                            HorizontalOptions="Center"
                                            VerticalOptions="Center"/>
                                 </Border>
@@ -148,7 +150,7 @@
                                 <Label Grid.Row="2"
                                        Text="{Binding Description}"
                                        FontSize="10"
-                                       TextColor="#C8CBDF"
+                                       TextColor="#9EA3C4"
                                        LineBreakMode="TailTruncation"
                                        MaxLines="2"
                                        VerticalOptions="Start"/>

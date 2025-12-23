@@ -7,9 +7,9 @@
              Shell.NavBarIsVisible="False">
     <ContentPage.Background>
         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#121212" Offset="0" />
-            <GradientStop Color="#1C1C24" Offset="0.5" />
-            <GradientStop Color="#101018" Offset="1" />
+            <GradientStop Color="#101018" Offset="0" />
+            <GradientStop Color="#141426" Offset="0.6" />
+            <GradientStop Color="#0F111A" Offset="1" />
         </LinearGradientBrush>
     </ContentPage.Background>
 
@@ -19,29 +19,30 @@
                              Padding="16,18,16,18"
                              VerticalOptions="Start">
             
+            <!-- Header -->
             <Grid ColumnDefinitions="Auto,*"
                   RowDefinitions="Auto"
                   Padding="0,0,0,6">
                 
-                <!-- Hamburger Menu (links, konsistent mit Flyout) -->
+                <!-- Hamburger Menu -->
                 <Border Grid.Column="0"
-                        WidthRequest="36"
-                        HeightRequest="36"
-                        BackgroundColor="#1F2336"
+                        WidthRequest="34"
+                        HeightRequest="34"
+                        BackgroundColor="#1F2338"
                         StrokeThickness="0"
                         HorizontalOptions="Start"
                         VerticalOptions="Center">
                     <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="12" />
+                        <RoundRectangle CornerRadius="10" />
                     </Border.StrokeShape>
                     <Border.Shadow>
-                        <Shadow Brush="#20000000" Radius="6" Offset="0,3" />
+                        <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
                     </Border.Shadow>
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnOpenMenuTapped" />
                     </Border.GestureRecognizers>
                     <Label Text="☰"
-                           FontSize="16"
+                           FontSize="15"
                            HorizontalOptions="Center"
                            VerticalOptions="Center"
                            TextColor="#CFD3FF"/>
@@ -69,12 +70,12 @@
                         HeightRequest="90"
                         BackgroundColor="Transparent">
                     <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="18" />
+                        <RoundRectangle CornerRadius="16" />
                     </Border.StrokeShape>
                     <Border.Background>
                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                            <GradientStop Color="#2D3252" Offset="0" />
-                            <GradientStop Color="#1B1E30" Offset="1" />
+                            <GradientStop Color="#1F2540" Offset="0" />
+                            <GradientStop Color="#1B2036" Offset="1" />
                         </LinearGradientBrush>
                     </Border.Background>
                     <Border.Shadow>
@@ -92,7 +93,7 @@
                                 VerticalOptions="Center"
                                 StrokeThickness="0">
                             <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="14" />
+                                <RoundRectangle CornerRadius="12" />
                             </Border.StrokeShape>
                             <Border.Background>
                                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
@@ -100,8 +101,10 @@
                                     <GradientStop Color="#3B4AD1" Offset="1" />
                                 </LinearGradientBrush>
                             </Border.Background>
-                            <Label Text="🔐"
-                                   FontSize="20"
+                            <Label Text="T"
+                                   FontSize="18"
+                                   FontAttributes="Bold"
+                                   TextColor="White"
                                    HorizontalOptions="Center"
                                    VerticalOptions="Center"/>
                         </Border>
@@ -118,16 +121,16 @@
                                    TextColor="White"/>
                             <Label Text="Verwalte deine Passwörter."
                                    FontSize="12"
-                                   TextColor="#A0A5C8"
+                                   TextColor="#9EA3C4"
                                    LineBreakMode="WordWrap"/>
                         </VerticalStackLayout>
                         
                         <!-- Arrow -->
                         <Label Grid.Column="1"
                                Grid.Row="1"
-                               Text="➜"
+                               Text="→"
                                FontSize="14"
-                               TextColor="#5A66FF"
+                               TextColor="#4A5CFF"
                                HorizontalOptions="End"
                                VerticalOptions="End"/>
                     </Grid>
@@ -138,12 +141,12 @@
                         HeightRequest="90"
                         BackgroundColor="Transparent">
                     <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="18" />
+                        <RoundRectangle CornerRadius="16" />
                     </Border.StrokeShape>
                     <Border.Background>
                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                            <GradientStop Color="#362D52" Offset="0" />
-                            <GradientStop Color="#221B30" Offset="1" />
+                            <GradientStop Color="#1F2540" Offset="0" />
+                            <GradientStop Color="#1B2036" Offset="1" />
                         </LinearGradientBrush>
                     </Border.Background>
                     <Border.Shadow>
@@ -161,16 +164,18 @@
                                 VerticalOptions="Center"
                                 StrokeThickness="0">
                             <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="14" />
+                                <RoundRectangle CornerRadius="12" />
                             </Border.StrokeShape>
                             <Border.Background>
                                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                    <GradientStop Color="#9D4AFF" Offset="0" />
-                                    <GradientStop Color="#7B3BD1" Offset="1" />
+                                    <GradientStop Color="#4A5CFF" Offset="0" />
+                                    <GradientStop Color="#3B4AD1" Offset="1" />
                                 </LinearGradientBrush>
                             </Border.Background>
-                            <Label Text="🎲"
-                                   FontSize="20"
+                            <Label Text="G"
+                                   FontSize="18"
+                                   FontAttributes="Bold"
+                                   TextColor="White"
                                    HorizontalOptions="Center"
                                    VerticalOptions="Center"/>
                         </Border>
@@ -187,16 +192,16 @@
                                    TextColor="White"/>
                             <Label Text="Neue, sichere Passwörter."
                                    FontSize="12"
-                                   TextColor="#BCA0C8"
+                                   TextColor="#9EA3C4"
                                    LineBreakMode="WordWrap"/>
                         </VerticalStackLayout>
 
                         <!-- Arrow -->
                         <Label Grid.Column="1"
                                Grid.Row="1"
-                               Text="➜"
+                               Text="→"
                                FontSize="14"
-                               TextColor="#A65AFF"
+                               TextColor="#4A5CFF"
                                HorizontalOptions="End"
                                VerticalOptions="End"/>
                     </Grid>

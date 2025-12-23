@@ -10,8 +10,21 @@ namespace Password_Phrase_Producer.Views.Dialogs;
 
 public sealed record ActionSheetPopupOption(string Id, string Title, string? Description = null, bool IsDestructive = false, bool IsSelected = false);
 
+/// <summary>
+/// A standardized action sheet popup with consistent design system styling.
+/// </summary>
 public sealed class ActionSheetPopup : Popup
 {
+    // Design System Colors
+    private static readonly Color BackgroundCard = Color.FromArgb("#1B2036");
+    private static readonly Color BackgroundOption = Color.FromArgb("#1F2338");
+    private static readonly Color BackgroundOptionSelected = Color.FromArgb("#262D4A");
+    private static readonly Color TextPrimary = Colors.White;
+    private static readonly Color TextSecondary = Color.FromArgb("#E8EBFF");
+    private static readonly Color TextTertiary = Color.FromArgb("#9EA3C4");
+    private static readonly Color TextDestructive = Color.FromArgb("#FF7474");
+    private static readonly Color AccentSuccess = Color.FromArgb("#63F5A8");
+
     private readonly string? _cancelText;
 
     public ActionSheetPopup(string title, IEnumerable<ActionSheetPopupOption> options, string? message = null, string? cancelText = null)
@@ -31,7 +44,7 @@ public sealed class ActionSheetPopup : Popup
 
         var contentStack = new VerticalStackLayout
         {
-            Spacing = 18
+            Spacing = 16
         };
 
         if (!string.IsNullOrWhiteSpace(title))
@@ -41,7 +54,7 @@ public sealed class ActionSheetPopup : Popup
                 Text = title,
                 FontSize = 18,
                 FontAttributes = FontAttributes.Bold,
-                TextColor = Colors.White
+                TextColor = TextPrimary
             });
         }
 
@@ -51,7 +64,7 @@ public sealed class ActionSheetPopup : Popup
             {
                 Text = message,
                 FontSize = 14,
-                TextColor = Color.FromArgb("#B6BBE0"),
+                TextColor = TextTertiary,
                 LineBreakMode = LineBreakMode.WordWrap
             });
         }
@@ -63,17 +76,24 @@ public sealed class ActionSheetPopup : Popup
 
         var card = new Border
         {
-            BackgroundColor = Color.FromArgb("#1B2036"),
-            StrokeShape = new RoundRectangle { CornerRadius = 26 },
+            BackgroundColor = BackgroundCard,
+            StrokeShape = new RoundRectangle { CornerRadius = 16 },
             StrokeThickness = 0,
-            Padding = new Thickness(22, 22, 22, 24),
+            Padding = new Thickness(16, 16, 16, 20),
             Content = contentStack
+        };
+
+        card.Shadow = new Shadow
+        {
+            Brush = new SolidColorBrush(Color.FromArgb("#25000000")),
+            Radius = 12,
+            Offset = new Point(0, 6)
         };
 
         var rootStack = new VerticalStackLayout
         {
-            Spacing = 18,
-            Margin = new Thickness(24, 0, 24, 36),
+            Spacing = 12,
+            Margin = new Thickness(16, 0, 16, 24),
             HorizontalOptions = LayoutOptions.Fill,
             VerticalOptions = LayoutOptions.End
         };
@@ -116,9 +136,9 @@ public sealed class ActionSheetPopup : Popup
         var titleLabel = new Label
         {
             Text = option.Title,
-            FontSize = 16,
+            FontSize = 15,
             FontAttributes = FontAttributes.Bold,
-            TextColor = option.IsDestructive ? Color.FromArgb("#FF7474") : Colors.White
+            TextColor = option.IsDestructive ? TextDestructive : TextPrimary
         };
         optionLayout.Children.Add(titleLabel);
 
@@ -127,8 +147,8 @@ public sealed class ActionSheetPopup : Popup
             var descriptionLabel = new Label
             {
                 Text = option.Description,
-                FontSize = 13,
-                TextColor = Color.FromArgb("#9EA3C4"),
+                FontSize = 12,
+                TextColor = TextTertiary,
                 LineBreakMode = LineBreakMode.WordWrap
             };
             Grid.SetColumn(descriptionLabel, 0);
@@ -141,8 +161,9 @@ public sealed class ActionSheetPopup : Popup
             var checkLabel = new Label
             {
                 Text = "✓",
-                FontSize = 16,
-                TextColor = Color.FromArgb("#63F5A8"),
+                FontSize = 15,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = AccentSuccess,
                 HorizontalOptions = LayoutOptions.End,
                 VerticalOptions = LayoutOptions.Start
             };
@@ -154,10 +175,10 @@ public sealed class ActionSheetPopup : Popup
 
         var optionBorder = new Border
         {
-            BackgroundColor = option.IsSelected ? Color.FromArgb("#262D4A") : Color.FromArgb("#161B2F"),
-            StrokeShape = new RoundRectangle { CornerRadius = 20 },
+            BackgroundColor = option.IsSelected ? BackgroundOptionSelected : BackgroundOption,
+            StrokeShape = new RoundRectangle { CornerRadius = 12 },
             StrokeThickness = 0,
-            Padding = new Thickness(18, 14),
+            Padding = new Thickness(14, 12),
             Content = optionLayout
         };
 
@@ -174,15 +195,16 @@ public sealed class ActionSheetPopup : Popup
     {
         var cancelBorder = new Border
         {
-            BackgroundColor = Color.FromArgb("#161B2F"),
-            StrokeShape = new RoundRectangle { CornerRadius = 20 },
+            BackgroundColor = BackgroundOption,
+            StrokeShape = new RoundRectangle { CornerRadius = 12 },
             StrokeThickness = 0,
-            Padding = new Thickness(18, 14),
+            Padding = new Thickness(14, 12),
             Content = new Label
             {
                 Text = cancelText,
-                FontSize = 16,
-                TextColor = Colors.White,
+                FontSize = 15,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = TextSecondary,
                 HorizontalTextAlignment = TextAlignment.Center
             }
         };
@@ -194,5 +216,4 @@ public sealed class ActionSheetPopup : Popup
 
         return cancelBorder;
     }
-
 }

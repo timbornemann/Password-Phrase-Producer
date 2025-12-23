@@ -6,8 +6,20 @@ using Microsoft.Maui.Graphics;
 
 namespace Password_Phrase_Producer.Views.Dialogs;
 
+/// <summary>
+/// A standardized confirmation popup with consistent design system styling.
+/// </summary>
 public sealed class ConfirmationPopup : Popup
 {
+    // Design System Colors
+    private static readonly Color BackgroundCard = Color.FromArgb("#1B2036");
+    private static readonly Color BackgroundButton = Color.FromArgb("#1F2338");
+    private static readonly Color BackgroundButtonPrimary = Color.FromArgb("#4A5CFF");
+    private static readonly Color BackgroundButtonDestructive = Color.FromArgb("#3B2232");
+    private static readonly Color TextPrimary = Colors.White;
+    private static readonly Color TextSecondary = Color.FromArgb("#E8EBFF");
+    private static readonly Color TextTertiary = Color.FromArgb("#9EA3C4");
+
     public ConfirmationPopup(string title, string message, string confirmText, string cancelText, bool confirmIsDestructive = false)
     {
         Color = Color.FromRgba(0, 0, 0, 0.65);
@@ -18,14 +30,14 @@ public sealed class ConfirmationPopup : Popup
             Text = title,
             FontSize = 18,
             FontAttributes = FontAttributes.Bold,
-            TextColor = Colors.White
+            TextColor = TextPrimary
         };
 
         var messageLabel = new Label
         {
             Text = message,
             FontSize = 14,
-            TextColor = Color.FromArgb("#B6BBE0"),
+            TextColor = TextTertiary,
             LineBreakMode = LineBreakMode.WordWrap
         };
 
@@ -36,21 +48,21 @@ public sealed class ConfirmationPopup : Popup
                 new ColumnDefinition { Width = GridLength.Star },
                 new ColumnDefinition { Width = GridLength.Star }
             },
-            ColumnSpacing = 14
+            ColumnSpacing = 12
         };
 
-        var cancelButton = CreateActionButton(cancelText, Color.FromArgb("#1A2038"), () => Close(false));
+        var cancelButton = CreateActionButton(cancelText, BackgroundButton, TextSecondary, () => Close(false));
         buttonGrid.Children.Add(cancelButton);
 
-        var confirmColor = confirmIsDestructive ? Color.FromArgb("#432028") : Color.FromArgb("#2C3A73");
-        var confirmButton = CreateActionButton(confirmText, confirmColor, () => Close(true));
+        var confirmColor = confirmIsDestructive ? BackgroundButtonDestructive : BackgroundButtonPrimary;
+        var confirmButton = CreateActionButton(confirmText, confirmColor, TextPrimary, () => Close(true));
         Grid.SetColumn(confirmButton, 1);
         Grid.SetRow(confirmButton, 0);
         buttonGrid.Children.Add(confirmButton);
 
         var cardLayout = new VerticalStackLayout
         {
-            Spacing = 18,
+            Spacing = 16,
             Children =
             {
                 titleLabel,
@@ -61,11 +73,18 @@ public sealed class ConfirmationPopup : Popup
 
         var card = new Border
         {
-            BackgroundColor = Color.FromArgb("#1B2036"),
-            StrokeShape = new RoundRectangle { CornerRadius = 28 },
+            BackgroundColor = BackgroundCard,
+            StrokeShape = new RoundRectangle { CornerRadius = 16 },
             StrokeThickness = 0,
-            Padding = new Thickness(24, 26),
+            Padding = new Thickness(20, 20),
             Content = cardLayout
+        };
+
+        card.Shadow = new Shadow
+        {
+            Brush = new SolidColorBrush(Color.FromArgb("#25000000")),
+            Radius = 12,
+            Offset = new Point(0, 6)
         };
 
         Content = new Grid
@@ -85,14 +104,14 @@ public sealed class ConfirmationPopup : Popup
         };
     }
 
-    private static View CreateActionButton(string text, Color background, Action onClicked)
+    private static View CreateActionButton(string text, Color background, Color textColor, Action onClicked)
     {
         var label = new Label
         {
             Text = text,
-            FontSize = 15,
+            FontSize = 14,
             FontAttributes = FontAttributes.Bold,
-            TextColor = Colors.White,
+            TextColor = textColor,
             HorizontalTextAlignment = TextAlignment.Center,
             VerticalTextAlignment = TextAlignment.Center
         };
@@ -101,8 +120,8 @@ public sealed class ConfirmationPopup : Popup
         {
             BackgroundColor = background,
             StrokeThickness = 0,
-            StrokeShape = new RoundRectangle { CornerRadius = 18 },
-            Padding = new Thickness(16, 14),
+            StrokeShape = new RoundRectangle { CornerRadius = 12 },
+            Padding = new Thickness(14, 12),
             Content = label
         };
 

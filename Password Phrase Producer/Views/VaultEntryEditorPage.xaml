@@ -8,24 +8,24 @@
     <ContentPage.Resources>
         <ResourceDictionary>
             <Color x:Key="CardBackgroundColor">#1B2036</Color>
-            <Color x:Key="InputBackgroundColor">#20253D</Color>
-            <Color x:Key="AccentColor">#5465FF</Color>
-            <Color x:Key="SecondaryButtonColor">#2A2F4A</Color>
+            <Color x:Key="InputBackgroundColor">#1F2338</Color>
+            <Color x:Key="AccentColor">#4A5CFF</Color>
+            <Color x:Key="SecondaryButtonColor">#1F2338</Color>
             <Style TargetType="Label" x:Key="FieldLabelStyle">
                 <Setter Property="FontSize" Value="12" />
                 <Setter Property="FontAttributes" Value="Bold" />
-                <Setter Property="TextColor" Value="#C7CCF1" />
+                <Setter Property="TextColor" Value="#E8EBFF" />
             </Style>
             <Style TargetType="Entry" x:Key="InputEntryStyle">
                 <Setter Property="BackgroundColor" Value="Transparent" />
-                <Setter Property="TextColor" Value="#F5F6FF" />
-                <Setter Property="PlaceholderColor" Value="#7C83AF" />
+                <Setter Property="TextColor" Value="White" />
+                <Setter Property="PlaceholderColor" Value="#7F85B2" />
                 <Setter Property="FontSize" Value="14" />
             </Style>
             <Style TargetType="Editor" x:Key="InputEditorStyle">
                 <Setter Property="BackgroundColor" Value="Transparent" />
-                <Setter Property="TextColor" Value="#F5F6FF" />
-                <Setter Property="PlaceholderColor" Value="#7C83AF" />
+                <Setter Property="TextColor" Value="White" />
+                <Setter Property="PlaceholderColor" Value="#7F85B2" />
                 <Setter Property="FontSize" Value="13" />
                 <Setter Property="AutoSize" Value="TextChanges" />
             </Style>
@@ -34,12 +34,12 @@
                 <Setter Property="TextColor" Value="White" />
                 <Setter Property="FontAttributes" Value="Bold" />
                 <Setter Property="FontSize" Value="14" />
-                <Setter Property="CornerRadius" Value="14" />
+                <Setter Property="CornerRadius" Value="12" />
                 <Setter Property="Padding" Value="0,12" />
             </Style>
             <Style TargetType="Button" x:Key="SecondaryButtonStyle" BasedOn="{StaticResource PrimaryButtonStyle}">
                 <Setter Property="BackgroundColor" Value="{StaticResource SecondaryButtonColor}" />
-                <Setter Property="TextColor" Value="#D9DFFF" />
+                <Setter Property="TextColor" Value="#E8EBFF" />
             </Style>
         </ResourceDictionary>
     </ContentPage.Resources>
@@ -58,8 +58,9 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
+        <!-- Header -->
         <Grid
-            Padding="16,24,16,16"
+            Padding="16,16,16,10"
             ColumnDefinitions="*,Auto"
             Grid.Row="0"
             VerticalOptions="Start">
@@ -72,22 +73,22 @@
                 <Label
                     Text="Pflege deine Zugangsdaten sicher und strukturiert."
                     FontSize="12"
-                    TextColor="#AEB5DA" />
+                    TextColor="#9EA3C4" />
             </VerticalStackLayout>
 
             <Border
                 Grid.Column="1"
-                WidthRequest="36"
-                HeightRequest="36"
+                WidthRequest="34"
+                HeightRequest="34"
                 BackgroundColor="#1F2338"
                 StrokeThickness="0"
                 HorizontalOptions="End"
                 VerticalOptions="Center">
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="12" />
+                    <RoundRectangle CornerRadius="10" />
                 </Border.StrokeShape>
                 <Border.Shadow>
-                    <Shadow Brush="#20000000" Radius="8" Offset="0,4" />
+                    <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
                 </Border.Shadow>
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnCloseTapped" />
@@ -97,7 +98,7 @@
                     FontSize="15"
                     HorizontalOptions="Center"
                     VerticalOptions="Center"
-                    TextColor="#D0D4FF" />
+                    TextColor="#CFD3FF" />
             </Border>
         </Grid>
 
@@ -108,10 +109,10 @@
                     StrokeThickness="0"
                     Padding="16">
                     <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="18" />
+                        <RoundRectangle CornerRadius="16" />
                     </Border.StrokeShape>
                     <Border.Shadow>
-                        <Shadow Brush="#25000000" Radius="14" Offset="0,8" />
+                        <Shadow Brush="#25000000" Radius="12" Offset="0,6" />
                     </Border.Shadow>
                     <VerticalStackLayout Spacing="8">
                         <Label Text="Bezeichnung" Style="{StaticResource FieldLabelStyle}" />
@@ -246,7 +247,7 @@
                         <Label
                             Text="{Binding ModifiedAt, StringFormat='{0:G}'}"
                             FontSize="11"
-                            TextColor="#9AA2CC" />
+                            TextColor="#9EA3C4" />
                     </VerticalStackLayout>
                 </Border>
 

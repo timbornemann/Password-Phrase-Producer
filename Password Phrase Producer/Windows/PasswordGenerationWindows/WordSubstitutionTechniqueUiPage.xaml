@@ -7,7 +7,7 @@
     <VerticalStackLayout Spacing="16">
         <Border StrokeThickness="0"
                 Padding="14"
-                BackgroundColor="#1F2438">
+                BackgroundColor="#1B2036">
             <Border.StrokeShape>
                 <RoundRectangle CornerRadius="16" />
             </Border.StrokeShape>
@@ -17,7 +17,7 @@
                        FontAttributes="Bold"
                        TextColor="White"/>
                 <Label Text="Gib einen Text ein, der durch Leet-Speak und Symbolersetzung transformiert wird."
-                       TextColor="#BDC2E8"
+                       TextColor="#9EA3C4"
                        FontSize="12"
                        LineBreakMode="WordWrap"/>
                 <Entry x:Name="passwordEntry"
@@ -49,7 +49,7 @@
 
         <Border StrokeThickness="0"
                 Padding="14"
-                BackgroundColor="#1F2438">
+                BackgroundColor="#1B2036">
             <Border.StrokeShape>
                 <RoundRectangle CornerRadius="16" />
             </Border.StrokeShape>
