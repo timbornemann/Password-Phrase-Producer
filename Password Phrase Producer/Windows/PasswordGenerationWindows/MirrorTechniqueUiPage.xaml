@@ -4,21 +4,21 @@
              xmlns:controls="clr-namespace:Password_Phrase_Producer.Windows.PasswordGenerationWindows.Controls"
              xmlns:local="clr-namespace:Password_Phrase_Producer.Windows.PasswordGenerationWindows"
              x:Class="Password_Phrase_Producer.Windows.PasswordGenerationWindows.MirrorTechniqueUiPage">
-    <VerticalStackLayout Spacing="24">
+    <VerticalStackLayout Spacing="16">
         <Border StrokeThickness="0"
-                Padding="18"
+                Padding="14"
                 BackgroundColor="#1F2438">
             <Border.StrokeShape>
-                <RoundRectangle CornerRadius="22" />
+                <RoundRectangle CornerRadius="16" />
             </Border.StrokeShape>
-            <VerticalStackLayout Spacing="14">
+            <VerticalStackLayout Spacing="10">
                 <Label Text="Grundphrase"
-                       FontSize="18"
+                       FontSize="15"
                        FontAttributes="Bold"
                        TextColor="White"/>
                 <Label Text="Gib eine Phrase ein, die gespiegelt und mit einer Prüfsumme versehen wird."
                        TextColor="#BDC2E8"
-                       FontSize="14"
+                       FontSize="12"
                        LineBreakMode="WordWrap"/>
                 <Entry x:Name="inputEntry"
                        Placeholder="Ausgangsphrase"
@@ -27,17 +27,17 @@
         </Border>
 
         <Border StrokeThickness="0"
-                Padding="18"
+                Padding="14"
                 BackgroundColor="#1F2438">
             <Border.StrokeShape>
-                <RoundRectangle CornerRadius="22" />
+                <RoundRectangle CornerRadius="16" />
             </Border.StrokeShape>
-            <VerticalStackLayout Spacing="16">
+            <VerticalStackLayout Spacing="12">
                 <Label Text="Spiegel-Passwort"
-                       FontSize="18"
+                       FontSize="15"
                        FontAttributes="Bold"
                        TextColor="White"/>
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                     <Entry x:Name="resultEntry"
                            Placeholder="Generiertes Passwort"
                            Style="{StaticResource DarkEntryStyle}"

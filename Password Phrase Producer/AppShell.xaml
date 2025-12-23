@@ -7,7 +7,7 @@
     xmlns:views="clr-namespace:Password_Phrase_Producer.Views"
     Title="Password Phrase Producer"
     FlyoutBehavior="Flyout"
-    FlyoutWidth="320"
+    FlyoutWidth="260"
     FlyoutBackgroundColor="Transparent"
     Shell.NavBarIsVisible="False"
     FlyoutIcon="{x:Null}">
@@ -27,14 +27,14 @@
     </Shell.FlyoutBackground>
 
     <Shell.FlyoutHeader>
-        <Grid Padding="24,48,24,24" RowDefinitions="Auto,Auto" RowSpacing="8">
+        <Grid Padding="16,28,16,16" RowDefinitions="Auto,Auto" RowSpacing="4">
             <Border 
-                WidthRequest="64" 
-                HeightRequest="64" 
+                WidthRequest="36" 
+                HeightRequest="36" 
                 StrokeThickness="0"
                 HorizontalOptions="Start">
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="20" />
+                    <RoundRectangle CornerRadius="12" />
                 </Border.StrokeShape>
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
@@ -43,23 +43,23 @@
                     </LinearGradientBrush>
                 </Border.Background>
                 <Border.Shadow>
-                    <Shadow Brush="#404A5CFF" Radius="16" Offset="0,8" />
+                    <Shadow Brush="#404A5CFF" Radius="10" Offset="0,4" />
                 </Border.Shadow>
                 <Label 
                     Text="🔐" 
-                    FontSize="28" 
+                    FontSize="18" 
                     HorizontalOptions="Center" 
                     VerticalOptions="Center" />
             </Border>
-            <VerticalStackLayout Grid.Row="1" Spacing="4" Margin="0,8,0,0">
+            <VerticalStackLayout Grid.Row="1" Spacing="1" Margin="0,4,0,0">
                 <Label 
                     Text="Password Phrase" 
-                    FontSize="22" 
+                    FontSize="15" 
                     FontAttributes="Bold" 
                     TextColor="White" />
                 <Label 
                     Text="Producer" 
-                    FontSize="22" 
+                    FontSize="15" 
                     FontAttributes="Bold" 
                     TextColor="#7B8CFF" />
             </VerticalStackLayout>
@@ -69,38 +69,38 @@
     <Shell.ItemTemplate>
         <DataTemplate>
             <Grid 
-                Padding="16,6" 
+                Padding="14,3" 
                 ColumnDefinitions="Auto,*,Auto" 
-                ColumnSpacing="16"
-                HeightRequest="56">
+                ColumnSpacing="10"
+                HeightRequest="40">
                 <Border 
-                    WidthRequest="40" 
-                    HeightRequest="40" 
+                    WidthRequest="28" 
+                    HeightRequest="28" 
                     BackgroundColor="#252538" 
                     StrokeThickness="0"
                     VerticalOptions="Center">
                     <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="14" />
+                        <RoundRectangle CornerRadius="8" />
                     </Border.StrokeShape>
                     <Label 
                         Text="{Binding FlyoutIcon}" 
-                        FontSize="18" 
+                        FontSize="12" 
                         HorizontalOptions="Center" 
                         VerticalOptions="Center" />
                 </Border>
                 <Label 
                     Grid.Column="1" 
                     Text="{Binding Title}" 
-                    FontSize="16" 
+                    FontSize="13" 
                     TextColor="#E8EBFF" 
                     VerticalOptions="Center" />
                 <Label 
                     Grid.Column="2" 
                     Text="›" 
-                    FontSize="20" 
+                    FontSize="16" 
                     TextColor="#5A6080" 
                     VerticalOptions="Center" 
-                    Margin="0,0,8,0" />
+                    Margin="0,0,6,0" />
             </Grid>
         </DataTemplate>
     </Shell.ItemTemplate>
@@ -108,29 +108,29 @@
     <Shell.MenuItemTemplate>
         <DataTemplate>
             <Grid 
-                Padding="16,6" 
+                Padding="14,3" 
                 ColumnDefinitions="Auto,*" 
-                ColumnSpacing="16"
-                HeightRequest="56">
+                ColumnSpacing="10"
+                HeightRequest="40">
                 <Border 
-                    WidthRequest="40" 
-                    HeightRequest="40" 
+                    WidthRequest="28" 
+                    HeightRequest="28" 
                     BackgroundColor="#252538" 
                     StrokeThickness="0"
                     VerticalOptions="Center">
                     <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="14" />
+                        <RoundRectangle CornerRadius="8" />
                     </Border.StrokeShape>
                     <Label 
                         Text="{Binding Icon}" 
-                        FontSize="18" 
+                        FontSize="12" 
                         HorizontalOptions="Center" 
                         VerticalOptions="Center" />
                 </Border>
                 <Label 
                     Grid.Column="1" 
                     Text="{Binding Text}" 
-                    FontSize="16" 
+                    FontSize="13" 
                     TextColor="#E8EBFF" 
                     VerticalOptions="Center" />
             </Grid>
@@ -138,11 +138,11 @@
     </Shell.MenuItemTemplate>
 
     <Shell.FlyoutFooter>
-        <VerticalStackLayout Padding="24,16,24,32" Spacing="8">
-            <BoxView HeightRequest="1" Color="#2A2A3A" Margin="0,0,0,16" />
+        <VerticalStackLayout Padding="16,10,16,20" Spacing="4">
+            <BoxView HeightRequest="1" Color="#2A2A3A" Margin="0,0,0,8" />
             <Label 
                 Text="Version 1.0" 
-                FontSize="12" 
+                FontSize="10" 
                 TextColor="#5A6080" 
                 HorizontalOptions="Center" />
         </VerticalStackLayout>

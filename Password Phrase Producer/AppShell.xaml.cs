@@ -10,6 +10,9 @@ public partial class AppShell : Shell
         InitializeComponent();
         BuildModeMenu();
         
+        // Register route for Generation Methods Page
+        Routing.RegisterRoute("generation", typeof(GenerationMethodsPage));
+
         // Hide default flyout icon on all platforms - we use custom menu buttons
         SetValue(Shell.FlyoutIconProperty, null);
     }

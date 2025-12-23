@@ -4,32 +4,32 @@
              xmlns:controls="clr-namespace:Password_Phrase_Producer.Windows.PasswordGenerationWindows.Controls"
              xmlns:local="clr-namespace:Password_Phrase_Producer.Windows.PasswordGenerationWindows"
              x:Class="Password_Phrase_Producer.Windows.PasswordGenerationWindows.CaesarCipherTechniqueUiPage">
-    <VerticalStackLayout Spacing="24">
+    <VerticalStackLayout Spacing="16">
         <Border StrokeThickness="0"
-                Padding="18"
+                Padding="14"
                 BackgroundColor="#1F2438">
             <Border.StrokeShape>
-                <RoundRectangle CornerRadius="22" />
+                <RoundRectangle CornerRadius="16" />
             </Border.StrokeShape>
-            <VerticalStackLayout Spacing="14">
+            <VerticalStackLayout Spacing="10">
                 <Label Text="Eingabe"
-                       FontSize="18"
+                       FontSize="15"
                        FontAttributes="Bold"
                        TextColor="White"/>
                 <Label Text="Gib einen Text ein, der mit Caesar-Verschlüsselung transformiert wird."
                        TextColor="#BDC2E8"
-                       FontSize="14"
+                       FontSize="12"
                        LineBreakMode="WordWrap"/>
                 <Entry x:Name="passwordEntry"
                        Placeholder="Eingabetext"
                        Style="{StaticResource DarkEntryStyle}" />
                 <Label Text="Verschiebung"
-                       FontSize="16"
+                       FontSize="13"
                        FontAttributes="Bold"
                        TextColor="White"/>
                 <Label Text="Wähle die Anzahl der Zeichen, um die verschoben werden soll (0-25)."
                        TextColor="#BDC2E8"
-                       FontSize="14"
+                       FontSize="12"
                        LineBreakMode="WordWrap"/>
                 <Entry x:Name="shiftEntry"
                        Placeholder="Verschiebung (z.B. 3)"
@@ -40,17 +40,17 @@
         </Border>
 
         <Border StrokeThickness="0"
-                Padding="18"
+                Padding="14"
                 BackgroundColor="#1F2438">
             <Border.StrokeShape>
-                <RoundRectangle CornerRadius="22" />
+                <RoundRectangle CornerRadius="16" />
             </Border.StrokeShape>
-            <VerticalStackLayout Spacing="16">
+            <VerticalStackLayout Spacing="12">
                 <Label Text="Verschlüsseltes Ergebnis"
-                       FontSize="18"
+                       FontSize="15"
                        FontAttributes="Bold"
                        TextColor="White"/>
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                     <Entry x:Name="resultEntry"
                            Placeholder="Verschlüsselte Ausgabe"
                            Style="{StaticResource DarkEntryStyle}"
@@ -72,5 +72,3 @@
         </Border>
     </VerticalStackLayout>
 </local:PasswordGeneratorContentView>
-
-

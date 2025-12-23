@@ -4,21 +4,21 @@
              xmlns:controls="clr-namespace:Password_Phrase_Producer.Windows.PasswordGenerationWindows.Controls"
              xmlns:local="clr-namespace:Password_Phrase_Producer.Windows.PasswordGenerationWindows"
              x:Class="Password_Phrase_Producer.Windows.PasswordGenerationWindows.SymbolInjectionTechniqueUiPage">
-    <VerticalStackLayout Spacing="24">
+    <VerticalStackLayout Spacing="16">
         <Border StrokeThickness="0"
-                Padding="18"
+                Padding="14"
                 BackgroundColor="#1F2438">
             <Border.StrokeShape>
-                <RoundRectangle CornerRadius="22" />
+                <RoundRectangle CornerRadius="16" />
             </Border.StrokeShape>
-            <VerticalStackLayout Spacing="14">
+            <VerticalStackLayout Spacing="10">
                 <Label Text="Symbol-Mixer"
-                       FontSize="18"
+                       FontSize="15"
                        FontAttributes="Bold"
                        TextColor="White"/>
                 <Label Text="Injiziere Symbole an zufälligen Positionen und steuere die Groß-/Kleinschreibung."
                        TextColor="#BDC2E8"
-                       FontSize="14"
+                       FontSize="12"
                        LineBreakMode="WordWrap"/>
                 <Entry x:Name="inputEntry"
                        Placeholder="Basispasswort"
@@ -26,16 +26,16 @@
                 <Label x:Name="symbolLabel"
                        Text="Symbole: 2"
                        TextColor="#8F95C6"
-                       FontSize="13" />
+                       FontSize="11" />
                 <Slider x:Name="symbolSlider"
                         Minimum="0"
                         Maximum="6"
                         Value="2"
                         ValueChanged="OnSymbolCountChanged" />
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
                     <Label Text="Groß-/Kleinschreibung variieren"
                            TextColor="#BDC2E8"
-                           FontSize="14" />
+                           FontSize="12" />
                     <Switch x:Name="caseSwitch"
                             Grid.Column="1"
                             OnColor="#FF7700" />
@@ -47,17 +47,17 @@
         </Border>
 
         <Border StrokeThickness="0"
-                Padding="18"
+                Padding="14"
                 BackgroundColor="#1F2438">
             <Border.StrokeShape>
-                <RoundRectangle CornerRadius="22" />
+                <RoundRectangle CornerRadius="16" />
             </Border.StrokeShape>
-            <VerticalStackLayout Spacing="16">
+            <VerticalStackLayout Spacing="12">
                 <Label Text="Symbolisiertes Passwort"
-                       FontSize="18"
+                       FontSize="15"
                        FontAttributes="Bold"
                        TextColor="White"/>
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                     <Entry x:Name="resultEntry"
                            Placeholder="Ergebnis"
                            Style="{StaticResource DarkEntryStyle}"

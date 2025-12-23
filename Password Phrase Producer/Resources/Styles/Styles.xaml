@@ -27,12 +27,12 @@
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource PrimaryDarkText}}" />
         <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}" />
         <Setter Property="FontFamily" Value="OpenSansRegular"/>
-        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontSize" Value="13"/>
         <Setter Property="BorderWidth" Value="0"/>
         <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="Padding" Value="14,10"/>
-        <Setter Property="MinimumHeightRequest" Value="44"/>
-        <Setter Property="MinimumWidthRequest" Value="44"/>
+        <Setter Property="Padding" Value="12,8"/>
+        <Setter Property="MinimumHeightRequest" Value="36"/>
+        <Setter Property="MinimumWidthRequest" Value="36"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
@@ -51,8 +51,8 @@
 
     <Style TargetType="CheckBox">
         <Setter Property="Color" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource White}}" />
-        <Setter Property="MinimumHeightRequest" Value="44"/>
-        <Setter Property="MinimumWidthRequest" Value="44"/>
+        <Setter Property="MinimumHeightRequest" Value="36"/>
+        <Setter Property="MinimumWidthRequest" Value="36"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
@@ -71,9 +71,9 @@
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Gray900}, Dark={StaticResource White}}" />
         <Setter Property="BackgroundColor" Value="Transparent" />
         <Setter Property="FontFamily" Value="OpenSansRegular"/>
-        <Setter Property="FontSize" Value="14"/>
-        <Setter Property="MinimumHeightRequest" Value="44"/>
-        <Setter Property="MinimumWidthRequest" Value="44"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="MinimumHeightRequest" Value="36"/>
+        <Setter Property="MinimumWidthRequest" Value="36"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
@@ -92,10 +92,10 @@
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
         <Setter Property="BackgroundColor" Value="Transparent" />
         <Setter Property="FontFamily" Value="OpenSansRegular"/>
-        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontSize" Value="13" />
         <Setter Property="PlaceholderColor" Value="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray500}}" />
-        <Setter Property="MinimumHeightRequest" Value="44"/>
-        <Setter Property="MinimumWidthRequest" Value="44"/>
+        <Setter Property="MinimumHeightRequest" Value="36"/>
+        <Setter Property="MinimumWidthRequest" Value="36"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
@@ -114,10 +114,10 @@
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
         <Setter Property="BackgroundColor" Value="Transparent" />
         <Setter Property="FontFamily" Value="OpenSansRegular"/>
-        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontSize" Value="13" />
         <Setter Property="PlaceholderColor" Value="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray500}}" />
-        <Setter Property="MinimumHeightRequest" Value="44"/>
-        <Setter Property="MinimumWidthRequest" Value="44"/>
+        <Setter Property="MinimumHeightRequest" Value="36"/>
+        <Setter Property="MinimumWidthRequest" Value="36"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
@@ -144,8 +144,8 @@
         <Setter Property="BorderColor" Value="Transparent"/>
         <Setter Property="BorderWidth" Value="0"/>
         <Setter Property="CornerRadius" Value="0"/>
-        <Setter Property="MinimumHeightRequest" Value="44"/>
-        <Setter Property="MinimumWidthRequest" Value="44"/>
+        <Setter Property="MinimumHeightRequest" Value="36"/>
+        <Setter Property="MinimumWidthRequest" Value="36"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
@@ -165,7 +165,7 @@
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
         <Setter Property="BackgroundColor" Value="Transparent" />
         <Setter Property="FontFamily" Value="OpenSansRegular" />
-        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontSize" Value="13" />
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
@@ -186,14 +186,14 @@
 
     <Style TargetType="Label" x:Key="Headline">
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource MidnightBlue}, Dark={StaticResource White}}" />
-        <Setter Property="FontSize" Value="32" />
+        <Setter Property="FontSize" Value="24" />
         <Setter Property="HorizontalOptions" Value="Center" />
         <Setter Property="HorizontalTextAlignment" Value="Center" />
     </Style>
 
     <Style TargetType="Label" x:Key="SubHeadline">
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource MidnightBlue}, Dark={StaticResource White}}" />
-        <Setter Property="FontSize" Value="24" />
+        <Setter Property="FontSize" Value="18" />
         <Setter Property="HorizontalOptions" Value="Center" />
         <Setter Property="HorizontalTextAlignment" Value="Center" />
     </Style>
@@ -427,17 +427,17 @@
     <Style TargetType="Button" x:Key="PrimaryActionButtonStyle">
         <Setter Property="TextColor" Value="White" />
         <Setter Property="BackgroundColor" Value="#6366F1" />
-        <Setter Property="CornerRadius" Value="22" />
-        <Setter Property="FontSize" Value="16" />
+        <Setter Property="CornerRadius" Value="16" />
+        <Setter Property="FontSize" Value="14" />
         <Setter Property="FontAttributes" Value="Bold" />
-        <Setter Property="HeightRequest" Value="52" />
+        <Setter Property="HeightRequest" Value="42" />
         <Setter Property="Margin" Value="0" />
         <Setter Property="HorizontalOptions" Value="FillAndExpand" />
         <Setter Property="VerticalOptions" Value="Center" />
-        <Setter Property="Padding" Value="22,14" />
+        <Setter Property="Padding" Value="16,10" />
         <Setter Property="Shadow">
             <Setter.Value>
-                <Shadow Brush="#33000000" Radius="12" Offset="0,6" />
+                <Shadow Brush="#33000000" Radius="10" Offset="0,4" />
             </Setter.Value>
         </Setter>
     </Style>
@@ -446,11 +446,36 @@
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
         <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#EEF1FF, Dark=#22263A}" />
         <Setter Property="PlaceholderColor" Value="{AppThemeBinding Light=#7A7FA6, Dark=#9EA3CC}" />
-        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontSize" Value="14" />
         <Setter Property="Margin" Value="0" />
         <Setter Property="HorizontalOptions" Value="FillAndExpand" />
         <Setter Property="VerticalOptions" Value="Center" />
-        <Setter Property="HeightRequest" Value="52" />
+        <Setter Property="HeightRequest" Value="40" />
+    </Style>
+
+    <!-- Compact Secondary Button Style -->
+    <Style TargetType="Button" x:Key="CompactSecondaryButtonStyle">
+        <Setter Property="TextColor" Value="#D9DFFF" />
+        <Setter Property="BackgroundColor" Value="#2A2F4A" />
+        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="HeightRequest" Value="38" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="HorizontalOptions" Value="FillAndExpand" />
+        <Setter Property="VerticalOptions" Value="Center" />
+        <Setter Property="Padding" Value="14,8" />
+    </Style>
+
+    <!-- Compact Card Border Style -->
+    <Style TargetType="Border" x:Key="CompactCardStyle">
+        <Setter Property="StrokeThickness" Value="0" />
+        <Setter Property="Padding" Value="14" />
+        <Setter Property="BackgroundColor" Value="#1F2438" />
+        <Setter Property="StrokeShape">
+            <Setter.Value>
+                <RoundRectangle CornerRadius="16" />
+            </Setter.Value>
+        </Setter>
     </Style>
 
 </ResourceDictionary>

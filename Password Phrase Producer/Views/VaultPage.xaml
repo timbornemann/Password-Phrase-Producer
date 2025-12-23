@@ -25,178 +25,156 @@
 
     <Grid>
         <Grid RowDefinitions="Auto,*">
+            <!-- Compact Header Area -->
             <Grid
-                Padding="24,40,24,16"
-                RowSpacing="12"
+                Padding="16,16,16,10"
+                RowSpacing="10"
                 RowDefinitions="Auto,Auto">
+                
+                <!-- Top Bar: Menu, Title, Actions, Back -->
                 <Grid
-                    ColumnDefinitions="Auto,*,Auto,Auto,Auto"
-                    ColumnSpacing="16"
-                    VerticalOptions="Start">
+                    ColumnDefinitions="Auto,*,Auto,Auto"
+                    ColumnSpacing="10"
+                    VerticalOptions="Center">
+                    
+                    <!-- Menu Button (links) -->
                     <Border
-                        WidthRequest="52"
-                        HeightRequest="52"
+                        WidthRequest="34"
+                        HeightRequest="34"
                         BackgroundColor="#1F2338"
                         StrokeThickness="0"
                         VerticalOptions="Center">
                         <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="18" />
+                            <RoundRectangle CornerRadius="10" />
                         </Border.StrokeShape>
                         <Border.Shadow>
-                            <Shadow Brush="#25000000" Radius="12" Offset="0,8" />
-                        </Border.Shadow>
-                        <Border.GestureRecognizers>
-                            <TapGestureRecognizer Tapped="OnBackTapped" />
-                        </Border.GestureRecognizers>
-                        <Label
-                            Text="←"
-                            FontSize="20"
-                            HorizontalOptions="Center"
-                            VerticalOptions="Center"
-                            TextColor="#CFD3FF" />
-                    </Border>
-
-                    <VerticalStackLayout Grid.Column="1">
-                        <Label
-                            Text="Tresor"
-                            FontSize="28"
-                            FontAttributes="Bold"
-                            TextColor="White" />
-                    </VerticalStackLayout>
-
-                    <Button
-                        Grid.Column="2"
-                        Text="＋"
-                        Clicked="OnAddEntryClicked"
-                        WidthRequest="52"
-                        HeightRequest="52"
-                        Padding="0"
-                        BackgroundColor="#3B4AD1"
-                        TextColor="White"
-                        FontSize="26"
-                        CornerRadius="18"
-                        IsVisible="{Binding IsUnlocked}"
-                        SemanticProperties.Hint="Neuen Tresor-Eintrag hinzufügen">
-                        <Button.Shadow>
-                            <Shadow Brush="#25000000" Radius="12" Offset="0,8" />
-                        </Button.Shadow>
-                    </Button>
-
-                    <Border
-                        Grid.Column="3"
-                        WidthRequest="52"
-                        HeightRequest="52"
-                        BackgroundColor="#1F2338"
-                        StrokeThickness="0"
-                        HorizontalOptions="End"
-                        VerticalOptions="Center">
-                        <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="18" />
-                        </Border.StrokeShape>
-                        <Border.Shadow>
-                            <Shadow Brush="#25000000" Radius="12" Offset="0,8" />
-                        </Border.Shadow>
-                        <Border.GestureRecognizers>
-                            <TapGestureRecognizer Tapped="OnSettingsTapped" />
-                        </Border.GestureRecognizers>
-                        <Label
-                            Text="⚙"
-                            FontSize="20"
-                            HorizontalOptions="Center"
-                            VerticalOptions="Center"
-                            TextColor="#CFD3FF" />
-                    </Border>
-
-                    <Border
-                        Grid.Column="4"
-                        WidthRequest="52"
-                        HeightRequest="52"
-                        BackgroundColor="#1F2338"
-                        StrokeThickness="0"
-                        HorizontalOptions="End"
-                        VerticalOptions="Center">
-                        <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="18" />
-                        </Border.StrokeShape>
-                        <Border.Shadow>
-                            <Shadow Brush="#25000000" Radius="12" Offset="0,8" />
+                            <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
                         </Border.Shadow>
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Tapped="OnOpenMenuTapped" />
                         </Border.GestureRecognizers>
                         <Label
                             Text="☰"
-                            FontSize="20"
+                            FontSize="15"
+                            HorizontalOptions="Center"
+                            VerticalOptions="Center"
+                            TextColor="#CFD3FF" />
+                    </Border>
+
+                    <Label
+                        Grid.Column="1"
+                        Text="Tresor"
+                        FontSize="18"
+                        FontAttributes="Bold"
+                        VerticalOptions="Center"
+                        TextColor="White" />
+
+                    <!-- Add Button -->
+                    <Button
+                        Grid.Column="2"
+                        Text="＋"
+                        Clicked="OnAddEntryClicked"
+                        WidthRequest="34"
+                        HeightRequest="34"
+                        Padding="0"
+                        BackgroundColor="#3B4AD1"
+                        TextColor="White"
+                        FontSize="18"
+                        CornerRadius="10"
+                        IsVisible="{Binding IsUnlocked}"
+                        SemanticProperties.Hint="Neuen Tresor-Eintrag hinzufügen">
+                        <Button.Shadow>
+                            <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
+                        </Button.Shadow>
+                    </Button>
+
+                    <!-- Back Button (rechts) -->
+                    <Border
+                        Grid.Column="3"
+                        WidthRequest="34"
+                        HeightRequest="34"
+                        BackgroundColor="#1F2338"
+                        StrokeThickness="0"
+                        HorizontalOptions="End"
+                        VerticalOptions="Center">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="10" />
+                        </Border.StrokeShape>
+                        <Border.Shadow>
+                            <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
+                        </Border.Shadow>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnBackTapped" />
+                        </Border.GestureRecognizers>
+                        <Label
+                            Text="→"
+                            FontSize="15"
                             HorizontalOptions="Center"
                             VerticalOptions="Center"
                             TextColor="#CFD3FF" />
                     </Border>
                 </Grid>
 
-                <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <!-- Search and Filter Bar -->
+                <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="10">
                     <Border
                         BackgroundColor="#1F2338"
                         StrokeThickness="0"
-                        Padding="16,12"
+                        Padding="10,3"
+                        HeightRequest="36"
                         HorizontalOptions="Fill"
                         VerticalOptions="Center">
                         <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="20" />
+                            <RoundRectangle CornerRadius="10" />
                         </Border.StrokeShape>
-                        <Border.Shadow>
-                            <Shadow Brush="#1A000000" Radius="12" Offset="0,8" />
-                        </Border.Shadow>
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
                             <Label
                                 Text="🔍"
-                                FontSize="16"
+                                FontSize="12"
                                 VerticalOptions="Center"
                                 TextColor="#CFD3FF" />
                             <Entry
                                 Grid.Column="1"
                                 Text="{Binding SearchQuery}"
-                                Placeholder="Suche im Tresor"
+                                Placeholder="Suche"
                                 PlaceholderColor="#7F85B2"
                                 TextColor="White"
+                                FontSize="12"
                                 BackgroundColor="Transparent"
+                                HeightRequest="32"
                                 ClearButtonVisibility="WhileEditing" />
                         </Grid>
                     </Border>
 
                     <Border
                         Grid.Column="1"
-                        WidthRequest="52"
-                        HeightRequest="52"
+                        WidthRequest="36"
+                        HeightRequest="36"
                         StrokeThickness="0"
                         BackgroundColor="#1F2338"
                         HorizontalOptions="End"
-                        VerticalOptions="Center"
-                        SemanticProperties.Description="Kategorie auswählen"
-                        SemanticProperties.Hint="{Binding SelectedCategory, StringFormat='Aktive Kategorie: {0}'}">
+                        VerticalOptions="Center">
                         <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="18" />
+                            <RoundRectangle CornerRadius="10" />
                         </Border.StrokeShape>
-                        <Border.Shadow>
-                            <Shadow Brush="#1A000000" Radius="12" Offset="0,8" />
-                        </Border.Shadow>
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Tapped="OnCategoryFilterTapped" />
                         </Border.GestureRecognizers>
                         <Grid>
                             <Label
                                 Text="🗂"
-                                FontSize="22"
+                                FontSize="15"
                                 HorizontalOptions="Center"
                                 VerticalOptions="Center"
                                 TextColor="#CFD3FF" />
                             <Border
-                                WidthRequest="10"
-                                HeightRequest="10"
+                                WidthRequest="7"
+                                HeightRequest="7"
                                 BackgroundColor="#63F5A8"
                                 StrokeThickness="0"
                                 HorizontalOptions="End"
                                 VerticalOptions="Start"
-                                Margin="0,6,6,0">
+                                Margin="0,5,5,0">
                                 <Border.StrokeShape>
                                     <Ellipse />
                                 </Border.StrokeShape>
@@ -213,10 +191,11 @@
                 </Grid>
             </Grid>
 
+            <!-- Entries List -->
             <CollectionView
                 x:Name="VaultCollectionView"
                 Grid.Row="1"
-                Margin="24,0,24,24"
+                Margin="16,0,16,16"
                 ItemsSource="{Binding EntryGroups}"
                 SelectionMode="None"
                 ItemSizingStrategy="MeasureAllItems"
@@ -227,41 +206,41 @@
                 <DataTemplate x:DataType="viewmodels:VaultEntryGroup">
                     <Label
                         Text="{Binding Category}"
-                        FontSize="18"
+                        FontSize="12"
                         FontAttributes="Bold"
                         TextColor="#D8DCFF"
-                        Margin="0,24,0,12" />
+                        Margin="0,12,0,6" />
                 </DataTemplate>
             </CollectionView.GroupHeaderTemplate>
             <CollectionView.EmptyView>
                 <VerticalStackLayout
-                    Padding="32"
-                    Spacing="12"
+                    Padding="20"
+                    Spacing="10"
                     HorizontalOptions="Center"
                     VerticalOptions="Center">
                     <Border
-                        WidthRequest="72"
-                        HeightRequest="72"
+                        WidthRequest="52"
+                        HeightRequest="52"
                         BackgroundColor="#1F2338"
                         StrokeThickness="0">
                         <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="24" />
+                            <RoundRectangle CornerRadius="16" />
                         </Border.StrokeShape>
                         <Label
                             Text="🔐"
-                            FontSize="32"
+                            FontSize="22"
                             HorizontalOptions="Center"
                             VerticalOptions="Center" />
                     </Border>
                     <Label
-                        Text="Noch keine Einträge"
-                        FontSize="18"
+                        Text="Keine Einträge"
+                        FontSize="14"
                         FontAttributes="Bold"
                         HorizontalTextAlignment="Center"
                         TextColor="#DDE1FF" />
                     <Label
-                        Text="Füge deinen ersten Zugang hinzu, um ihn sicher aufzubewahren."
-                        FontSize="14"
+                        Text="Füge deinen ersten Zugang hinzu."
+                        FontSize="12"
                         HorizontalTextAlignment="Center"
                         TextColor="#AEB5DA" />
                 </VerticalStackLayout>
@@ -270,52 +249,54 @@
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="models:PasswordVaultEntry">
                     <Border
-                        Margin="0,0,0,22"
-                        Padding="22"
+                        Margin="0,0,0,10"
+                        Padding="12"
                         StrokeThickness="0"
                         BackgroundColor="#1B2036">
                         <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="26" />
+                            <RoundRectangle CornerRadius="14" />
                         </Border.StrokeShape>
                         <Border.Shadow>
-                            <Shadow Brush="#25000000" Radius="18" Offset="0,12" />
+                            <Shadow Brush="#25000000" Radius="10" Offset="0,4" />
                         </Border.Shadow>
-                        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="14">
+                        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
+                            <!-- Title Row -->
                             <Grid ColumnDefinitions="*,Auto" RowSpacing="0">
-                                <VerticalStackLayout Spacing="6">
+                                <VerticalStackLayout Spacing="3">
                                     <Label
                                         Text="{Binding Label}"
-                                        FontSize="20"
+                                        FontSize="14"
                                         FontAttributes="Bold"
                                         TextColor="White" />
                                     <Border
-                                        Padding="10,4"
+                                        Padding="6,2"
                                         BackgroundColor="#2A2F4A"
                                         StrokeThickness="0"
                                         HorizontalOptions="Start">
                                         <Border.StrokeShape>
-                                            <RoundRectangle CornerRadius="14" />
+                                            <RoundRectangle CornerRadius="6" />
                                         </Border.StrokeShape>
                                         <Label
                                             Text="{Binding DisplayCategory}"
-                                            FontSize="12"
+                                            FontSize="10"
                                             TextColor="#B6BCE3" />
                                     </Border>
                                 </VerticalStackLayout>
 
+                                <!-- Action Buttons -->
                                 <HorizontalStackLayout
                                     Grid.Column="1"
-                                    Spacing="10"
+                                    Spacing="6"
                                     VerticalOptions="Start"
                                     HorizontalOptions="End">
                                     <Border
-                                        WidthRequest="42"
-                                        HeightRequest="42"
+                                        WidthRequest="30"
+                                        HeightRequest="30"
                                         BackgroundColor="#2C3352"
                                         StrokeThickness="0"
                                         VerticalOptions="Center">
                                         <Border.StrokeShape>
-                                            <RoundRectangle CornerRadius="16" />
+                                            <RoundRectangle CornerRadius="8" />
                                         </Border.StrokeShape>
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer
@@ -324,19 +305,19 @@
                                         </Border.GestureRecognizers>
                                         <Label
                                             Text="✏"
-                                            FontSize="18"
+                                            FontSize="12"
                                             HorizontalOptions="Center"
                                             VerticalOptions="Center"
                                             TextColor="#DCE0FF" />
                                     </Border>
                                     <Border
-                                        WidthRequest="42"
-                                        HeightRequest="42"
+                                        WidthRequest="30"
+                                        HeightRequest="30"
                                         BackgroundColor="#3B2232"
                                         StrokeThickness="0"
                                         VerticalOptions="Center">
                                         <Border.StrokeShape>
-                                            <RoundRectangle CornerRadius="16" />
+                                            <RoundRectangle CornerRadius="8" />
                                         </Border.StrokeShape>
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer
@@ -345,7 +326,7 @@
                                         </Border.GestureRecognizers>
                                         <Label
                                             Text="🗑"
-                                            FontSize="18"
+                                            FontSize="12"
                                             HorizontalOptions="Center"
                                             VerticalOptions="Center"
                                             TextColor="#FFD6D6" />
@@ -353,41 +334,44 @@
                                 </HorizontalStackLayout>
                             </Grid>
 
+                            <!-- Username Row -->
                             <Grid
                                 Grid.Row="1"
                                 ColumnDefinitions="Auto,*"
-                                ColumnSpacing="12"
+                                ColumnSpacing="10"
                                 IsVisible="{Binding Username, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}">
                                 <Label
                                     Text="Benutzer"
-                                    FontSize="13"
+                                    FontSize="11"
                                     TextColor="#A8ACCD"
                                     FontAttributes="Bold"
                                     VerticalOptions="Center" />
                                 <Label
                                     Grid.Column="1"
                                     Text="{Binding Username}"
-                                    FontSize="15"
+                                    FontSize="12"
                                     TextColor="#ECEFFF"
                                     LineBreakMode="TailTruncation" />
                             </Grid>
 
+                            <!-- Password Row -->
                             <Grid
                                 Grid.Row="2"
                                 ColumnDefinitions="Auto,*"
-                                ColumnSpacing="12"
+                                ColumnSpacing="10"
                                 IsVisible="{Binding Password, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}">
                                 <Label
                                     Text="Passwort"
-                                    FontSize="13"
+                                    FontSize="11"
                                     TextColor="#A8ACCD"
                                     FontAttributes="Bold"
                                     VerticalOptions="Center" />
-                                <Grid Grid.Column="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+                                <Grid Grid.Column="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
                                     <Label
-                                        FontSize="15"
+                                        FontSize="12"
                                         TextColor="#ECEFFF"
-                                        LineBreakMode="NoWrap">
+                                        LineBreakMode="NoWrap"
+                                        VerticalOptions="Center">
                                         <Label.Triggers>
                                             <DataTrigger TargetType="Label" Binding="{Binding IsPasswordVisible}" Value="True">
                                                 <Setter Property="Text" Value="{Binding Password}" />
@@ -399,14 +383,13 @@
                                     </Label>
                                     <Border
                                         Grid.Column="1"
-                                        WidthRequest="42"
-                                        HeightRequest="42"
+                                        WidthRequest="30"
+                                        HeightRequest="30"
                                         BackgroundColor="#2C3352"
                                         StrokeThickness="0"
-                                        VerticalOptions="Center"
-                                        SemanticProperties.Description="Passwort anzeigen oder verbergen">
+                                        VerticalOptions="Center">
                                         <Border.StrokeShape>
-                                            <RoundRectangle CornerRadius="16" />
+                                            <RoundRectangle CornerRadius="8" />
                                         </Border.StrokeShape>
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer
@@ -414,7 +397,7 @@
                                                 CommandParameter="{Binding .}" />
                                         </Border.GestureRecognizers>
                                         <Label
-                                            FontSize="18"
+                                            FontSize="12"
                                             TextColor="#CED4FF"
                                             HorizontalOptions="Center"
                                             VerticalOptions="Center"
@@ -428,14 +411,13 @@
                                     </Border>
                                     <Border
                                         Grid.Column="2"
-                                        WidthRequest="42"
-                                        HeightRequest="42"
+                                        WidthRequest="30"
+                                        HeightRequest="30"
                                         BackgroundColor="#2C3352"
                                         StrokeThickness="0"
-                                        VerticalOptions="Center"
-                                        SemanticProperties.Description="Passwort kopieren">
+                                        VerticalOptions="Center">
                                         <Border.StrokeShape>
-                                            <RoundRectangle CornerRadius="16" />
+                                            <RoundRectangle CornerRadius="8" />
                                         </Border.StrokeShape>
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer
@@ -444,7 +426,7 @@
                                         </Border.GestureRecognizers>
                                         <Label
                                             Text="📋"
-                                            FontSize="18"
+                                            FontSize="12"
                                             TextColor="#CED4FF"
                                             HorizontalOptions="Center"
                                             VerticalOptions="Center" />
@@ -452,21 +434,22 @@
                                 </Grid>
                             </Grid>
 
+                            <!-- URL Row -->
                             <Grid
                                 Grid.Row="3"
                                 ColumnDefinitions="Auto,*"
-                                ColumnSpacing="12"
+                                ColumnSpacing="10"
                                 IsVisible="{Binding Url, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}">
                                 <Label
                                     Text="URL"
-                                    FontSize="13"
+                                    FontSize="11"
                                     TextColor="#A8ACCD"
                                     FontAttributes="Bold"
                                     VerticalOptions="Center" />
                                 <Label
                                     Grid.Column="1"
                                     Text="{Binding Url}"
-                                    FontSize="15"
+                                    FontSize="12"
                                     TextColor="#58A7FF"
                                     TextDecorations="Underline">
                                     <Label.GestureRecognizers>
@@ -477,10 +460,11 @@
                                 </Label>
                             </Grid>
 
-                            <VerticalStackLayout Grid.Row="4" Spacing="10">
+                            <!-- Notes -->
+                            <VerticalStackLayout Grid.Row="4" Spacing="4">
                                 <Label
                                     Text="{Binding Notes}"
-                                    FontSize="14"
+                                    FontSize="11"
                                     TextColor="#C9CCE8"
                                     LineBreakMode="WordWrap">
                                     <Label.Triggers>
@@ -495,7 +479,7 @@
 
                                 <Label
                                     Text="{Binding FreeText}"
-                                    FontSize="14"
+                                    FontSize="11"
                                     TextColor="#C9CCE8"
                                     LineBreakMode="WordWrap">
                                     <Label.Triggers>
@@ -509,8 +493,8 @@
                                 </Label>
 
                                 <Label
-                                    Text="{Binding LocalModifiedAt, StringFormat='Geändert: {0:G}'}"
-                                    FontSize="11"
+                                    Text="{Binding LocalModifiedAt, StringFormat='Aktualisiert: {0:d}'}"
+                                    FontSize="9"
                                     TextColor="#8E93BA"
                                     HorizontalOptions="End" />
                             </VerticalStackLayout>
@@ -521,54 +505,51 @@
             </CollectionView>
         </Grid>
 
-
+        <!-- Lock Screen / Access -->
         <Border
-            Padding="24,48,24,32"
+            Padding="18"
             BackgroundColor="#CC0B0D1A"
             IsVisible="{Binding IsLocked}"
             HorizontalOptions="FillAndExpand"
             VerticalOptions="FillAndExpand">
             <Border.StrokeShape>
-                <RoundRectangle CornerRadius="42" />
+                <RoundRectangle CornerRadius="0" />
             </Border.StrokeShape>
-            <Border.Shadow>
-                <Shadow Brush="#55000000" Radius="32" Offset="0,18" />
-            </Border.Shadow>
             <ScrollView>
-                <VerticalStackLayout Spacing="22" VerticalOptions="Center" HorizontalOptions="Center">
+                <VerticalStackLayout Spacing="16" VerticalOptions="Center" HorizontalOptions="Center" MaximumWidthRequest="360">
                     <Border
-                        Padding="14,10"
+                        Padding="10,6"
                         StrokeThickness="0"
                         BackgroundColor="#1F2338"
                         HorizontalOptions="Start">
                         <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="16" />
+                            <RoundRectangle CornerRadius="10" />
                         </Border.StrokeShape>
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Tapped="OnBackTapped" />
                         </Border.GestureRecognizers>
-                        <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+                        <HorizontalStackLayout Spacing="5" VerticalOptions="Center">
                             <Label
                                 Text="←"
-                                FontSize="16"
+                                FontSize="12"
                                 TextColor="#CFD3FF" />
                             <Label
-                                Text="Zur Startseite"
-                                FontSize="14"
+                                Text="Zurück"
+                                FontSize="12"
                                 TextColor="#CFD3FF" />
                         </HorizontalStackLayout>
                     </Border>
 
-                    <VerticalStackLayout Spacing="10" HorizontalOptions="Center" VerticalOptions="Center">
+                    <VerticalStackLayout Spacing="6" HorizontalOptions="Center" VerticalOptions="Center">
                         <Label
                             Text="Tresor gesperrt"
-                            FontSize="26"
+                            FontSize="18"
                             FontAttributes="Bold"
                             TextColor="White"
                             HorizontalTextAlignment="Center" />
                         <Label
-                            Text="Bitte gib dein Master-Passwort ein, um den Tresor zu entsperren."
-                            FontSize="14"
+                            Text="Bitte gib dein Master-Passwort ein."
+                            FontSize="12"
                             TextColor="#C4C8E8"
                             HorizontalTextAlignment="Center" />
                         <Button
@@ -576,13 +557,14 @@
                             Clicked="OnSettingsButtonClicked"
                             BackgroundColor="#1F243C"
                             TextColor="#D7DBF7"
-                            CornerRadius="18"
-                            HeightRequest="48"
-                            Padding="18,12"
-                            Margin="0,12,0,0" />
+                            CornerRadius="10"
+                            HeightRequest="36"
+                            Padding="14,6"
+                            FontSize="12"
+                            Margin="0,6,0,0" />
                     </VerticalStackLayout>
 
-                    <VerticalStackLayout Spacing="14">
+                    <VerticalStackLayout Spacing="10">
                         <Entry
                             Text="{Binding Password}"
                             IsPassword="True"
@@ -590,8 +572,8 @@
                             PlaceholderColor="#8489B0"
                             TextColor="White"
                             BackgroundColor="#1F243C"
-                            HeightRequest="48"
-                            Margin="0,6"
+                            HeightRequest="40"
+                            Margin="0,3"
                             HorizontalOptions="Fill" />
                         <Entry
                             Text="{Binding ConfirmPassword}"
@@ -601,47 +583,46 @@
                             PlaceholderColor="#8489B0"
                             TextColor="White"
                             BackgroundColor="#1F243C"
-                            HeightRequest="48"
-                            Margin="0,6"
+                            HeightRequest="40"
+                            Margin="0,3"
                             HorizontalOptions="Fill" />
 
                         <Label
                             Text="{Binding UnlockError}"
                             TextColor="#FF9A9A"
-                            FontSize="12"
+                            FontSize="11"
                             IsVisible="{Binding UnlockError, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}"
                             HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
 
-                    <VerticalStackLayout Spacing="12">
+                    <VerticalStackLayout Spacing="8">
                         <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding CanUseBiometric}">
                             <Switch
                                 Grid.Column="0"
                                 IsToggled="{Binding EnableBiometric}" />
                             <Label
                                 Grid.Column="1"
-                                Text="Biometrische Anmeldung für diesen Tresor speichern"
+                                Text="Biometrisch entsperren"
                                 FontSize="12"
                                 TextColor="#D7DBF7"
-                                Margin="12,0,0,0"
-                                VerticalOptions="Center"
-                                LineBreakMode="WordWrap" />
+                                Margin="10,0,0,0"
+                                VerticalOptions="Center" />
                         </Grid>
 
                         <Button
-                            Text="Tresor entsperren"
+                            Text="Entsperren"
                             Command="{Binding UnlockCommand}"
-                            HeightRequest="52"
+                            HeightRequest="40"
                             FontAttributes="Bold"
                             BackgroundColor="#4A5CFF"
                             TextColor="White"
-                            CornerRadius="18" />
+                            CornerRadius="10" />
 
                         <Button
-                            Text="Mit Fingerabdruck entsperren"
+                            Text="Fingerabdruck"
                             Command="{Binding UnlockWithBiometricCommand}"
-                            HeightRequest="52"
-                            CornerRadius="18"
+                            HeightRequest="40"
+                            CornerRadius="10"
                             BackgroundColor="#1F243C"
                             TextColor="#D7DBF7"
                             BorderColor="#3B4AD1"

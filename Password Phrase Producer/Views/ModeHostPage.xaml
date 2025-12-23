@@ -12,29 +12,32 @@
         </LinearGradientBrush>
     </ContentPage.Background>
     <Grid RowDefinitions="Auto,*">
-        <Grid RowSpacing="6"
-              ColumnSpacing="18"
+        <!-- Compact Header -->
+        <Grid RowSpacing="0"
+              ColumnSpacing="10"
               ColumnDefinitions="Auto,*,Auto"
-              Padding="24,48,24,24">
-            <Border WidthRequest="52"
-                    HeightRequest="52"
+              Padding="16,16,16,10">
+            
+            <!-- Hamburger Menu (links) -->
+            <Border WidthRequest="34"
+                    HeightRequest="34"
                     BackgroundColor="#1F2338"
                     StrokeThickness="0"
                     VerticalOptions="Center">
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="18" />
+                    <RoundRectangle CornerRadius="10" />
                 </Border.StrokeShape>
                 <Border.Shadow>
-                    <Shadow Brush="#25000000" Radius="12" Offset="0,8" />
+                    <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
                 </Border.Shadow>
                 <Border.GestureRecognizers>
-                    <TapGestureRecognizer Tapped="OnBackTapped" />
+                    <TapGestureRecognizer Tapped="OnOpenMenuTapped" />
                 </Border.GestureRecognizers>
-                <Label Text="‹"
-                       FontSize="22"
+                <Label Text="☰"
+                       FontSize="15"
                        HorizontalOptions="Center"
                        VerticalOptions="Center"
-                       TextColor="#C5CAFF"/>
+                       TextColor="#CFD3FF"/>
             </Border>
 
             <VerticalStackLayout Grid.Column="1"
@@ -42,30 +45,31 @@
                                   VerticalOptions="Center"
                                   HorizontalOptions="Center">
                 <Label Text="{Binding Title}"
-                       FontSize="24"
+                       FontSize="16"
                        FontAttributes="Bold"
                        TextColor="White"
                        HorizontalTextAlignment="Center"/>
             </VerticalStackLayout>
 
+            <!-- Zurück Button (rechts) -->
             <Border Grid.Column="2"
-                    WidthRequest="52"
-                    HeightRequest="52"
+                    WidthRequest="34"
+                    HeightRequest="34"
                     BackgroundColor="#1F2338"
                     StrokeThickness="0"
                     HorizontalOptions="End"
                     VerticalOptions="Center">
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="18" />
+                    <RoundRectangle CornerRadius="10" />
                 </Border.StrokeShape>
                 <Border.Shadow>
-                    <Shadow Brush="#20000000" Radius="10" Offset="0,6" />
+                    <Shadow Brush="#20000000" Radius="6" Offset="0,3" />
                 </Border.Shadow>
                 <Border.GestureRecognizers>
-                    <TapGestureRecognizer Tapped="OnOpenMenuTapped" />
+                    <TapGestureRecognizer Tapped="OnBackTapped" />
                 </Border.GestureRecognizers>
-                <Label Text="☰"
-                       FontSize="20"
+                <Label Text="→"
+                       FontSize="15"
                        HorizontalOptions="Center"
                        VerticalOptions="Center"
                        TextColor="#CFD3FF"/>
@@ -73,16 +77,17 @@
         </Grid>
 
         <ScrollView Grid.Row="1">
-            <VerticalStackLayout Spacing="24"
-                                 Padding="24,0,24,40">
+            <VerticalStackLayout Spacing="12"
+                                 Padding="16,0,16,20">
                 <Border StrokeThickness="0"
-                        Padding="22"
-                        BackgroundColor="#181B2A">
+                        Padding="12"
+                        BackgroundColor="#181B2A"
+                        VerticalOptions="FillAndExpand">
                     <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="28" />
+                        <RoundRectangle CornerRadius="16" />
                     </Border.StrokeShape>
                     <Border.Shadow>
-                        <Shadow Brush="#25000000" Radius="18" Offset="0,10" />
+                        <Shadow Brush="#25000000" Radius="10" Offset="0,4" />
                     </Border.Shadow>
                     <ContentView x:Name="ContentHost"/>
                 </Border>

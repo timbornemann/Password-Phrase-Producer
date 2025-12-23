@@ -14,6 +14,8 @@ public class StartPageViewModel
         ModeOptions = new ObservableCollection<PasswordModeOption>(ModeCatalog.AllModes);
         FeaturedMode = ModeOptions.FirstOrDefault();
         NavigateToModeCommand = new Command<PasswordModeOption>(NavigateToMode);
+        NavigateToVaultCommand = new Command(NavigateToVault);
+        NavigateToGenerationCommand = new Command(NavigateToGeneration);
     }
 
     public ObservableCollection<PasswordModeOption> ModeOptions { get; }
@@ -21,6 +23,8 @@ public class StartPageViewModel
     public PasswordModeOption? FeaturedMode { get; }
 
     public ICommand NavigateToModeCommand { get; }
+    public ICommand NavigateToVaultCommand { get; }
+    public ICommand NavigateToGenerationCommand { get; }
 
     private async void NavigateToMode(PasswordModeOption? option)
     {
@@ -30,5 +34,17 @@ public class StartPageViewModel
         }
 
         await Shell.Current.GoToAsync($"//{option.Route}/{option.ContentRoute}");
+    }
+
+    private async void NavigateToVault()
+    {
+        // Navigate to the Vault page (defined in AppShell with route 'vault')
+        await Shell.Current.GoToAsync("//vault");
+    }
+
+    private async void NavigateToGeneration()
+    {
+        // Navigate to the Generation Overview page
+        await Shell.Current.GoToAsync("generation");
     }
 }

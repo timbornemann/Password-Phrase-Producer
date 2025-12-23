@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:Password_Phrase_Producer"
+             xmlns:vm="clr-namespace:Password_Phrase_Producer.ViewModels"
+             x:Class="Password_Phrase_Producer.Views.GenerationMethodsPage"
+             Padding="0"
+             Shell.NavBarIsVisible="False">
+    
+    <ContentPage.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#121212" Offset="0" />
+            <GradientStop Color="#1C1C24" Offset="0.5" />
+            <GradientStop Color="#101018" Offset="1" />
+        </LinearGradientBrush>
+    </ContentPage.Background>
+
+    <Grid RowDefinitions="Auto,*">
+        <!-- Header -->
+        <Grid ColumnDefinitions="Auto,*,Auto"
+              ColumnSpacing="10"
+              Padding="16,16,16,10">
+            
+            <!-- Hamburger Menu (links) -->
+            <Border WidthRequest="34"
+                    HeightRequest="34"
+                    BackgroundColor="#1F2338"
+                    StrokeThickness="0"
+                    VerticalOptions="Center">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="10" />
+                </Border.StrokeShape>
+                <Border.Shadow>
+                    <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
+                </Border.Shadow>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnOpenMenuTapped" />
+                </Border.GestureRecognizers>
+                <Label Text="☰"
+                       FontSize="15"
+                       HorizontalOptions="Center"
+                       VerticalOptions="Center"
+                       TextColor="#CFD3FF"/>
+            </Border>
+            
+            <Label Grid.Column="1"
+                   Text="Methode auswählen"
+                   FontSize="18"
+                   FontAttributes="Bold"
+                   TextColor="White"
+                   VerticalOptions="Center"/>
+            
+            <!-- Zurück Button (rechts) -->
+            <Border Grid.Column="2"
+                    WidthRequest="34"
+                    HeightRequest="34"
+                    BackgroundColor="#1F2338"
+                    StrokeThickness="0"
+                    VerticalOptions="Center">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="10" />
+                </Border.StrokeShape>
+                <Border.Shadow>
+                    <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
+                </Border.Shadow>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnBackTapped" />
+                </Border.GestureRecognizers>
+                <Label Text="→"
+                       FontSize="15"
+                       HorizontalOptions="Center"
+                       VerticalOptions="Center"
+                       TextColor="#CFD3FF"/>
+            </Border>
+        </Grid>
+
+    <ScrollView Grid.Row="1">
+        <VerticalStackLayout x:Name="PageContentLayout"
+                             Spacing="14"
+                             Padding="16,0,16,28">
+
+            <CollectionView ItemsSource="{Binding ModeOptions}"
+                            SelectionMode="None"
+                            ItemSizingStrategy="MeasureAllItems">
+                <CollectionView.ItemsLayout>
+                    <GridItemsLayout x:Name="ModeGridLayout"
+                                     Orientation="Vertical"
+                                     VerticalItemSpacing="10"
+                                     HorizontalItemSpacing="10"
+                                     Span="2" />
+                </CollectionView.ItemsLayout>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="local:PasswordModeOption">
+                        <Border Padding="0"
+                                StrokeThickness="0"
+                                MinimumHeightRequest="110">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="16" />
+                            </Border.StrokeShape>
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#2D3252" Offset="0" />
+                                    <GradientStop Color="#1B1E30" Offset="1" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Border.Shadow>
+                                <Shadow Brush="#25000000" Radius="8" Offset="0,4" />
+                            </Border.Shadow>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding BindingContext.NavigateToModeCommand, Source={RelativeSource AncestorType={x:Type local:Views.GenerationMethodsPage}}}"
+                                                     CommandParameter="{Binding}"/>
+                            </Border.GestureRecognizers>
+                            
+                            <Grid Padding="12"
+                                  RowDefinitions="Auto,*,Auto"
+                                  RowSpacing="6">
+                                
+                                <Border Padding="8"
+                                        StrokeThickness="0"
+                                        WidthRequest="36"
+                                        HeightRequest="36"
+                                        HorizontalOptions="Start"
+                                        VerticalOptions="Start">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="12" />
+                                    </Border.StrokeShape>
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                            <GradientStop Color="#3E4266" Offset="0" />
+                                            <GradientStop Color="#272B43" Offset="1" />
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                    <Label Text="{Binding Icon}"
+                                           FontSize="16"
+                                           HorizontalOptions="Center"
+                                           VerticalOptions="Center"/>
+                                </Border>
+
+                                <Label Grid.Row="1"
+                                       Text="{Binding Title}"
+                                       FontSize="13"
+                                       FontAttributes="Bold"
+                                       TextColor="White"
+                                       LineBreakMode="TailTruncation"
+                                       MaxLines="2"
+                                       VerticalOptions="End"/>
+                                
+                                <Label Grid.Row="2"
+                                       Text="{Binding Description}"
+                                       FontSize="10"
+                                       TextColor="#C8CBDF"
+                                       LineBreakMode="TailTruncation"
+                                       MaxLines="2"
+                                       VerticalOptions="Start"/>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </VerticalStackLayout>
+    </ScrollView>
+    </Grid>
+</ContentPage>
