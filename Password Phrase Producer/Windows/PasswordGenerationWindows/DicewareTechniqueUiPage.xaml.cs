@@ -1,5 +1,6 @@
 using System;
 using Password_Phrase_Producer.PasswordGenerationTechniques.DicewareTechnique;
+using Password_Phrase_Producer.Services;
 using Password_Phrase_Producer.Services.EntropyAnalyzer;
 
 namespace Password_Phrase_Producer.Windows.PasswordGenerationWindows;
@@ -75,11 +76,7 @@ public partial class DicewareTechniqueUiPage : PasswordGeneratorContentView
         if (!string.IsNullOrWhiteSpace(resultEntry?.Text))
         {
             await Clipboard.Default.SetTextAsync(resultEntry!.Text);
-            var page = this.Window?.Page ?? Application.Current?.Windows[0]?.Page;
-            if (page is not null)
-            {
-                await page.DisplayAlert("Info", "Password copied to clipboard", "OK");
-            }
+            await ToastService.ShowCopiedAsync("Passwort");
         }
     }
 }

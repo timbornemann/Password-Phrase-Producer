@@ -15,6 +15,7 @@ using Microsoft.Maui.Storage;
 using Password_Phrase_Producer.Models;
 using Password_Phrase_Producer.Services.Vault;
 using Password_Phrase_Producer.ViewModels;
+using Password_Phrase_Producer.Services;
 using Password_Phrase_Producer.Views.Dialogs;
 
 namespace Password_Phrase_Producer.Views;
@@ -154,6 +155,29 @@ public partial class VaultPage : ContentPage
         }
 
         await ProcessPendingVaultRequestAsync(request);
+    }
+
+    private async void OnShowDetailTapped(object? sender, TappedEventArgs e)
+    {
+        if (e.Parameter is not PasswordVaultEntry entry)
+        {
+            return;
+        }
+
+        BeginModalInteraction();
+        try
+        {
+            var editRequested = await VaultEntryDetailPage.ShowAsync(Navigation, entry);
+            if (editRequested)
+            {
+                var editable = entry.Clone();
+                await ShowEditorAsync(editable, "Eintrag bearbeiten");
+            }
+        }
+        finally
+        {
+            EndModalInteraction();
+        }
     }
 
     private async void OnEditEntryTapped(object? sender, TappedEventArgs e)
@@ -334,7 +358,23 @@ public partial class VaultPage : ContentPage
         }
 
         await Clipboard.Default.SetTextAsync(entry.Password);
-        await DisplayAlert("Kopiert", "Das Passwort wurde in die Zwischenablage kopiert.", "OK");
+        await ToastService.ShowCopiedAsync("Passwort");
+    }
+
+    private async void OnCopyUsernameTapped(object? sender, TappedEventArgs e)
+    {
+        if (e.Parameter is not PasswordVaultEntry entry)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(entry.Username))
+        {
+            return;
+        }
+
+        await Clipboard.Default.SetTextAsync(entry.Username);
+        await ToastService.ShowCopiedAsync("Benutzername");
     }
 
     private void OnTogglePasswordVisibilityTapped(object? sender, TappedEventArgs e)

@@ -302,6 +302,27 @@
                                         </Border.StrokeShape>
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer
+                                                Tapped="OnShowDetailTapped"
+                                                CommandParameter="{Binding .}" />
+                                        </Border.GestureRecognizers>
+                                        <Label
+                                            Text="⤢"
+                                            FontSize="14"
+                                            HorizontalOptions="Center"
+                                            VerticalOptions="Center"
+                                            TextColor="#CFD3FF" />
+                                    </Border>
+                                    <Border
+                                        WidthRequest="30"
+                                        HeightRequest="30"
+                                        BackgroundColor="#2A2F4A"
+                                        StrokeThickness="0"
+                                        VerticalOptions="Center">
+                                        <Border.StrokeShape>
+                                            <RoundRectangle CornerRadius="8" />
+                                        </Border.StrokeShape>
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer
                                                 Tapped="OnEditEntryTapped"
                                                 CommandParameter="{Binding .}" />
                                         </Border.GestureRecognizers>
@@ -339,7 +360,7 @@
                             <!-- Username Row -->
                             <Grid
                                 Grid.Row="1"
-                                ColumnDefinitions="Auto,*"
+                                ColumnDefinitions="Auto,*,Auto"
                                 ColumnSpacing="10"
                                 IsVisible="{Binding Username, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}">
                                 <Label
@@ -353,7 +374,30 @@
                                     Text="{Binding Username}"
                                     FontSize="12"
                                     TextColor="#E8EBFF"
-                                    LineBreakMode="TailTruncation" />
+                                    LineBreakMode="TailTruncation"
+                                    VerticalOptions="Center" />
+                                <Border
+                                    Grid.Column="2"
+                                    WidthRequest="30"
+                                    HeightRequest="30"
+                                    BackgroundColor="#2A2F4A"
+                                    StrokeThickness="0"
+                                    VerticalOptions="Center">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="8" />
+                                    </Border.StrokeShape>
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer
+                                            Tapped="OnCopyUsernameTapped"
+                                            CommandParameter="{Binding .}" />
+                                    </Border.GestureRecognizers>
+                                    <Label
+                                        Text="❏"
+                                        FontSize="12"
+                                        TextColor="#CFD3FF"
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center" />
+                                </Border>
                             </Grid>
 
                             <!-- Password Row -->

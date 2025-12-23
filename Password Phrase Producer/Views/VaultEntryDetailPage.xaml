@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="Password_Phrase_Producer.Views.VaultEntryDetailPage"
+    x:Name="DetailPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Shell.NavBarIsVisible="False">
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <Color x:Key="CardBackgroundColor">#1B2036</Color>
+            <Color x:Key="InputBackgroundColor">#1F2338</Color>
+            <Color x:Key="AccentColor">#4A5CFF</Color>
+            <Color x:Key="SecondaryButtonColor">#1F2338</Color>
+            <Style TargetType="Label" x:Key="FieldLabelStyle">
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontAttributes" Value="Bold" />
+                <Setter Property="TextColor" Value="#9EA3C4" />
+            </Style>
+            <Style TargetType="Label" x:Key="FieldValueStyle">
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="TextColor" Value="#E8EBFF" />
+                <Setter Property="LineBreakMode" Value="WordWrap" />
+            </Style>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+    <ContentPage.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#101018" Offset="0" />
+            <GradientStop Color="#141426" Offset="0.6" />
+            <GradientStop Color="#0F111A" Offset="1" />
+        </LinearGradientBrush>
+    </ContentPage.Background>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Grid
+            Padding="16,16,16,10"
+            ColumnDefinitions="Auto,*,Auto"
+            Grid.Row="0"
+            VerticalOptions="Start">
+            
+            <!-- Back Button -->
+            <Border
+                WidthRequest="34"
+                HeightRequest="34"
+                BackgroundColor="#1F2338"
+                StrokeThickness="0"
+                VerticalOptions="Center">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="10" />
+                </Border.StrokeShape>
+                <Border.Shadow>
+                    <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
+                </Border.Shadow>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnCloseTapped" />
+                </Border.GestureRecognizers>
+                <Label
+                    Text="←"
+                    FontSize="15"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"
+                    TextColor="#CFD3FF" />
+            </Border>
+            
+            <VerticalStackLayout Grid.Column="1" Spacing="2" Margin="12,0,0,0" VerticalOptions="Center">
+                <Label
+                    Text="{Binding Label}"
+                    FontSize="18"
+                    FontAttributes="Bold"
+                    TextColor="White"
+                    LineBreakMode="TailTruncation" />
+                <Label
+                    Text="{Binding Category}"
+                    FontSize="11"
+                    TextColor="#9EA3C4"
+                    IsVisible="{Binding Category, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}" />
+            </VerticalStackLayout>
+
+            <!-- Edit Button -->
+            <Border
+                Grid.Column="2"
+                WidthRequest="34"
+                HeightRequest="34"
+                BackgroundColor="#1F2338"
+                StrokeThickness="0"
+                VerticalOptions="Center">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="10" />
+                </Border.StrokeShape>
+                <Border.Shadow>
+                    <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
+                </Border.Shadow>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnEditTapped" />
+                </Border.GestureRecognizers>
+                <Label
+                    Text="✎"
+                    FontSize="14"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"
+                    TextColor="#CFD3FF" />
+            </Border>
+        </Grid>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="16,0,16,24" Spacing="14">
+                
+                <!-- Main Info Card -->
+                <Border
+                    BackgroundColor="{StaticResource CardBackgroundColor}"
+                    StrokeThickness="0"
+                    Padding="16">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="16" />
+                    </Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow Brush="#25000000" Radius="12" Offset="0,6" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="16">
+                        
+                        <!-- Username -->
+                        <VerticalStackLayout Spacing="4" 
+                            IsVisible="{Binding Username, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}">
+                            <Label Text="Benutzername" Style="{StaticResource FieldLabelStyle}" />
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <Label 
+                                    Text="{Binding Username}" 
+                                    Style="{StaticResource FieldValueStyle}"
+                                    VerticalOptions="Center" />
+                                <Border
+                                    Grid.Column="1"
+                                    WidthRequest="34"
+                                    HeightRequest="34"
+                                    BackgroundColor="#2A2F4A"
+                                    StrokeThickness="0"
+                                    VerticalOptions="Center">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="8" />
+                                    </Border.StrokeShape>
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnCopyUsernameTapped" />
+                                    </Border.GestureRecognizers>
+                                    <Label
+                                        Text="❏"
+                                        FontSize="13"
+                                        TextColor="#CFD3FF"
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center" />
+                                </Border>
+                            </Grid>
+                        </VerticalStackLayout>
+                        
+                        <!-- Password -->
+                        <VerticalStackLayout Spacing="4"
+                            IsVisible="{Binding Password, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}">
+                            <Label Text="Passwort" Style="{StaticResource FieldLabelStyle}" />
+                            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                                <Border
+                                    BackgroundColor="{StaticResource InputBackgroundColor}"
+                                    StrokeThickness="0"
+                                    Padding="12,10"
+                                    VerticalOptions="Center">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="10" />
+                                    </Border.StrokeShape>
+                                    <Label 
+                                        x:Name="PasswordLabel"
+                                        Text="{Binding Password}"
+                                        FontSize="14"
+                                        FontFamily="Consolas"
+                                        TextColor="#E8EBFF"
+                                        LineBreakMode="CharacterWrap" />
+                                </Border>
+                                <Border
+                                    Grid.Column="1"
+                                    WidthRequest="34"
+                                    HeightRequest="34"
+                                    BackgroundColor="#2A2F4A"
+                                    StrokeThickness="0"
+                                    VerticalOptions="Start">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="8" />
+                                    </Border.StrokeShape>
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnTogglePasswordTapped" />
+                                    </Border.GestureRecognizers>
+                                    <Label
+                                        x:Name="TogglePasswordIcon"
+                                        Text="◎"
+                                        FontSize="12"
+                                        TextColor="#CFD3FF"
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center" />
+                                </Border>
+                                <Border
+                                    Grid.Column="2"
+                                    WidthRequest="34"
+                                    HeightRequest="34"
+                                    BackgroundColor="#2A2F4A"
+                                    StrokeThickness="0"
+                                    VerticalOptions="Start">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="8" />
+                                    </Border.StrokeShape>
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnCopyPasswordTapped" />
+                                    </Border.GestureRecognizers>
+                                    <Label
+                                        Text="❏"
+                                        FontSize="13"
+                                        TextColor="#CFD3FF"
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center" />
+                                </Border>
+                            </Grid>
+                        </VerticalStackLayout>
+                        
+                        <!-- URL -->
+                        <VerticalStackLayout Spacing="4"
+                            IsVisible="{Binding Url, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}">
+                            <Label Text="URL" Style="{StaticResource FieldLabelStyle}" />
+                            <Label 
+                                Text="{Binding Url}" 
+                                FontSize="14"
+                                TextColor="#58A7FF"
+                                TextDecorations="Underline"
+                                LineBreakMode="WordWrap">
+                                <Label.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnOpenUrlTapped" />
+                                </Label.GestureRecognizers>
+                            </Label>
+                        </VerticalStackLayout>
+                        
+                    </VerticalStackLayout>
+                </Border>
+                
+                <!-- Notes Card -->
+                <Border
+                    BackgroundColor="{StaticResource CardBackgroundColor}"
+                    StrokeThickness="0"
+                    Padding="16"
+                    IsVisible="{Binding Source={x:Reference DetailPage}, Path=HasNotes}">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="16" />
+                    </Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow Brush="#25000000" Radius="12" Offset="0,6" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="12">
+                        
+                        <!-- Notes -->
+                        <VerticalStackLayout Spacing="4"
+                            IsVisible="{Binding Notes, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}">
+                            <Label Text="Notizen" Style="{StaticResource FieldLabelStyle}" />
+                            <Label 
+                                Text="{Binding Notes}" 
+                                Style="{StaticResource FieldValueStyle}" />
+                        </VerticalStackLayout>
+                        
+                        <!-- Free Text -->
+                        <VerticalStackLayout Spacing="4"
+                            IsVisible="{Binding FreeText, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}">
+                            <Label Text="Freies Textfeld" Style="{StaticResource FieldLabelStyle}" />
+                            <Label 
+                                Text="{Binding FreeText}" 
+                                Style="{StaticResource FieldValueStyle}" />
+                        </VerticalStackLayout>
+                        
+                    </VerticalStackLayout>
+                </Border>
+                
+                <!-- Metadata Card -->
+                <Border
+                    BackgroundColor="{StaticResource CardBackgroundColor}"
+                    StrokeThickness="0"
+                    Padding="16">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="16" />
+                    </Border.StrokeShape>
+                    <VerticalStackLayout Spacing="8">
+                        <Grid ColumnDefinitions="*,*">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="Erstellt" Style="{StaticResource FieldLabelStyle}" />
+                                <Label 
+                                    Text="{Binding CreatedAt, StringFormat='{0:d}'}" 
+                                    FontSize="12"
+                                    TextColor="#E8EBFF" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                <Label Text="Geändert" Style="{StaticResource FieldLabelStyle}" />
+                                <Label 
+                                    Text="{Binding ModifiedAt, StringFormat='{0:d}'}" 
+                                    FontSize="12"
+                                    TextColor="#E8EBFF" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+                
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Bottom Action -->
+        <Border
+            Grid.Row="2"
+            BackgroundColor="{StaticResource CardBackgroundColor}"
+            StrokeThickness="0"
+            Padding="16,12">
+            <Button
+                Text="Schließen"
+                BackgroundColor="{StaticResource SecondaryButtonColor}"
+                TextColor="#E8EBFF"
+                FontSize="14"
+                CornerRadius="12"
+                HeightRequest="44"
+                Clicked="OnCloseClicked" />
+        </Border>
+    </Grid>
+</ContentPage>
+
