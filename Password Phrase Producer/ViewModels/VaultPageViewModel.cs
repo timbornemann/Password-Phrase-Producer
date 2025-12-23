@@ -227,9 +227,9 @@ public class VaultPageViewModel : INotifyPropertyChanged
         }
     }
 
-    public async Task ReloadAsync(CancellationToken cancellationToken = default)
+    public async Task ReloadAsync(CancellationToken cancellationToken = default, bool allowWhileBusy = false)
     {
-        if (IsBusy || !IsUnlocked)
+        if ((!allowWhileBusy && IsBusy) || !IsUnlocked)
         {
             return;
         }
@@ -414,7 +414,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
         IsUnlocked = true;
         IsNewVault = false;
         _hasAttemptedAutoBiometric = false;
-        await ReloadAsync(cancellationToken);
+        await ReloadAsync(cancellationToken, allowWhileBusy: true);
     }
 
     private void UpdateEntries(IEnumerable<PasswordVaultEntry> entries)
