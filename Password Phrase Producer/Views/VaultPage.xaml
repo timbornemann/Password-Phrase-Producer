@@ -119,7 +119,7 @@
                             HeightRequest="18"
                             HorizontalOptions="Center"
                             VerticalOptions="Center"
-                            Rotation="0" />
+                            Rotation="180" />
                     </Border>
                 </Grid>
 

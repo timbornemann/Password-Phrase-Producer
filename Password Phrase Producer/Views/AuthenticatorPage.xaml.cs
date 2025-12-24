@@ -24,6 +24,14 @@ public partial class AuthenticatorPage : ContentPage
         }
     }
 
+    private async void OnBackTapped(object? sender, TappedEventArgs e)
+    {
+        if (Shell.Current is not null)
+        {
+            await Shell.Current.GoToAsync("//home");
+        }
+    }
+
     protected override async void OnAppearing()
     {
         base.OnAppearing();

@@ -12,13 +12,39 @@
     </ContentPage.Background>
 
     <ScrollView HorizontalOptions="Fill" VerticalOptions="Fill">
-        <Grid HorizontalOptions="Fill" VerticalOptions="Center" MinimumHeightRequest="420">
+        <Grid HorizontalOptions="Fill" VerticalOptions="Center" MinimumHeightRequest="500">
             <VerticalStackLayout
-                Spacing="16"
+                Spacing="20"
                 HorizontalOptions="Center"
                 VerticalOptions="Center"
-                MaximumWidthRequest="360"
-                Padding="18">
+                MaximumWidthRequest="380">
+
+                <!-- Back Button (nur im Unlock-Modus) -->
+                <Border
+                    x:Name="BackButton"
+                    Padding="10,6"
+                    StrokeThickness="0"
+                    BackgroundColor="#1F2338"
+                    HorizontalOptions="Start">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="10" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnBackTapped" />
+                    </Border.GestureRecognizers>
+                    <HorizontalStackLayout Spacing="5" VerticalOptions="Center">
+                        <Image
+                            Source="chevronright.png"
+                            WidthRequest="12"
+                            HeightRequest="12"
+                            VerticalOptions="Center"
+                            Rotation="180" />
+                        <Label
+                            Text="Zurück"
+                            FontSize="12"
+                            TextColor="#CFD3FF" />
+                    </HorizontalStackLayout>
+                </Border>
 
                 <!-- Header Card -->
                 <Border

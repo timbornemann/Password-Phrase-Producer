@@ -20,6 +20,23 @@ public partial class AuthenticatorPinPage : ContentPage
             UnlockButton.Text = "Passwort erstellen";
             ConfirmPinBorder.IsVisible = true;
             HintLabel.IsVisible = true;
+            BackButton.IsVisible = false; // Kein Zurück im Setup-Mode
+        }
+        else
+        {
+            BackButton.IsVisible = true; // Zurück-Button im Unlock-Mode
+        }
+    }
+
+    private async void OnBackTapped(object? sender, TappedEventArgs e)
+    {
+        // Modal schließen
+        await Navigation.PopModalAsync();
+        
+        // Zur Startseite navigieren
+        if (Shell.Current is not null)
+        {
+            await Shell.Current.GoToAsync("//home");
         }
     }
 
