@@ -65,15 +65,179 @@
 
             <!-- Scan View -->
             <Grid x:Name="ScanView" IsVisible="False">
-                <cv:CameraView x:Name="cameraView" WidthRequest="300" HeightRequest="300" HorizontalOptions="Center" VerticalOptions="Center" BarCodeOptions="{Binding BarCodeOptions}" BarcodeDetected="OnBarcodeDetected" />
+                <cv:CameraView x:Name="cameraView" 
+                               HorizontalOptions="Fill" 
+                               VerticalOptions="Fill"
+                               BarCodeDetectionEnabled="True"
+                               BarCodeDetectionFrameRate="10"
+                               BarCodeOptions="{Binding BarCodeOptions}" 
+                               BarcodeDetected="OnBarcodeDetected"
+                               CamerasLoaded="OnCamerasLoaded" />
                 
-                <Label Text="Scanne einen QR-Code" 
-                       VerticalOptions="End" HorizontalOptions="Center" 
-                       Margin="0,0,0,40" TextColor="White" />
+                <!-- Manual Capture Overlay for Windows -->
+                <Grid VerticalOptions="Center" HorizontalOptions="Center">
+                    <Border StrokeThickness="3"
+                            BackgroundColor="Transparent"
+                            Stroke="#7B8CFF"
+                            Opacity="0.6"
+                            WidthRequest="280"
+                            HeightRequest="280">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="16" />
+                        </Border.StrokeShape>
+                    </Border>
+                    
+                    <Label Text="Positioniere QR-Code hier"
+                           TextColor="White"
+                           FontSize="14"
+                           BackgroundColor="#AA000000"
+                           Padding="8,4"
+                           HorizontalOptions="Center"
+                           VerticalOptions="End"
+                           Margin="0,0,0,20" />
+                </Grid>
                 
-                <Button Text="Taschenlampe" Clicked="OnFlashlightClicked" 
-                        VerticalOptions="Start" HorizontalOptions="End" Margin="20"
-                        BackgroundColor="#2A2A3A" TextColor="White" FontSize="12" Padding="8,4" />
+                <!-- QR Code Detection Frame Overlay -->
+                <Border x:Name="DetectionFrame"
+                        IsVisible="False"
+                        StrokeThickness="3"
+                        BackgroundColor="Transparent"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center"
+                        WidthRequest="200"
+                        HeightRequest="200">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="12" />
+                    </Border.StrokeShape>
+                    <Border.Stroke>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#00FF00" Offset="0" />
+                            <GradientStop Color="#7B8CFF" Offset="1" />
+                        </LinearGradientBrush>
+                    </Border.Stroke>
+                </Border>
+                
+                <!-- Scanning Guide Frame (always visible) -->
+                <Border StrokeThickness="2"
+                        BackgroundColor="Transparent"
+                        Stroke="#7B8CFF"
+                        Opacity="0.5"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center"
+                        WidthRequest="250"
+                        HeightRequest="250">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="16" />
+                    </Border.StrokeShape>
+                </Border>
+                
+                <!-- Large Capture Button -->
+                <Button x:Name="CaptureButton"
+                        Text="📸 QR-Code erfassen"
+                        Clicked="OnCaptureClicked"
+                        VerticalOptions="End"
+                        HorizontalOptions="Center"
+                        Margin="0,0,0,80"
+                        BackgroundColor="#7B8CFF"
+                        TextColor="White"
+                        FontSize="18"
+                        FontAttributes="Bold"
+                        Padding="24,12"
+                        CornerRadius="25"
+                        WidthRequest="250"
+                        HeightRequest="50"
+                        Shadow="{Shadow Brush=#40000000, Radius=8, Offset='0,4'}" />
+                
+                <Label Text="Richte die Kamera auf einen QR-Code" 
+                       VerticalOptions="End" 
+                       HorizontalOptions="Center" 
+                       Margin="0,0,0,140" 
+                       TextColor="White"
+                       FontSize="14"
+                       FontAttributes="Bold"
+                       BackgroundColor="#AA000000"
+                       Padding="12,8" />
+                
+                <Label x:Name="ScanStatusLabel"
+                       Text="Bereit zum Scannen"
+                       VerticalOptions="End" 
+                       HorizontalOptions="Center" 
+                       Margin="0,0,0,50" 
+                       TextColor="#7B8CFF"
+                       FontSize="12"
+                       BackgroundColor="#AA000000"
+                       Padding="8,4" />
+                
+                <!-- Debug Info -->
+                <Label x:Name="DebugLabel"
+                       Text=""
+                       VerticalOptions="Start" 
+                       HorizontalOptions="Start" 
+                       Margin="10" 
+                       TextColor="#FFD700"
+                       FontSize="10"
+                       BackgroundColor="#AA000000"
+                       Padding="6,3"
+                       IsVisible="False" />
+                
+                <!-- Control Buttons -->
+                <VerticalStackLayout VerticalOptions="Start" 
+                                    HorizontalOptions="End" 
+                                    Margin="20"
+                                    Spacing="8">
+                    <!-- Zoom Controls -->
+                    <Border BackgroundColor="#2A2A3A"
+                            StrokeThickness="0"
+                            Padding="8,4">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="12" />
+                        </Border.StrokeShape>
+                        <VerticalStackLayout Spacing="4">
+                            <Button x:Name="ZoomInButton"
+                                    Text="+"
+                                    Clicked="OnZoomInClicked" 
+                                    BackgroundColor="#1F2338" 
+                                    TextColor="White" 
+                                    FontSize="20" 
+                                    FontAttributes="Bold"
+                                    WidthRequest="40"
+                                    HeightRequest="40"
+                                    CornerRadius="8"
+                                    Padding="0" />
+                            
+                            <Label x:Name="ZoomLevelLabel"
+                                   Text="1.0x"
+                                   TextColor="White"
+                                   FontSize="10"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center" />
+                            
+                            <Button x:Name="ZoomOutButton"
+                                    Text="-"
+                                    Clicked="OnZoomOutClicked" 
+                                    BackgroundColor="#1F2338" 
+                                    TextColor="White" 
+                                    FontSize="20" 
+                                    FontAttributes="Bold"
+                                    WidthRequest="40"
+                                    HeightRequest="40"
+                                    CornerRadius="8"
+                                    Padding="0" />
+                        </VerticalStackLayout>
+                    </Border>
+                    
+                    <!-- Flashlight Button -->
+                    <Button x:Name="FlashlightButton"
+                            Text="💡" 
+                            Clicked="OnFlashlightClicked" 
+                            BackgroundColor="#2A2A3A" 
+                            TextColor="White" 
+                            FontSize="16"
+                            WidthRequest="56"
+                            HeightRequest="44"
+                            CornerRadius="12"
+                            Padding="0" />
+                </VerticalStackLayout>
             </Grid>
         </Grid>
     </Grid>

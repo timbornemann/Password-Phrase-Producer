@@ -98,6 +98,15 @@
           "Xamarin.AndroidX.Collection.Ktx": "1.5.0.1"
         }
       },
+      "SkiaSharp": {
+        "type": "Direct",
+        "requested": "[2.88.8, )",
+        "resolved": "2.88.8",
+        "contentHash": "bRkp3uKp5ZI8gXYQT57uKwil1uobb2p8c69n7v5evlB/2JNcMAXVcw9DZAP5Ig3WSvgzGm2YSn27UVeOi05NlA==",
+        "dependencies": {
+          "SkiaSharp.NativeAssets.Android": "2.88.8"
+        }
+      },
       "Xamarin.AndroidX.Biometric": {
         "type": "Direct",
         "requested": "[1.1.0.28, )",
@@ -111,6 +120,22 @@
           "Xamarin.AndroidX.Fragment": "1.8.6.1",
           "Xamarin.AndroidX.Lifecycle.LiveData.Core": "2.8.7.3",
           "Xamarin.AndroidX.Lifecycle.ViewModel": "2.8.7.3"
+        }
+      },
+      "ZXing.Net": {
+        "type": "Direct",
+        "requested": "[0.16.9, )",
+        "resolved": "0.16.9",
+        "contentHash": "7WaVMHklpT3Ye2ragqRIwlFRsb6kOk63BOGADV0fan3ulVfGLUYkDi5yNUsZS/7FVNkWbtHAlDLmu4WnHGfqvQ=="
+      },
+      "ZXing.Net.Bindings.SkiaSharp": {
+        "type": "Direct",
+        "requested": "[0.16.14, )",
+        "resolved": "0.16.14",
+        "contentHash": "cltgBBU56XdB6B8VMxXF4bVmVrPTkmKOWSWgK3DCp7SlB9IihV7nIgrNaP2BFL6TthhVYIgDPVI+lGkEAwdNrg==",
+        "dependencies": {
+          "SkiaSharp": "2.88.7",
+          "ZXing.Net": "0.16.9"
         }
       },
       "CommunityToolkit.Maui.Core": {
@@ -264,6 +289,11 @@
         "type": "Transitive",
         "resolved": "9.0.111",
         "contentHash": "wM9Y4fIk0MJ0bjvZ0weOOBwRzaMx7Zeub7G2T1m3yJ0YyYYb9vpIn3Wgtb4eFCIZAq6s91tigOj/WRdsrfcSxw=="
+      },
+      "SkiaSharp.NativeAssets.Android": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "tq417LpTlN9BB02LDnODI5WpTiaf2Wqwp9VsrUpLv1XOAXsIMscQrCagJbYkpfheZ0YoiqG4QuTMcQXL+P+4kg=="
       },
       "Xamarin.Android.Glide": {
         "type": "Transitive",
@@ -1207,18 +1237,43 @@
         "dependencies": {
           "Xamarin.Kotlin.StdLib": "2.0.21.3"
         }
-      },
-      "ZXing.Net": {
-        "type": "Transitive",
-        "resolved": "0.16.9",
-        "contentHash": "7WaVMHklpT3Ye2ragqRIwlFRsb6kOk63BOGADV0fan3ulVfGLUYkDi5yNUsZS/7FVNkWbtHAlDLmu4WnHGfqvQ=="
       }
     },
-    "net9.0-android35.0/android-arm64": {},
-    "net9.0-android35.0/android-x64": {},
-    "net9.0-android35.0/iossimulator-x64": {},
-    "net9.0-android35.0/maccatalyst-x64": {},
-    "net9.0-android35.0/win10-x64": {},
+    "net9.0-android35.0/android-arm64": {
+      "SkiaSharp.NativeAssets.Android": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "tq417LpTlN9BB02LDnODI5WpTiaf2Wqwp9VsrUpLv1XOAXsIMscQrCagJbYkpfheZ0YoiqG4QuTMcQXL+P+4kg=="
+      }
+    },
+    "net9.0-android35.0/android-x64": {
+      "SkiaSharp.NativeAssets.Android": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "tq417LpTlN9BB02LDnODI5WpTiaf2Wqwp9VsrUpLv1XOAXsIMscQrCagJbYkpfheZ0YoiqG4QuTMcQXL+P+4kg=="
+      }
+    },
+    "net9.0-android35.0/iossimulator-x64": {
+      "SkiaSharp.NativeAssets.Android": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "tq417LpTlN9BB02LDnODI5WpTiaf2Wqwp9VsrUpLv1XOAXsIMscQrCagJbYkpfheZ0YoiqG4QuTMcQXL+P+4kg=="
+      }
+    },
+    "net9.0-android35.0/maccatalyst-x64": {
+      "SkiaSharp.NativeAssets.Android": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "tq417LpTlN9BB02LDnODI5WpTiaf2Wqwp9VsrUpLv1XOAXsIMscQrCagJbYkpfheZ0YoiqG4QuTMcQXL+P+4kg=="
+      }
+    },
+    "net9.0-android35.0/win10-x64": {
+      "SkiaSharp.NativeAssets.Android": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "tq417LpTlN9BB02LDnODI5WpTiaf2Wqwp9VsrUpLv1XOAXsIMscQrCagJbYkpfheZ0YoiqG4QuTMcQXL+P+4kg=="
+      }
+    },
     "net9.0-ios26.0": {
       "Camera.MAUI": {
         "type": "Direct",
@@ -1312,6 +1367,31 @@
         "resolved": "0.0.7",
         "contentHash": "C5cS2ORHK4lkdaJoVh2z5B6ScttVmKiO8/6wgt3EsA6atyPwM+wJi5IX2vlwfUM7+ZQOvf530FasOIbZ0POP/g=="
       },
+      "SkiaSharp": {
+        "type": "Direct",
+        "requested": "[2.88.8, )",
+        "resolved": "2.88.8",
+        "contentHash": "bRkp3uKp5ZI8gXYQT57uKwil1uobb2p8c69n7v5evlB/2JNcMAXVcw9DZAP5Ig3WSvgzGm2YSn27UVeOi05NlA==",
+        "dependencies": {
+          "SkiaSharp.NativeAssets.iOS": "2.88.8"
+        }
+      },
+      "ZXing.Net": {
+        "type": "Direct",
+        "requested": "[0.16.9, )",
+        "resolved": "0.16.9",
+        "contentHash": "7WaVMHklpT3Ye2ragqRIwlFRsb6kOk63BOGADV0fan3ulVfGLUYkDi5yNUsZS/7FVNkWbtHAlDLmu4WnHGfqvQ=="
+      },
+      "ZXing.Net.Bindings.SkiaSharp": {
+        "type": "Direct",
+        "requested": "[0.16.14, )",
+        "resolved": "0.16.14",
+        "contentHash": "cltgBBU56XdB6B8VMxXF4bVmVrPTkmKOWSWgK3DCp7SlB9IihV7nIgrNaP2BFL6TthhVYIgDPVI+lGkEAwdNrg==",
+        "dependencies": {
+          "SkiaSharp": "2.88.7",
+          "ZXing.Net": "0.16.9"
+        }
+      },
       "CommunityToolkit.Maui.Core": {
         "type": "Transitive",
         "resolved": "8.0.0",
@@ -1445,17 +1525,47 @@
         "resolved": "9.0.111",
         "contentHash": "wM9Y4fIk0MJ0bjvZ0weOOBwRzaMx7Zeub7G2T1m3yJ0YyYYb9vpIn3Wgtb4eFCIZAq6s91tigOj/WRdsrfcSxw=="
       },
-      "ZXing.Net": {
+      "SkiaSharp.NativeAssets.iOS": {
         "type": "Transitive",
-        "resolved": "0.16.9",
-        "contentHash": "7WaVMHklpT3Ye2ragqRIwlFRsb6kOk63BOGADV0fan3ulVfGLUYkDi5yNUsZS/7FVNkWbtHAlDLmu4WnHGfqvQ=="
+        "resolved": "2.88.8",
+        "contentHash": "bo00z/N46eptBnCrdrLNMwLpJnjjMHJDW8c3/gA6WsGEc4M+n02WpQUbCukZMZzAGq4XmLMzBg46LcElHlAU6Q=="
       }
     },
-    "net9.0-ios26.0/android-arm64": {},
-    "net9.0-ios26.0/android-x64": {},
-    "net9.0-ios26.0/iossimulator-x64": {},
-    "net9.0-ios26.0/maccatalyst-x64": {},
-    "net9.0-ios26.0/win10-x64": {},
+    "net9.0-ios26.0/android-arm64": {
+      "SkiaSharp.NativeAssets.iOS": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "bo00z/N46eptBnCrdrLNMwLpJnjjMHJDW8c3/gA6WsGEc4M+n02WpQUbCukZMZzAGq4XmLMzBg46LcElHlAU6Q=="
+      }
+    },
+    "net9.0-ios26.0/android-x64": {
+      "SkiaSharp.NativeAssets.iOS": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "bo00z/N46eptBnCrdrLNMwLpJnjjMHJDW8c3/gA6WsGEc4M+n02WpQUbCukZMZzAGq4XmLMzBg46LcElHlAU6Q=="
+      }
+    },
+    "net9.0-ios26.0/iossimulator-x64": {
+      "SkiaSharp.NativeAssets.iOS": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "bo00z/N46eptBnCrdrLNMwLpJnjjMHJDW8c3/gA6WsGEc4M+n02WpQUbCukZMZzAGq4XmLMzBg46LcElHlAU6Q=="
+      }
+    },
+    "net9.0-ios26.0/maccatalyst-x64": {
+      "SkiaSharp.NativeAssets.iOS": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "bo00z/N46eptBnCrdrLNMwLpJnjjMHJDW8c3/gA6WsGEc4M+n02WpQUbCukZMZzAGq4XmLMzBg46LcElHlAU6Q=="
+      }
+    },
+    "net9.0-ios26.0/win10-x64": {
+      "SkiaSharp.NativeAssets.iOS": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "bo00z/N46eptBnCrdrLNMwLpJnjjMHJDW8c3/gA6WsGEc4M+n02WpQUbCukZMZzAGq4XmLMzBg46LcElHlAU6Q=="
+      }
+    },
     "net9.0-maccatalyst26.0": {
       "Camera.MAUI": {
         "type": "Direct",
@@ -1549,6 +1659,31 @@
         "resolved": "0.0.7",
         "contentHash": "C5cS2ORHK4lkdaJoVh2z5B6ScttVmKiO8/6wgt3EsA6atyPwM+wJi5IX2vlwfUM7+ZQOvf530FasOIbZ0POP/g=="
       },
+      "SkiaSharp": {
+        "type": "Direct",
+        "requested": "[2.88.8, )",
+        "resolved": "2.88.8",
+        "contentHash": "bRkp3uKp5ZI8gXYQT57uKwil1uobb2p8c69n7v5evlB/2JNcMAXVcw9DZAP5Ig3WSvgzGm2YSn27UVeOi05NlA==",
+        "dependencies": {
+          "SkiaSharp.NativeAssets.MacCatalyst": "2.88.8"
+        }
+      },
+      "ZXing.Net": {
+        "type": "Direct",
+        "requested": "[0.16.9, )",
+        "resolved": "0.16.9",
+        "contentHash": "7WaVMHklpT3Ye2ragqRIwlFRsb6kOk63BOGADV0fan3ulVfGLUYkDi5yNUsZS/7FVNkWbtHAlDLmu4WnHGfqvQ=="
+      },
+      "ZXing.Net.Bindings.SkiaSharp": {
+        "type": "Direct",
+        "requested": "[0.16.14, )",
+        "resolved": "0.16.14",
+        "contentHash": "cltgBBU56XdB6B8VMxXF4bVmVrPTkmKOWSWgK3DCp7SlB9IihV7nIgrNaP2BFL6TthhVYIgDPVI+lGkEAwdNrg==",
+        "dependencies": {
+          "SkiaSharp": "2.88.7",
+          "ZXing.Net": "0.16.9"
+        }
+      },
       "CommunityToolkit.Maui.Core": {
         "type": "Transitive",
         "resolved": "8.0.0",
@@ -1682,17 +1817,47 @@
         "resolved": "9.0.111",
         "contentHash": "wM9Y4fIk0MJ0bjvZ0weOOBwRzaMx7Zeub7G2T1m3yJ0YyYYb9vpIn3Wgtb4eFCIZAq6s91tigOj/WRdsrfcSxw=="
       },
-      "ZXing.Net": {
+      "SkiaSharp.NativeAssets.MacCatalyst": {
         "type": "Transitive",
-        "resolved": "0.16.9",
-        "contentHash": "7WaVMHklpT3Ye2ragqRIwlFRsb6kOk63BOGADV0fan3ulVfGLUYkDi5yNUsZS/7FVNkWbtHAlDLmu4WnHGfqvQ=="
+        "resolved": "2.88.8",
+        "contentHash": "qwoqbad4RbMbfTa7cG27S0YtzyXcfoU4xu2t2Nux3GUxTKMnOneR1Ebj3QiGUTiGkYYejgmjEZpE1iSq6KmhYA=="
       }
     },
-    "net9.0-maccatalyst26.0/android-arm64": {},
-    "net9.0-maccatalyst26.0/android-x64": {},
-    "net9.0-maccatalyst26.0/iossimulator-x64": {},
-    "net9.0-maccatalyst26.0/maccatalyst-x64": {},
-    "net9.0-maccatalyst26.0/win10-x64": {},
+    "net9.0-maccatalyst26.0/android-arm64": {
+      "SkiaSharp.NativeAssets.MacCatalyst": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "qwoqbad4RbMbfTa7cG27S0YtzyXcfoU4xu2t2Nux3GUxTKMnOneR1Ebj3QiGUTiGkYYejgmjEZpE1iSq6KmhYA=="
+      }
+    },
+    "net9.0-maccatalyst26.0/android-x64": {
+      "SkiaSharp.NativeAssets.MacCatalyst": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "qwoqbad4RbMbfTa7cG27S0YtzyXcfoU4xu2t2Nux3GUxTKMnOneR1Ebj3QiGUTiGkYYejgmjEZpE1iSq6KmhYA=="
+      }
+    },
+    "net9.0-maccatalyst26.0/iossimulator-x64": {
+      "SkiaSharp.NativeAssets.MacCatalyst": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "qwoqbad4RbMbfTa7cG27S0YtzyXcfoU4xu2t2Nux3GUxTKMnOneR1Ebj3QiGUTiGkYYejgmjEZpE1iSq6KmhYA=="
+      }
+    },
+    "net9.0-maccatalyst26.0/maccatalyst-x64": {
+      "SkiaSharp.NativeAssets.MacCatalyst": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "qwoqbad4RbMbfTa7cG27S0YtzyXcfoU4xu2t2Nux3GUxTKMnOneR1Ebj3QiGUTiGkYYejgmjEZpE1iSq6KmhYA=="
+      }
+    },
+    "net9.0-maccatalyst26.0/win10-x64": {
+      "SkiaSharp.NativeAssets.MacCatalyst": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "qwoqbad4RbMbfTa7cG27S0YtzyXcfoU4xu2t2Nux3GUxTKMnOneR1Ebj3QiGUTiGkYYejgmjEZpE1iSq6KmhYA=="
+      }
+    },
     "net9.0-windows10.0.19041": {
       "Camera.MAUI": {
         "type": "Direct",
@@ -1779,6 +1944,32 @@
         "requested": "[0.0.7, )",
         "resolved": "0.0.7",
         "contentHash": "C5cS2ORHK4lkdaJoVh2z5B6ScttVmKiO8/6wgt3EsA6atyPwM+wJi5IX2vlwfUM7+ZQOvf530FasOIbZ0POP/g=="
+      },
+      "SkiaSharp": {
+        "type": "Direct",
+        "requested": "[2.88.8, )",
+        "resolved": "2.88.8",
+        "contentHash": "bRkp3uKp5ZI8gXYQT57uKwil1uobb2p8c69n7v5evlB/2JNcMAXVcw9DZAP5Ig3WSvgzGm2YSn27UVeOi05NlA==",
+        "dependencies": {
+          "SkiaSharp.NativeAssets.Win32": "2.88.8",
+          "SkiaSharp.NativeAssets.macOS": "2.88.8"
+        }
+      },
+      "ZXing.Net": {
+        "type": "Direct",
+        "requested": "[0.16.9, )",
+        "resolved": "0.16.9",
+        "contentHash": "7WaVMHklpT3Ye2ragqRIwlFRsb6kOk63BOGADV0fan3ulVfGLUYkDi5yNUsZS/7FVNkWbtHAlDLmu4WnHGfqvQ=="
+      },
+      "ZXing.Net.Bindings.SkiaSharp": {
+        "type": "Direct",
+        "requested": "[0.16.14, )",
+        "resolved": "0.16.14",
+        "contentHash": "cltgBBU56XdB6B8VMxXF4bVmVrPTkmKOWSWgK3DCp7SlB9IihV7nIgrNaP2BFL6TthhVYIgDPVI+lGkEAwdNrg==",
+        "dependencies": {
+          "SkiaSharp": "2.88.7",
+          "ZXing.Net": "0.16.9"
+        }
       },
       "CommunityToolkit.Maui.Core": {
         "type": "Transitive",
@@ -1965,15 +2156,20 @@
           "Microsoft.Windows.SDK.BuildTools": "10.0.22621.756"
         }
       },
+      "SkiaSharp.NativeAssets.macOS": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "6Kn5TSkKlfyS6azWHF3Jk2sW5C4jCE5uSshM/5AbfFrR+5n6qM5XEnz9h4VaVl7LTxBvHvMkuPb/3bpbq0vxTw=="
+      },
+      "SkiaSharp.NativeAssets.Win32": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "O9QXoWEXA+6cweR4h3BOnwMz+pO9vL9mXdjLrpDd0w1QzCgWmLQBxa1VgySDITiH7nQndrDG1h6937zm9pLj1Q=="
+      },
       "System.Speech": {
         "type": "Transitive",
         "resolved": "8.0.0",
         "contentHash": "CNuiA6vb95Oe5PRjClZEBiaju31vwB8OIeCgeSBXyZL6+MS4RVVB2X/C11z0xCkooHE3Vy91nM2z76emIzR+sg=="
-      },
-      "ZXing.Net": {
-        "type": "Transitive",
-        "resolved": "0.16.9",
-        "contentHash": "7WaVMHklpT3Ye2ragqRIwlFRsb6kOk63BOGADV0fan3ulVfGLUYkDi5yNUsZS/7FVNkWbtHAlDLmu4WnHGfqvQ=="
       }
     },
     "net9.0-windows10.0.19041/android-arm64": {
@@ -1998,6 +2194,16 @@
           "Microsoft.Web.WebView2": "1.0.2903.40",
           "Microsoft.Windows.SDK.BuildTools": "10.0.22621.756"
         }
+      },
+      "SkiaSharp.NativeAssets.macOS": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "6Kn5TSkKlfyS6azWHF3Jk2sW5C4jCE5uSshM/5AbfFrR+5n6qM5XEnz9h4VaVl7LTxBvHvMkuPb/3bpbq0vxTw=="
+      },
+      "SkiaSharp.NativeAssets.Win32": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "O9QXoWEXA+6cweR4h3BOnwMz+pO9vL9mXdjLrpDd0w1QzCgWmLQBxa1VgySDITiH7nQndrDG1h6937zm9pLj1Q=="
       },
       "System.Speech": {
         "type": "Transitive",
@@ -2028,6 +2234,16 @@
           "Microsoft.Windows.SDK.BuildTools": "10.0.22621.756"
         }
       },
+      "SkiaSharp.NativeAssets.macOS": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "6Kn5TSkKlfyS6azWHF3Jk2sW5C4jCE5uSshM/5AbfFrR+5n6qM5XEnz9h4VaVl7LTxBvHvMkuPb/3bpbq0vxTw=="
+      },
+      "SkiaSharp.NativeAssets.Win32": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "O9QXoWEXA+6cweR4h3BOnwMz+pO9vL9mXdjLrpDd0w1QzCgWmLQBxa1VgySDITiH7nQndrDG1h6937zm9pLj1Q=="
+      },
       "System.Speech": {
         "type": "Transitive",
         "resolved": "8.0.0",
@@ -2056,6 +2272,16 @@
           "Microsoft.Web.WebView2": "1.0.2903.40",
           "Microsoft.Windows.SDK.BuildTools": "10.0.22621.756"
         }
+      },
+      "SkiaSharp.NativeAssets.macOS": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "6Kn5TSkKlfyS6azWHF3Jk2sW5C4jCE5uSshM/5AbfFrR+5n6qM5XEnz9h4VaVl7LTxBvHvMkuPb/3bpbq0vxTw=="
+      },
+      "SkiaSharp.NativeAssets.Win32": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "O9QXoWEXA+6cweR4h3BOnwMz+pO9vL9mXdjLrpDd0w1QzCgWmLQBxa1VgySDITiH7nQndrDG1h6937zm9pLj1Q=="
       },
       "System.Speech": {
         "type": "Transitive",
@@ -2086,6 +2312,16 @@
           "Microsoft.Windows.SDK.BuildTools": "10.0.22621.756"
         }
       },
+      "SkiaSharp.NativeAssets.macOS": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "6Kn5TSkKlfyS6azWHF3Jk2sW5C4jCE5uSshM/5AbfFrR+5n6qM5XEnz9h4VaVl7LTxBvHvMkuPb/3bpbq0vxTw=="
+      },
+      "SkiaSharp.NativeAssets.Win32": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "O9QXoWEXA+6cweR4h3BOnwMz+pO9vL9mXdjLrpDd0w1QzCgWmLQBxa1VgySDITiH7nQndrDG1h6937zm9pLj1Q=="
+      },
       "System.Speech": {
         "type": "Transitive",
         "resolved": "8.0.0",
@@ -2114,6 +2350,16 @@
           "Microsoft.Web.WebView2": "1.0.2903.40",
           "Microsoft.Windows.SDK.BuildTools": "10.0.22621.756"
         }
+      },
+      "SkiaSharp.NativeAssets.macOS": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "6Kn5TSkKlfyS6azWHF3Jk2sW5C4jCE5uSshM/5AbfFrR+5n6qM5XEnz9h4VaVl7LTxBvHvMkuPb/3bpbq0vxTw=="
+      },
+      "SkiaSharp.NativeAssets.Win32": {
+        "type": "Transitive",
+        "resolved": "2.88.8",
+        "contentHash": "O9QXoWEXA+6cweR4h3BOnwMz+pO9vL9mXdjLrpDd0w1QzCgWmLQBxa1VgySDITiH7nQndrDG1h6937zm9pLj1Q=="
       },
       "System.Speech": {
         "type": "Transitive",
