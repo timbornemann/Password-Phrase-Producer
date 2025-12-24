@@ -137,10 +137,19 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
     {
         // Use custom AddEntryPage modal
         var page = Application.Current?.MainPage?.Handler?.MauiContext?.Services.GetService<AddEntryPage>();
-        if (page != null)
+        if (page is null)
         {
-            await Application.Current!.MainPage!.Navigation.PushModalAsync(page);
+            return;
         }
+
+        var currentPage = GetCurrentPage();
+        var navigation = currentPage?.Navigation;
+        if (navigation is null)
+        {
+            return;
+        }
+
+        await navigation.PushModalAsync(page);
     }
 
     private async void DeleteEntryAsync(TotpViewModelItem? item)
