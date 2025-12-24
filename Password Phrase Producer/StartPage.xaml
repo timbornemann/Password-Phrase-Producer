@@ -151,6 +151,49 @@
                     </Grid>
                 </Border>
 
+                <!-- Authenticator Option -->
+                <Border StrokeThickness="0"
+                        HeightRequest="70"
+                        BackgroundColor="Transparent">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="16" />
+                    </Border.StrokeShape>
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#1F2540" Offset="0" />
+                            <GradientStop Color="#1B2036" Offset="1" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border.Shadow>
+                        <Shadow Brush="#25000000" Radius="12" Offset="0,6" />
+                    </Border.Shadow>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding NavigateToAuthenticatorCommand}" />
+                    </Border.GestureRecognizers>
+
+                    <Grid Padding="16" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="4">
+                        <!-- Text -->
+                        <Label Grid.Row="0"
+                               Text="Authenticator"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               TextColor="White"/>
+                        <Label Grid.Row="1"
+                               Text="Verwalte deine 2FA-Codes."
+                               FontSize="12"
+                               TextColor="#9EA3C4"
+                               LineBreakMode="WordWrap"/>
+
+                        <!-- Arrow -->
+                        <Image Grid.Column="1"
+                               Grid.RowSpan="2"
+                               Source="chevronright.png"
+                               WidthRequest="16"
+                               HeightRequest="16"
+                               VerticalOptions="Center"/>
+                    </Grid>
+                </Border>
+
             </VerticalStackLayout>
         </VerticalStackLayout>
     </ScrollView>

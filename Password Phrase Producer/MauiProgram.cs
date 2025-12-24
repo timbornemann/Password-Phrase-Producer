@@ -1,3 +1,4 @@
+using Camera.MAUI;
 using CommunityToolkit.Maui;
 using Microsoft.Extensions.Logging;
 using Password_Phrase_Producer.Services.Security;
@@ -15,6 +16,7 @@ public static class MauiProgram
         builder
             .UseMauiApp<App>()
             .UseMauiCommunityToolkit()
+            .UseMauiCameraView()
             .ConfigureFonts(fonts =>
             {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -26,12 +28,16 @@ public static class MauiProgram
 #endif
 
         builder.Services.AddSingleton<PasswordVaultService>();
+        builder.Services.AddSingleton<TotpService>();
         builder.Services.AddSingleton<IBiometricAuthenticationService, BiometricAuthenticationService>();
         builder.Services.AddTransient<VaultPageViewModel>();
         builder.Services.AddTransient<VaultSettingsViewModel>();
         builder.Services.AddTransient<VaultPage>();
         builder.Services.AddTransient<SettingsPage>();
         builder.Services.AddTransient<VaultEntryEditorPage>();
+        builder.Services.AddTransient<AuthenticatorViewModel>();
+        builder.Services.AddTransient<AuthenticatorPage>();
+        builder.Services.AddTransient<AddEntryPage>();
 
         return builder.Build();
     }

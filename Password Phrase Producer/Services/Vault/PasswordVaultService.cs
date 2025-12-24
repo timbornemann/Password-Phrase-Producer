@@ -681,7 +681,7 @@ public class PasswordVaultService
         public static VaultFileContent Empty { get; } = new(Array.Empty<byte>(), null, null, null, Array.Empty<byte>());
     }
 
-    private byte[] GetUnlockedKey()
+    internal byte[] GetUnlockedKey()
     {
         if (_encryptionKey is null)
         {
@@ -728,7 +728,7 @@ public class PasswordVaultService
         return sha.ComputeHash(key);
     }
 
-    private static byte[] EncryptWithKey(byte[] data, byte[] key)
+    internal static byte[] EncryptWithKey(byte[] data, byte[] key)
     {
         var nonce = RandomNumberGenerator.GetBytes(12);
         var cipher = new byte[data.Length];
@@ -744,7 +744,7 @@ public class PasswordVaultService
         return result;
     }
 
-    private static byte[] DecryptWithKey(byte[] data, byte[] key)
+    internal static byte[] DecryptWithKey(byte[] data, byte[] key)
     {
         const int nonceLength = 12;
         const int tagLength = 16;

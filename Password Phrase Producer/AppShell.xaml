@@ -147,6 +147,16 @@
             ContentTemplate="{DataTemplate views:GenerationMethodsPage}" />
     </FlyoutItem>
 
+    <!-- Authenticator -->
+    <FlyoutItem Title="Authenticator"
+                Route="authenticator"
+                FlyoutIcon="A"
+                FlyoutDisplayOptions="AsSingleItem">
+        <ShellContent
+            Title="Authenticator"
+            ContentTemplate="{DataTemplate views:AuthenticatorPage}" />
+    </FlyoutItem>
+
     <!-- Einstellungen (versteckt im Flyout, Navigation über Footer) -->
     <FlyoutItem Title="Einstellungen"
                 Route="settings"

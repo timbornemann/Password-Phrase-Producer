@@ -16,6 +16,7 @@ public class StartPageViewModel
         NavigateToModeCommand = new Command<PasswordModeOption>(NavigateToMode);
         NavigateToVaultCommand = new Command(NavigateToVault);
         NavigateToGenerationCommand = new Command(NavigateToGeneration);
+        NavigateToAuthenticatorCommand = new Command(NavigateToAuthenticator);
     }
 
     public ObservableCollection<PasswordModeOption> ModeOptions { get; }
@@ -25,6 +26,7 @@ public class StartPageViewModel
     public ICommand NavigateToModeCommand { get; }
     public ICommand NavigateToVaultCommand { get; }
     public ICommand NavigateToGenerationCommand { get; }
+    public ICommand NavigateToAuthenticatorCommand { get; }
 
     private async void NavigateToMode(PasswordModeOption? option)
     {
@@ -46,5 +48,11 @@ public class StartPageViewModel
     {
         // Navigate to the Generation Overview page
         await Shell.Current.GoToAsync("generation");
+    }
+
+    private async void NavigateToAuthenticator()
+    {
+        // Navigate to the Authenticator page (defined in AppShell with route 'authenticator')
+        await Shell.Current.GoToAsync("//authenticator");
     }
 }

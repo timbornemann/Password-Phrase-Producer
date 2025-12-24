@@ -2,6 +2,28 @@
   "version": 1,
   "dependencies": {
     "net9.0-android35.0": {
+      "Camera.MAUI": {
+        "type": "Direct",
+        "requested": "[1.5.1, )",
+        "resolved": "1.5.1",
+        "contentHash": "xJfN+OTNSQG5MHf7nuGNyyhCTlXNdS3Gj0KZlF/GrHWKwW+IUsblVepLUCeVDF/XU43PmNDyImQcSnAxJHqnDQ==",
+        "dependencies": {
+          "Microsoft.Maui.Controls": "8.0.6",
+          "Microsoft.Maui.Controls.Compatibility": "8.0.6"
+        }
+      },
+      "Camera.MAUI.ZXing": {
+        "type": "Direct",
+        "requested": "[1.0.0, )",
+        "resolved": "1.0.0",
+        "contentHash": "6MEuRWRhsauV8Ef3eeILxU4lncQ08C+/wgym0dM1iE4ETWMzf8T7i+/LdR7WN719q+oQIwMOtGBvy0lPrFPwdw==",
+        "dependencies": {
+          "Camera.MAUI": "1.5.0",
+          "Microsoft.Maui.Controls": "8.0.6",
+          "Microsoft.Maui.Controls.Compatibility": "8.0.6",
+          "ZXing.Net": "0.16.9"
+        }
+      },
       "CommunityToolkit.Maui": {
         "type": "Direct",
         "requested": "[8.0.0, )",
@@ -12,6 +34,12 @@
           "Microsoft.Maui.Controls": "8.0.14",
           "Microsoft.Maui.Controls.Compatibility": "8.0.14"
         }
+      },
+      "Google.Protobuf": {
+        "type": "Direct",
+        "requested": "[3.33.2, )",
+        "resolved": "3.33.2",
+        "contentHash": "vZXVbrZgBqUkP5iWQi0CS6pucIS2MQdEYPS1duWCo8fGrrt4th6HTiHfLFX2RmAWAQl1oUnzGgyDBsfq7fHQJA=="
       },
       "Microsoft.Extensions.Logging.Debug": {
         "type": "Direct",
@@ -53,6 +81,12 @@
         "requested": "[9.0.11, )",
         "resolved": "9.0.11",
         "contentHash": "vvB9rtDmWaXgYkViT00KORBVmA3pcYsHlgd9vOPqL9sf5bKy3rvLMF1+sI1uUfVj28S3itirHlHmX5/kcpZKNw=="
+      },
+      "Otp.NET": {
+        "type": "Direct",
+        "requested": "[1.4.1, )",
+        "resolved": "1.4.1",
+        "contentHash": "UXjZ80T6BfVACJWmEcz4UFZ93hwX3STKojKvVpPk3qUhubjnLwIiZMsI4Hh91HhYxC0JlatNdNrVK2wkv4O9/Q=="
       },
       "Plugin.Maui.Biometric": {
         "type": "Direct",
@@ -1173,6 +1207,11 @@
         "dependencies": {
           "Xamarin.Kotlin.StdLib": "2.0.21.3"
         }
+      },
+      "ZXing.Net": {
+        "type": "Transitive",
+        "resolved": "0.16.9",
+        "contentHash": "7WaVMHklpT3Ye2ragqRIwlFRsb6kOk63BOGADV0fan3ulVfGLUYkDi5yNUsZS/7FVNkWbtHAlDLmu4WnHGfqvQ=="
       }
     },
     "net9.0-android35.0/android-arm64": {},
@@ -1181,6 +1220,28 @@
     "net9.0-android35.0/maccatalyst-x64": {},
     "net9.0-android35.0/win10-x64": {},
     "net9.0-ios26.0": {
+      "Camera.MAUI": {
+        "type": "Direct",
+        "requested": "[1.5.1, )",
+        "resolved": "1.5.1",
+        "contentHash": "xJfN+OTNSQG5MHf7nuGNyyhCTlXNdS3Gj0KZlF/GrHWKwW+IUsblVepLUCeVDF/XU43PmNDyImQcSnAxJHqnDQ==",
+        "dependencies": {
+          "Microsoft.Maui.Controls": "8.0.6",
+          "Microsoft.Maui.Controls.Compatibility": "8.0.6"
+        }
+      },
+      "Camera.MAUI.ZXing": {
+        "type": "Direct",
+        "requested": "[1.0.0, )",
+        "resolved": "1.0.0",
+        "contentHash": "6MEuRWRhsauV8Ef3eeILxU4lncQ08C+/wgym0dM1iE4ETWMzf8T7i+/LdR7WN719q+oQIwMOtGBvy0lPrFPwdw==",
+        "dependencies": {
+          "Camera.MAUI": "1.5.0",
+          "Microsoft.Maui.Controls": "8.0.6",
+          "Microsoft.Maui.Controls.Compatibility": "8.0.6",
+          "ZXing.Net": "0.16.9"
+        }
+      },
       "CommunityToolkit.Maui": {
         "type": "Direct",
         "requested": "[8.0.0, )",
@@ -1191,6 +1252,12 @@
           "Microsoft.Maui.Controls": "8.0.14",
           "Microsoft.Maui.Controls.Compatibility": "8.0.14"
         }
+      },
+      "Google.Protobuf": {
+        "type": "Direct",
+        "requested": "[3.33.2, )",
+        "resolved": "3.33.2",
+        "contentHash": "vZXVbrZgBqUkP5iWQi0CS6pucIS2MQdEYPS1duWCo8fGrrt4th6HTiHfLFX2RmAWAQl1oUnzGgyDBsfq7fHQJA=="
       },
       "Microsoft.Extensions.Logging.Debug": {
         "type": "Direct",
@@ -1232,6 +1299,12 @@
         "requested": "[9.0.11, )",
         "resolved": "9.0.11",
         "contentHash": "vvB9rtDmWaXgYkViT00KORBVmA3pcYsHlgd9vOPqL9sf5bKy3rvLMF1+sI1uUfVj28S3itirHlHmX5/kcpZKNw=="
+      },
+      "Otp.NET": {
+        "type": "Direct",
+        "requested": "[1.4.1, )",
+        "resolved": "1.4.1",
+        "contentHash": "UXjZ80T6BfVACJWmEcz4UFZ93hwX3STKojKvVpPk3qUhubjnLwIiZMsI4Hh91HhYxC0JlatNdNrVK2wkv4O9/Q=="
       },
       "Plugin.Maui.Biometric": {
         "type": "Direct",
@@ -1371,6 +1444,11 @@
         "type": "Transitive",
         "resolved": "9.0.111",
         "contentHash": "wM9Y4fIk0MJ0bjvZ0weOOBwRzaMx7Zeub7G2T1m3yJ0YyYYb9vpIn3Wgtb4eFCIZAq6s91tigOj/WRdsrfcSxw=="
+      },
+      "ZXing.Net": {
+        "type": "Transitive",
+        "resolved": "0.16.9",
+        "contentHash": "7WaVMHklpT3Ye2ragqRIwlFRsb6kOk63BOGADV0fan3ulVfGLUYkDi5yNUsZS/7FVNkWbtHAlDLmu4WnHGfqvQ=="
       }
     },
     "net9.0-ios26.0/android-arm64": {},
@@ -1379,6 +1457,28 @@
     "net9.0-ios26.0/maccatalyst-x64": {},
     "net9.0-ios26.0/win10-x64": {},
     "net9.0-maccatalyst26.0": {
+      "Camera.MAUI": {
+        "type": "Direct",
+        "requested": "[1.5.1, )",
+        "resolved": "1.5.1",
+        "contentHash": "xJfN+OTNSQG5MHf7nuGNyyhCTlXNdS3Gj0KZlF/GrHWKwW+IUsblVepLUCeVDF/XU43PmNDyImQcSnAxJHqnDQ==",
+        "dependencies": {
+          "Microsoft.Maui.Controls": "8.0.6",
+          "Microsoft.Maui.Controls.Compatibility": "8.0.6"
+        }
+      },
+      "Camera.MAUI.ZXing": {
+        "type": "Direct",
+        "requested": "[1.0.0, )",
+        "resolved": "1.0.0",
+        "contentHash": "6MEuRWRhsauV8Ef3eeILxU4lncQ08C+/wgym0dM1iE4ETWMzf8T7i+/LdR7WN719q+oQIwMOtGBvy0lPrFPwdw==",
+        "dependencies": {
+          "Camera.MAUI": "1.5.0",
+          "Microsoft.Maui.Controls": "8.0.6",
+          "Microsoft.Maui.Controls.Compatibility": "8.0.6",
+          "ZXing.Net": "0.16.9"
+        }
+      },
       "CommunityToolkit.Maui": {
         "type": "Direct",
         "requested": "[8.0.0, )",
@@ -1389,6 +1489,12 @@
           "Microsoft.Maui.Controls": "8.0.14",
           "Microsoft.Maui.Controls.Compatibility": "8.0.14"
         }
+      },
+      "Google.Protobuf": {
+        "type": "Direct",
+        "requested": "[3.33.2, )",
+        "resolved": "3.33.2",
+        "contentHash": "vZXVbrZgBqUkP5iWQi0CS6pucIS2MQdEYPS1duWCo8fGrrt4th6HTiHfLFX2RmAWAQl1oUnzGgyDBsfq7fHQJA=="
       },
       "Microsoft.Extensions.Logging.Debug": {
         "type": "Direct",
@@ -1430,6 +1536,12 @@
         "requested": "[9.0.11, )",
         "resolved": "9.0.11",
         "contentHash": "vvB9rtDmWaXgYkViT00KORBVmA3pcYsHlgd9vOPqL9sf5bKy3rvLMF1+sI1uUfVj28S3itirHlHmX5/kcpZKNw=="
+      },
+      "Otp.NET": {
+        "type": "Direct",
+        "requested": "[1.4.1, )",
+        "resolved": "1.4.1",
+        "contentHash": "UXjZ80T6BfVACJWmEcz4UFZ93hwX3STKojKvVpPk3qUhubjnLwIiZMsI4Hh91HhYxC0JlatNdNrVK2wkv4O9/Q=="
       },
       "Plugin.Maui.Biometric": {
         "type": "Direct",
@@ -1569,6 +1681,11 @@
         "type": "Transitive",
         "resolved": "9.0.111",
         "contentHash": "wM9Y4fIk0MJ0bjvZ0weOOBwRzaMx7Zeub7G2T1m3yJ0YyYYb9vpIn3Wgtb4eFCIZAq6s91tigOj/WRdsrfcSxw=="
+      },
+      "ZXing.Net": {
+        "type": "Transitive",
+        "resolved": "0.16.9",
+        "contentHash": "7WaVMHklpT3Ye2ragqRIwlFRsb6kOk63BOGADV0fan3ulVfGLUYkDi5yNUsZS/7FVNkWbtHAlDLmu4WnHGfqvQ=="
       }
     },
     "net9.0-maccatalyst26.0/android-arm64": {},
@@ -1577,6 +1694,28 @@
     "net9.0-maccatalyst26.0/maccatalyst-x64": {},
     "net9.0-maccatalyst26.0/win10-x64": {},
     "net9.0-windows10.0.19041": {
+      "Camera.MAUI": {
+        "type": "Direct",
+        "requested": "[1.5.1, )",
+        "resolved": "1.5.1",
+        "contentHash": "xJfN+OTNSQG5MHf7nuGNyyhCTlXNdS3Gj0KZlF/GrHWKwW+IUsblVepLUCeVDF/XU43PmNDyImQcSnAxJHqnDQ==",
+        "dependencies": {
+          "Microsoft.Maui.Controls": "8.0.6",
+          "Microsoft.Maui.Controls.Compatibility": "8.0.6"
+        }
+      },
+      "Camera.MAUI.ZXing": {
+        "type": "Direct",
+        "requested": "[1.0.0, )",
+        "resolved": "1.0.0",
+        "contentHash": "6MEuRWRhsauV8Ef3eeILxU4lncQ08C+/wgym0dM1iE4ETWMzf8T7i+/LdR7WN719q+oQIwMOtGBvy0lPrFPwdw==",
+        "dependencies": {
+          "Camera.MAUI": "1.5.0",
+          "Microsoft.Maui.Controls": "8.0.6",
+          "Microsoft.Maui.Controls.Compatibility": "8.0.6",
+          "ZXing.Net": "0.16.9"
+        }
+      },
       "CommunityToolkit.Maui": {
         "type": "Direct",
         "requested": "[8.0.0, )",
@@ -1587,6 +1726,12 @@
           "Microsoft.Maui.Controls": "8.0.14",
           "Microsoft.Maui.Controls.Compatibility": "8.0.14"
         }
+      },
+      "Google.Protobuf": {
+        "type": "Direct",
+        "requested": "[3.33.2, )",
+        "resolved": "3.33.2",
+        "contentHash": "vZXVbrZgBqUkP5iWQi0CS6pucIS2MQdEYPS1duWCo8fGrrt4th6HTiHfLFX2RmAWAQl1oUnzGgyDBsfq7fHQJA=="
       },
       "Microsoft.Extensions.Logging.Debug": {
         "type": "Direct",
@@ -1622,6 +1767,12 @@
           "Microsoft.Maui.Controls.Core": "9.0.111",
           "Microsoft.Maui.Controls.Xaml": "9.0.111"
         }
+      },
+      "Otp.NET": {
+        "type": "Direct",
+        "requested": "[1.4.1, )",
+        "resolved": "1.4.1",
+        "contentHash": "UXjZ80T6BfVACJWmEcz4UFZ93hwX3STKojKvVpPk3qUhubjnLwIiZMsI4Hh91HhYxC0JlatNdNrVK2wkv4O9/Q=="
       },
       "Plugin.Maui.Biometric": {
         "type": "Direct",
@@ -1818,6 +1969,11 @@
         "type": "Transitive",
         "resolved": "8.0.0",
         "contentHash": "CNuiA6vb95Oe5PRjClZEBiaju31vwB8OIeCgeSBXyZL6+MS4RVVB2X/C11z0xCkooHE3Vy91nM2z76emIzR+sg=="
+      },
+      "ZXing.Net": {
+        "type": "Transitive",
+        "resolved": "0.16.9",
+        "contentHash": "7WaVMHklpT3Ye2ragqRIwlFRsb6kOk63BOGADV0fan3ulVfGLUYkDi5yNUsZS/7FVNkWbtHAlDLmu4WnHGfqvQ=="
       }
     },
     "net9.0-windows10.0.19041/android-arm64": {

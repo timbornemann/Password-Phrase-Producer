@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:cv="clr-namespace:Camera.MAUI;assembly=Camera.MAUI"
+             x:Class="Password_Phrase_Producer.Views.AddEntryPage"
+             BackgroundColor="#14141E">
+
+    <Grid RowDefinitions="Auto, Auto, *">
+        <!-- Custom Header -->
+        <Grid Grid.Row="0" Padding="16,16" BackgroundColor="#1A1A24">
+            <Label Text="Neuer 2FA-Eintrag" 
+                   FontSize="18" 
+                   FontAttributes="Bold" 
+                   TextColor="White" 
+                   VerticalOptions="Center" 
+                   HorizontalOptions="Center" />
+            
+            <ImageButton Source="close.png" 
+                         HorizontalOptions="End" 
+                         VerticalOptions="Center"
+                         Clicked="OnCloseClicked"
+                         HeightRequest="24"
+                         WidthRequest="24">
+                <ImageButton.Source>
+                   <FontImageSource Glyph="X" FontFamily="OpenSansSemibold" Size="20" Color="#5A6080" />
+                </ImageButton.Source>
+            </ImageButton>
+        </Grid>
+
+        <!-- Segmented Control (Tabs) -->
+        <Border Grid.Row="1" Margin="16,16" StrokeThickness="0" BackgroundColor="#2A2A3A" StrokeShape="RoundRectangle 8">
+            <Grid ColumnDefinitions="*, *">
+                <Button x:Name="BtnManual" Text="Manuell" Clicked="OnTabClicked" 
+                        BackgroundColor="#7B8CFF" TextColor="White" CornerRadius="8" Margin="2" />
+                <Button x:Name="BtnScan" Text="QR Scan" Clicked="OnTabClicked" Grid.Column="1"
+                        BackgroundColor="Transparent" TextColor="#A0A5BD" CornerRadius="8" Margin="2" />
+            </Grid>
+        </Border>
+
+        <!-- Use a Grid to stack views and toggle visibility -->
+        <Grid Grid.Row="2">
+            <!-- Manual Form -->
+            <ScrollView x:Name="ManualView" IsVisible="True" Padding="20">
+                <VerticalStackLayout Spacing="16">
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Aussteller (z.B. Google)" TextColor="#A0A5BD" FontSize="12" />
+                        <Entry x:Name="EntryIssuer" Placeholder="e.g. Google" TextColor="White" BackgroundColor="#1F2338" />
+                    </VerticalStackLayout>
+
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Account Name (z.B. E-Mail)" TextColor="#A0A5BD" FontSize="12" />
+                        <Entry x:Name="EntryAccount" Placeholder="user@example.com" TextColor="White" BackgroundColor="#1F2338" />
+                    </VerticalStackLayout>
+
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Secret Key (Base32)" TextColor="#A0A5BD" FontSize="12" />
+                        <Entry x:Name="EntrySecret" Placeholder="JBSWY..." TextColor="White" BackgroundColor="#1F2338" />
+                    </VerticalStackLayout>
+
+                    <Button Text="Hinzufügen" Clicked="OnSaveClicked" 
+                            BackgroundColor="#7B8CFF" TextColor="White" 
+                            Margin="0,20,0,0" HeightRequest="50" CornerRadius="12" />
+                </VerticalStackLayout>
+            </ScrollView>
+
+            <!-- Scan View -->
+            <Grid x:Name="ScanView" IsVisible="False">
+                <cv:CameraView x:Name="cameraView" WidthRequest="300" HeightRequest="300" HorizontalOptions="Center" VerticalOptions="Center" BarCodeOptions="{Binding BarCodeOptions}" BarcodeDetected="OnBarcodeDetected" />
+                
+                <Label Text="Scanne einen QR-Code" 
+                       VerticalOptions="End" HorizontalOptions="Center" 
+                       Margin="0,0,0,40" TextColor="White" />
+                
+                <Button Text="Taschenlampe" Clicked="OnFlashlightClicked" 
+                        VerticalOptions="Start" HorizontalOptions="End" Margin="20"
+                        BackgroundColor="#2A2A3A" TextColor="White" FontSize="12" Padding="8,4" />
+            </Grid>
+        </Grid>
+    </Grid>
+</ContentPage>
