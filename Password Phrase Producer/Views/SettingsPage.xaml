@@ -244,6 +244,104 @@
                         </Grid>
                     </VerticalStackLayout>
                 </Border>
+
+                <Border
+                    BackgroundColor="#1B2036"
+                    Padding="14"
+                    StrokeThickness="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="16" />
+                    </Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow Brush="#25000000" Radius="12" Offset="0,6" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="10">
+                        <Label
+                            Text="Authenticator-Passwort"
+                            FontSize="16"
+                            FontAttributes="Bold"
+                            TextColor="White" />
+
+                        <Label
+                            Text="Schützt deine 2FA-Codes. Du kannst hier ein Passwort setzen oder ändern."
+                            TextColor="#9EA3C4"
+                            FontSize="12" />
+
+                        <Label
+                            Text="Aktuelles Authenticator-Passwort"
+                            TextColor="#9EA3C4"
+                            FontSize="12">
+                            <Label.Triggers>
+                                <DataTrigger TargetType="Label" Binding="{Binding HasAuthenticatorPassword}" Value="False">
+                                    <Setter Property="IsVisible" Value="False" />
+                                </DataTrigger>
+                            </Label.Triggers>
+                        </Label>
+                        <Entry
+                            Text="{Binding CurrentAuthenticatorPassword}"
+                            Placeholder="Aktuelles Passwort"
+                            PlaceholderColor="#7F85B2"
+                            TextColor="White"
+                            BackgroundColor="#1F2338"
+                            IsPassword="True"
+                            FontSize="13"
+                            HeightRequest="38">
+                            <Entry.Triggers>
+                                <DataTrigger TargetType="Entry" Binding="{Binding HasAuthenticatorPassword}" Value="False">
+                                    <Setter Property="IsVisible" Value="False" />
+                                </DataTrigger>
+                            </Entry.Triggers>
+                        </Entry>
+
+                        <Entry
+                            Text="{Binding NewAuthenticatorPassword}"
+                            Placeholder="Neues Authenticator-Passwort"
+                            PlaceholderColor="#7F85B2"
+                            TextColor="White"
+                            BackgroundColor="#1F2338"
+                            IsPassword="True"
+                            FontSize="13"
+                            HeightRequest="38" />
+                        <Entry
+                            Text="{Binding ConfirmAuthenticatorPassword}"
+                            Placeholder="Passwort bestätigen"
+                            PlaceholderColor="#7F85B2"
+                            TextColor="White"
+                            BackgroundColor="#1F2338"
+                            IsPassword="True"
+                            FontSize="13"
+                            HeightRequest="38" />
+
+                        <Label
+                            Text="{Binding ChangeAuthenticatorPasswordError}"
+                            TextColor="#FF7474"
+                            FontSize="11"
+                            IsVisible="{Binding ChangeAuthenticatorPasswordError, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}" />
+                        <Label
+                            Text="{Binding ChangeAuthenticatorPasswordSuccess}"
+                            TextColor="#63F5A8"
+                            FontSize="11"
+                            IsVisible="{Binding ChangeAuthenticatorPasswordSuccess, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}" />
+
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" VerticalOptions="Center">
+                            <Button
+                                Text="Authenticator-Passwort aktualisieren"
+                                Command="{Binding ChangeAuthenticatorPasswordCommand}"
+                                BackgroundColor="#4A5CFF"
+                                TextColor="White"
+                                FontSize="13"
+                                CornerRadius="12"
+                                Padding="12,8" />
+                            <ActivityIndicator
+                                Grid.Column="1"
+                                IsRunning="{Binding IsAuthenticatorPasswordChangeBusy}"
+                                IsVisible="{Binding IsAuthenticatorPasswordChangeBusy}"
+                                Color="#63F5A8"
+                                WidthRequest="24"
+                                HeightRequest="24" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
             </VerticalStackLayout>
         </ScrollView>
     </Grid>

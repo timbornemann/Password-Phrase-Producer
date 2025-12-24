@@ -4,102 +4,274 @@
              xmlns:viewmodels="clr-namespace:Password_Phrase_Producer.ViewModels"
              x:Class="Password_Phrase_Producer.Views.AuthenticatorPage"
              Title="Authenticator"
-             BackgroundColor="#14141E">
+             Padding="0"
+             Shell.NavBarIsVisible="False">
+
+    <ContentPage.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#101018" Offset="0" />
+            <GradientStop Color="#141426" Offset="0.6" />
+            <GradientStop Color="#0F111A" Offset="1" />
+        </LinearGradientBrush>
+    </ContentPage.Background>
 
     <Grid RowDefinitions="Auto, *">
-        <!-- Header -->
-        <Grid Grid.Row="0" Padding="20,15" BackgroundColor="#1A1A24">
-            <Label Text="Authenticator" 
-                   FontSize="20" 
-                   FontAttributes="Bold" 
-                   TextColor="#E8EBFF" 
-                   VerticalOptions="Center" />
-            
-            <ImageButton Source="add.png" 
-                         HorizontalOptions="End" 
-                         VerticalOptions="Center"
-                         HeightRequest="24"
-                         WidthRequest="24"
-                         Command="{Binding AddEntryCommand}">
-                <ImageButton.Source>
-                    <FontImageSource Glyph="+" FontFamily="OpenSansSemibold" Size="24" Color="#7B8CFF" />
-                </ImageButton.Source>
-            </ImageButton>
+        <!-- Header Area (Tresor Style) -->
+        <Grid
+            Grid.Row="0"
+            Padding="16,16,16,10"
+            RowDefinitions="Auto"
+            RowSpacing="10">
+
+            <!-- Top Bar: Menu, Title, Add -->
+            <Grid
+                ColumnDefinitions="Auto,*,Auto"
+                ColumnSpacing="10"
+                VerticalOptions="Center">
+
+                <!-- Menu Button -->
+                <Border
+                    WidthRequest="34"
+                    HeightRequest="34"
+                    BackgroundColor="#1F2338"
+                    StrokeThickness="0"
+                    VerticalOptions="Center">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="10" />
+                    </Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
+                    </Border.Shadow>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnOpenMenuTapped" />
+                    </Border.GestureRecognizers>
+                    <Image
+                        Source="menu.png"
+                        WidthRequest="18"
+                        HeightRequest="18"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center" />
+                </Border>
+
+                <Label
+                    Grid.Column="1"
+                    Text="Authenticator"
+                    FontSize="18"
+                    FontAttributes="Bold"
+                    VerticalOptions="Center"
+                    TextColor="White" />
+
+                <!-- Add Button -->
+                <Border
+                    Grid.Column="2"
+                    WidthRequest="34"
+                    HeightRequest="34"
+                    BackgroundColor="#4A5CFF"
+                    StrokeThickness="0"
+                    VerticalOptions="Center">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="10" />
+                    </Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
+                    </Border.Shadow>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding AddEntryCommand}" />
+                    </Border.GestureRecognizers>
+                    <Image
+                        Source="plus.png"
+                        WidthRequest="18"
+                        HeightRequest="18"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center" />
+                </Border>
+            </Grid>
         </Grid>
 
         <!-- List -->
-        <CollectionView Grid.Row="1" 
-                        ItemsSource="{Binding Entries}"
-                        SelectionMode="None"
-                        Margin="0,10,0,0">
-            <CollectionView.EmptyView>
-                <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="20">
-                    <Label Text="Keine Einträge" 
-                           FontSize="18" 
-                           TextColor="#5A6080" 
-                           HorizontalOptions="Center" />
-                    <Button Text="Eintrag hinzufügen" 
+        <RefreshView
+            Grid.Row="1"
+            Command="{Binding RefreshCommand}"
+            IsRefreshing="{Binding IsBusy}"
+            RefreshColor="#4A5CFF">
+            <CollectionView
+                ItemsSource="{Binding Entries}"
+                SelectionMode="None"
+                Margin="16,0,16,16"
+                ItemSizingStrategy="MeasureAllItems"
+                VerticalOptions="FillAndExpand"
+                VerticalScrollBarVisibility="Never">
+                <CollectionView.ItemsLayout>
+                    <LinearItemsLayout Orientation="Vertical" ItemSpacing="12" />
+                </CollectionView.ItemsLayout>
+
+                <CollectionView.EmptyView>
+                    <VerticalStackLayout
+                        Padding="20"
+                        Spacing="10"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center">
+                        <Border
+                            WidthRequest="52"
+                            HeightRequest="52"
+                            BackgroundColor="#1F2338"
+                            StrokeThickness="0">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="16" />
+                            </Border.StrokeShape>
+                            <Label
+                                Text="A"
+                                FontSize="22"
+                                FontAttributes="Bold"
+                                TextColor="#CFD3FF"
+                                HorizontalOptions="Center"
+                                VerticalOptions="Center" />
+                        </Border>
+                        <Label
+                            Text="Keine Einträge"
+                            FontSize="14"
+                            FontAttributes="Bold"
+                            HorizontalTextAlignment="Center"
+                            TextColor="#E8EBFF" />
+                        <Label
+                            Text="Füge deinen ersten 2FA-Eintrag hinzu."
+                            FontSize="12"
+                            HorizontalTextAlignment="Center"
+                            TextColor="#9EA3C4" />
+                        <Button
+                            Text="Eintrag hinzufügen"
                             Command="{Binding AddEntryCommand}"
-                            BackgroundColor="#2A2A3A"
-                            TextColor="#7B8CFF" />
-                </VerticalStackLayout>
-            </CollectionView.EmptyView>
-            
-            <CollectionView.ItemTemplate>
-                <DataTemplate x:DataType="viewmodels:TotpViewModelItem">
-                    <Grid Padding="16,8">
-                        <Border Stroke="Transparent"
-                                BackgroundColor="#1F2338"
-                                StrokeShape="RoundRectangle 12"
-                                Padding="16">
-                            <Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto">
+                            BackgroundColor="#1F2338"
+                            TextColor="#E8EBFF"
+                            BorderColor="#4A5CFF"
+                            BorderWidth="1"
+                            CornerRadius="10"
+                            HeightRequest="40"
+                            Padding="14,6"
+                            FontSize="12"
+                            Margin="0,6,0,0" />
+                    </VerticalStackLayout>
+                </CollectionView.EmptyView>
+
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="viewmodels:TotpViewModelItem">
+                        <Border
+                            Padding="12"
+                            StrokeThickness="0"
+                            BackgroundColor="#1B2036">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="14" />
+                            </Border.StrokeShape>
+                            <Border.Shadow>
+                                <Shadow Brush="#25000000" Radius="10" Offset="0,4" />
+                            </Border.Shadow>
+
+                            <Grid RowDefinitions="Auto,Auto" RowSpacing="10" ColumnDefinitions="*,Auto">
                                 <Grid.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:AuthenticatorViewModel}}, Path=CopyCodeCommand}"
-                                                          CommandParameter="{Binding .}" />
+                                    <TapGestureRecognizer
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:AuthenticatorViewModel}}, Path=CopyCodeCommand}"
+                                        CommandParameter="{Binding .}" />
                                 </Grid.GestureRecognizers>
 
                                 <!-- Details -->
-                                <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="2">
-                                    <Label Text="{Binding Issuer}" 
-                                           FontSize="12" 
-                                           TextColor="#7B8CFF" 
-                                           FontAttributes="Bold" />
-                                    <Label Text="{Binding AccountName}" 
-                                           FontSize="14" 
-                                           TextColor="#A0A5BD" />
+                                <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="3">
+                                    <Label
+                                        Text="{Binding Issuer}"
+                                        FontSize="14"
+                                        FontAttributes="Bold"
+                                        TextColor="White" />
+                                    <Label
+                                        Text="{Binding AccountName}"
+                                        FontSize="12"
+                                        TextColor="#9EA3C4"
+                                        LineBreakMode="TailTruncation" />
                                 </VerticalStackLayout>
 
+                                <!-- Action Buttons -->
+                                <HorizontalStackLayout
+                                    Grid.Row="0"
+                                    Grid.Column="1"
+                                    Spacing="6"
+                                    VerticalOptions="Start"
+                                    HorizontalOptions="End">
+                                    <Border
+                                        WidthRequest="30"
+                                        HeightRequest="30"
+                                        BackgroundColor="#2A2F4A"
+                                        StrokeThickness="0"
+                                        VerticalOptions="Center">
+                                        <Border.StrokeShape>
+                                            <RoundRectangle CornerRadius="8" />
+                                        </Border.StrokeShape>
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:AuthenticatorViewModel}}, Path=CopyCodeCommand}"
+                                                CommandParameter="{Binding .}" />
+                                        </Border.GestureRecognizers>
+                                        <Image
+                                            Source="copy.png"
+                                            WidthRequest="14"
+                                            HeightRequest="14"
+                                            HorizontalOptions="Center"
+                                            VerticalOptions="Center" />
+                                    </Border>
+                                    <Border
+                                        WidthRequest="30"
+                                        HeightRequest="30"
+                                        BackgroundColor="#3B2232"
+                                        StrokeThickness="0"
+                                        VerticalOptions="Center">
+                                        <Border.StrokeShape>
+                                            <RoundRectangle CornerRadius="8" />
+                                        </Border.StrokeShape>
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:AuthenticatorViewModel}}, Path=DeleteEntryCommand}"
+                                                CommandParameter="{Binding .}" />
+                                        </Border.GestureRecognizers>
+                                        <Image
+                                            Source="trash.png"
+                                            WidthRequest="14"
+                                            HeightRequest="14"
+                                            HorizontalOptions="Center"
+                                            VerticalOptions="Center" />
+                                    </Border>
+                                </HorizontalStackLayout>
+
                                 <!-- Code -->
-                                <Label Grid.Row="1" Grid.Column="0" 
-                                       Text="{Binding Code}" 
-                                       FontSize="32" 
-                                       FontAttributes="Bold" 
-                                       TextColor="White"
-                                       Margin="0,8,0,0"
-                                       FontFamily="OpenSansSemibold" />
+                                <Label
+                                    Grid.Row="1"
+                                    Grid.Column="0"
+                                    Text="{Binding Code}"
+                                    FontSize="32"
+                                    FontAttributes="Bold"
+                                    TextColor="White"
+                                    FontFamily="OpenSansSemibold" />
 
                                 <!-- Progress/Timer -->
-                                <StackLayout Grid.Row="0" Grid.RowSpan="2" Grid.Column="1" 
-                                             VerticalOptions="Center" 
-                                             Spacing="4"
-                                             WidthRequest="40">
-                                    <Label Text="{Binding RemainingSeconds}" 
-                                           HorizontalOptions="Center" 
-                                           TextColor="#5A6080" 
-                                           FontSize="12" />
-                                    <!-- Use a simple BoxView as bar or similar if Radial is complex. 
-                                         Using ProgressBar for simplicity but rotated or small. -->
-                                    <ProgressBar Progress="{Binding Progress}" 
-                                                 ProgressColor="#7B8CFF"
-                                                 ScaleY="4"
-                                                 WidthRequest="40"
-                                                 BackgroundColor="#2A2A3A" />
+                                <StackLayout
+                                    Grid.Row="1"
+                                    Grid.Column="1"
+                                    VerticalOptions="Center"
+                                    Spacing="4"
+                                    WidthRequest="44">
+                                    <Label
+                                        Text="{Binding RemainingSeconds}"
+                                        HorizontalOptions="Center"
+                                        TextColor="#5A6080"
+                                        FontSize="12" />
+                                    <ProgressBar
+                                        Progress="{Binding Progress}"
+                                        ProgressColor="#4A5CFF"
+                                        ScaleY="4"
+                                        WidthRequest="44"
+                                        BackgroundColor="#2A2F4A" />
                                 </StackLayout>
                             </Grid>
                         </Border>
-                    </Grid>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
     </Grid>
 </ContentPage>

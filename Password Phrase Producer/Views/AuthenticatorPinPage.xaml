@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Password_Phrase_Producer.Views.AuthenticatorPinPage"
+             Shell.NavBarIsVisible="False">
+    <ContentPage.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#101018" Offset="0" />
+            <GradientStop Color="#141426" Offset="0.6" />
+            <GradientStop Color="#0F111A" Offset="1" />
+        </LinearGradientBrush>
+    </ContentPage.Background>
+
+    <ScrollView HorizontalOptions="Fill" VerticalOptions="Fill">
+        <Grid HorizontalOptions="Fill" VerticalOptions="Center" MinimumHeightRequest="420">
+            <VerticalStackLayout
+                Spacing="16"
+                HorizontalOptions="Center"
+                VerticalOptions="Center"
+                MaximumWidthRequest="360"
+                Padding="18">
+
+                <!-- Header Card -->
+                <Border
+                    BackgroundColor="#1B2036"
+                    StrokeThickness="0"
+                    Padding="16">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="16" />
+                    </Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow Brush="#25000000" Radius="10" Offset="0,4" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="8" HorizontalOptions="Center">
+                        <Border
+                            WidthRequest="52"
+                            HeightRequest="52"
+                            BackgroundColor="#1F2338"
+                            StrokeThickness="0"
+                            HorizontalOptions="Center">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="16" />
+                            </Border.StrokeShape>
+                            <Image
+                                Source="vault.png"
+                                WidthRequest="22"
+                                HeightRequest="22"
+                                HorizontalOptions="Center"
+                                VerticalOptions="Center" />
+                        </Border>
+
+                        <Label x:Name="TitleLabel"
+                               Text="Authenticator entsperren"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               TextColor="White"
+                               HorizontalTextAlignment="Center" />
+
+                        <Label x:Name="SubtitleLabel"
+                               Text="Gib dein Passwort ein"
+                               FontSize="12"
+                               TextColor="#9EA3C4"
+                               HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- PIN Input -->
+                <VerticalStackLayout Spacing="10">
+                    <Border
+                        BackgroundColor="#1F2338"
+                        StrokeThickness="0"
+                        Padding="12,8"
+                        HorizontalOptions="Fill">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="10" />
+                        </Border.StrokeShape>
+                        <Entry x:Name="PinEntry"
+                               Placeholder="Passwort eingeben"
+                               PlaceholderColor="#7F85B2"
+                               TextColor="White"
+                               FontSize="16"
+                               IsPassword="True"
+                               HorizontalTextAlignment="Center"
+                               ReturnType="Done"
+                               Completed="OnPinEntered" />
+                    </Border>
+
+                    <Border x:Name="ConfirmPinBorder"
+                            BackgroundColor="#1F2338"
+                            StrokeThickness="0"
+                            Padding="12,8"
+                            HorizontalOptions="Fill"
+                            IsVisible="False">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="10" />
+                        </Border.StrokeShape>
+                        <Entry x:Name="ConfirmPinEntry"
+                               Placeholder="Passwort bestätigen"
+                               PlaceholderColor="#7F85B2"
+                               TextColor="White"
+                               FontSize="16"
+                               IsPassword="True"
+                               HorizontalTextAlignment="Center"
+                               ReturnType="Done"
+                               Completed="OnConfirmPinEntered" />
+                    </Border>
+
+                    <Label x:Name="HintLabel"
+                           Text="Wähle ein sicheres Passwort"
+                           FontSize="11"
+                           TextColor="#5A6080"
+                           HorizontalTextAlignment="Center"
+                           IsVisible="False" />
+
+                    <Label x:Name="ErrorLabel"
+                           Text=""
+                           TextColor="#FF7474"
+                           FontSize="11"
+                           HorizontalTextAlignment="Center"
+                           IsVisible="False" />
+                </VerticalStackLayout>
+
+                <!-- Actions -->
+                <Button x:Name="UnlockButton"
+                        Text="Entsperren"
+                        Clicked="OnUnlockClicked"
+                        BackgroundColor="#4A5CFF"
+                        TextColor="White"
+                        FontSize="12"
+                        FontAttributes="Bold"
+                        HeightRequest="40"
+                        CornerRadius="10"
+                        Padding="14,6"
+                        HorizontalOptions="Fill" />
+
+            </VerticalStackLayout>
+        </Grid>
+    </ScrollView>
+</ContentPage>
+

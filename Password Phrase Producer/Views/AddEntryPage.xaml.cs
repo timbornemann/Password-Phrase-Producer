@@ -36,9 +36,6 @@ public partial class AddEntryPage : ContentPage
         BarCodeOptions.PossibleFormats.Add(CameraBarcodeFormat.QR_CODE);
         
         BindingContext = this;
-        
-        System.Diagnostics.Debug.WriteLine("=== AddEntryPage Constructor ===");
-        System.Diagnostics.Debug.WriteLine($"BarCodeOptions.PossibleFormats count: {BarCodeOptions.PossibleFormats.Count}");
     }
 
     private async void OnCloseClicked(object sender, EventArgs e)
@@ -55,20 +52,20 @@ public partial class AddEntryPage : ContentPage
             {
                 ManualView.IsVisible = true;
                 ScanView.IsVisible = false;
-                BtnManual.BackgroundColor = Color.FromArgb("#7B8CFF");
+                BtnManual.BackgroundColor = Color.FromArgb("#4A5CFF");
                 BtnManual.TextColor = Colors.White;
                 BtnScan.BackgroundColor = Colors.Transparent;
-                BtnScan.TextColor = Color.FromArgb("#A0A5BD");
+                BtnScan.TextColor = Color.FromArgb("#7F85B2");
                 await CloseCameraAsync();
             }
             else
             {
                 ManualView.IsVisible = false;
                 ScanView.IsVisible = true;
-                BtnScan.BackgroundColor = Color.FromArgb("#7B8CFF");
+                BtnScan.BackgroundColor = Color.FromArgb("#4A5CFF");
                 BtnScan.TextColor = Colors.White;
                 BtnManual.BackgroundColor = Colors.Transparent;
-                BtnManual.TextColor = Color.FromArgb("#A0A5BD");
+                BtnManual.TextColor = Color.FromArgb("#7F85B2");
                 await StartCameraAsync();
             }
         }
@@ -110,19 +107,14 @@ public partial class AddEntryPage : ContentPage
     {
         try
         {
-            System.Diagnostics.Debug.WriteLine("=== StartCameraAsync called ===");
-            System.Diagnostics.Debug.WriteLine($"Available cameras: {cameraView.Cameras.Count}");
-            
             if (cameraView.Cameras.Count > 0)
             {
                 cameraView.Camera = cameraView.Cameras.First();
-                System.Diagnostics.Debug.WriteLine($"Selected camera: {cameraView.Camera.Name}");
                 
                 // Set zoom
                 cameraView.ZoomFactor = 1.0f;
                 
                 await cameraView.StartCameraAsync();
-                System.Diagnostics.Debug.WriteLine("Camera started successfully");
                 
                 _isScanning = true;
                 _isProcessing = false;
@@ -132,21 +124,19 @@ public partial class AddEntryPage : ContentPage
                 
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    ScanStatusLabel.Text = "Bereit zum Scannen - Klicke '📸 QR-Code erfassen'";
-                    ScanStatusLabel.TextColor = Color.FromArgb("#7B8CFF");
+                    ScanStatusLabel.Text = "Bereit zum Scannen";
+                    ScanStatusLabel.TextColor = Color.FromArgb("#4A5CFF");
                     DetectionFrame.IsVisible = false;
                     UpdateZoomButtonText();
                 });
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine("ERROR: No cameras found!");
                 await DisplayAlert("Fehler", "Keine Kamera gefunden.", "OK");
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"ERROR in StartCameraAsync: {ex.Message}");
             await DisplayAlert("Fehler", $"Kamera konnte nicht gestartet werden: {ex.Message}", "OK");
         }
     }
@@ -162,15 +152,12 @@ public partial class AddEntryPage : ContentPage
                 await TryCaptureAndScan(autoMode: true);
             }
         }, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
-        
-        System.Diagnostics.Debug.WriteLine("Auto-scan timer started (Windows workaround)");
     }
     
     private void StopAutoScanTimer()
     {
         _autoScanTimer?.Dispose();
         _autoScanTimer = null;
-        System.Diagnostics.Debug.WriteLine("Auto-scan timer stopped");
     }
 
     private async Task CloseCameraAsync()
@@ -196,11 +183,6 @@ public partial class AddEntryPage : ContentPage
         
         try
         {
-            if (!autoMode)
-            {
-                System.Diagnostics.Debug.WriteLine("=== Manual Capture Button Clicked ===");
-            }
-            
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 if (!autoMode)
@@ -216,8 +198,6 @@ public partial class AddEntryPage : ContentPage
             
             if (imageStream != null && imageStream.Length > 0)
             {
-                System.Diagnostics.Debug.WriteLine($"Snapshot captured: {imageStream.Length} bytes");
-                
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
                     ScanStatusLabel.Text = "Analysiere QR-Code...";
@@ -244,12 +224,10 @@ public partial class AddEntryPage : ContentPage
                     
                     if (result != null && !string.IsNullOrEmpty(result.Text))
                     {
-                        System.Diagnostics.Debug.WriteLine($"QR Code detected: {result.Text}");
                         await ProcessQRCode(result.Text, autoMode);
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine("No QR code found in snapshot");
                         if (!autoMode)
                         {
                             MainThread.BeginInvokeOnMainThread(async () =>
@@ -259,19 +237,17 @@ public partial class AddEntryPage : ContentPage
                                 CaptureButton.IsEnabled = true;
                                 await Task.Delay(2000);
                                 ScanStatusLabel.Text = "Bereit zum Scannen";
-                                ScanStatusLabel.TextColor = Color.FromArgb("#7B8CFF");
+                                ScanStatusLabel.TextColor = Color.FromArgb("#4A5CFF");
                             });
                         }
                     }
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine("Failed to decode bitmap");
                 }
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine("Failed to capture snapshot");
                 if (!autoMode)
                 {
                     MainThread.BeginInvokeOnMainThread(() =>
@@ -285,7 +261,6 @@ public partial class AddEntryPage : ContentPage
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error in TryCaptureAndScan: {ex.Message}");
             if (!autoMode)
             {
                 MainThread.BeginInvokeOnMainThread(() =>
@@ -353,39 +328,20 @@ public partial class AddEntryPage : ContentPage
     
     private void OnCamerasLoaded(object sender, EventArgs e)
     {
-        System.Diagnostics.Debug.WriteLine("=== OnCamerasLoaded called ===");
-        System.Diagnostics.Debug.WriteLine($"Cameras available: {cameraView.Cameras.Count}");
     }
 
     private async void OnBarcodeDetected(object sender, Camera.MAUI.ZXingHelper.BarcodeEventArgs args)
     {
-        System.Diagnostics.Debug.WriteLine($"=== OnBarcodeDetected called === Time: {DateTime.Now:HH:mm:ss.fff}");
-        System.Diagnostics.Debug.WriteLine($"_isScanning: {_isScanning}, _isProcessing: {_isProcessing}");
-        System.Diagnostics.Debug.WriteLine($"args.Result count: {args.Result?.Length ?? 0}");
-        
         if (!_isScanning || _isProcessing)
         {
-            System.Diagnostics.Debug.WriteLine("Skipping - not scanning or already processing");
             return;
         }
-
-        // Debug info - show that we're receiving barcode events
-        MainThread.BeginInvokeOnMainThread(() =>
-        {
-            DebugLabel.IsVisible = true;
-            DebugLabel.Text = $"Event! Frames: {args.Result?.Length ?? 0} | {DateTime.Now:HH:mm:ss}";
-        });
 
         var result = args.Result?.FirstOrDefault();
         if (result == null || string.IsNullOrEmpty(result.Text)) 
         {
-            System.Diagnostics.Debug.WriteLine("No valid result found");
             return;
         }
-
-        System.Diagnostics.Debug.WriteLine($"SUCCESS! QR Code detected!");
-        System.Diagnostics.Debug.WriteLine($"Text: {result.Text}");
-        System.Diagnostics.Debug.WriteLine($"Format: {result.BarcodeFormat}");
 
         _isProcessing = true; // Prevent multiple detections
 
@@ -402,8 +358,6 @@ public partial class AddEntryPage : ContentPage
                 ScanStatusLabel.Text = "QR-Code erkannt! ✓";
                 ScanStatusLabel.TextColor = Color.FromArgb("#00FF00");
                 
-                DebugLabel.Text = $"QR erkannt: {result.BarcodeFormat}";
-                
                 // Animate the detection frame
                 _ = AnimateDetectionFrame();
                 
@@ -416,7 +370,6 @@ public partial class AddEntryPage : ContentPage
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error showing detection frame: {ex.Message}");
             }
         });
 
@@ -433,7 +386,6 @@ public partial class AddEntryPage : ContentPage
                 
                 ScanStatusLabel.Text = "Verarbeite QR-Code...";
                 ScanStatusLabel.TextColor = Color.FromArgb("#FFD700");
-                DebugLabel.Text = "Verarbeite URI...";
 
                 var imported = await _totpService.ImportFromUriAsync(result.Text);
                 if (imported.Count > 0)
@@ -446,7 +398,6 @@ public partial class AddEntryPage : ContentPage
                     DetectionFrame.IsVisible = false;
                     ScanStatusLabel.Text = "Ungültiger QR-Code";
                     ScanStatusLabel.TextColor = Color.FromArgb("#FF0000");
-                    DebugLabel.Text = "Import fehlgeschlagen";
                     await DisplayAlert("Fehler", "QR-Code konnte nicht verarbeitet werden oder ist kein gültiger Authenticator-Code.\n\nErwartetes Format: otpauth://totp/...", "OK");
                     _isProcessing = false;
                     await StartCameraAsync(); // Resume if failed
@@ -457,7 +408,6 @@ public partial class AddEntryPage : ContentPage
                 DetectionFrame.IsVisible = false;
                 ScanStatusLabel.Text = "Fehler beim Scannen";
                 ScanStatusLabel.TextColor = Color.FromArgb("#FF0000");
-                DebugLabel.Text = $"Error: {ex.Message}";
                 await DisplayAlert("Fehler", $"Fehler beim Verarbeiten: {ex.Message}", "OK");
                 _isProcessing = false;
                 await StartCameraAsync();
@@ -524,7 +474,6 @@ public partial class AddEntryPage : ContentPage
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Zoom In Error: {ex.Message}");
         }
     }
     
@@ -540,7 +489,6 @@ public partial class AddEntryPage : ContentPage
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Zoom Out Error: {ex.Message}");
         }
     }
     
@@ -554,29 +502,6 @@ public partial class AddEntryPage : ContentPage
         catch { }
     }
     
-    private void OnTestClicked(object sender, EventArgs e)
-    {
-        System.Diagnostics.Debug.WriteLine("=== TEST BUTTON CLICKED ===");
-        System.Diagnostics.Debug.WriteLine($"Camera: {cameraView.Camera?.Name ?? "NULL"}");
-        System.Diagnostics.Debug.WriteLine($"BarCodeDetectionEnabled: {cameraView.BarCodeDetectionEnabled}");
-        System.Diagnostics.Debug.WriteLine($"IsScanning: {_isScanning}");
-        System.Diagnostics.Debug.WriteLine($"IsProcessing: {_isProcessing}");
-        System.Diagnostics.Debug.WriteLine($"BarCodeOptions: {BarCodeOptions != null}");
-        if (BarCodeOptions != null)
-        {
-            System.Diagnostics.Debug.WriteLine($"  - TryHarder: {BarCodeOptions.TryHarder}");
-            System.Diagnostics.Debug.WriteLine($"  - AutoRotate: {BarCodeOptions.AutoRotate}");
-            System.Diagnostics.Debug.WriteLine($"  - TryInverted: {BarCodeOptions.TryInverted}");
-            System.Diagnostics.Debug.WriteLine($"  - ReadMultipleCodes: {BarCodeOptions.ReadMultipleCodes}");
-            System.Diagnostics.Debug.WriteLine($"  - PossibleFormats: {BarCodeOptions.PossibleFormats?.Count ?? 0}");
-        }
-        
-        MainThread.BeginInvokeOnMainThread(() =>
-        {
-            DebugLabel.Text = $"Test: Cam={cameraView.Camera != null}, BarcodeEnabled={cameraView.BarCodeDetectionEnabled}, Scanning={_isScanning}";
-        });
-    }
-
     protected override async void OnAppearing()
     {
         base.OnAppearing();

@@ -3,63 +3,121 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:cv="clr-namespace:Camera.MAUI;assembly=Camera.MAUI"
              x:Class="Password_Phrase_Producer.Views.AddEntryPage"
-             BackgroundColor="#14141E">
+             Padding="0"
+             Shell.NavBarIsVisible="False">
+
+    <ContentPage.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#101018" Offset="0" />
+            <GradientStop Color="#141426" Offset="0.6" />
+            <GradientStop Color="#0F111A" Offset="1" />
+        </LinearGradientBrush>
+    </ContentPage.Background>
 
     <Grid RowDefinitions="Auto, Auto, *">
-        <!-- Custom Header -->
-        <Grid Grid.Row="0" Padding="16,16" BackgroundColor="#1A1A24">
-            <Label Text="Neuer 2FA-Eintrag" 
-                   FontSize="18" 
-                   FontAttributes="Bold" 
-                   TextColor="White" 
-                   VerticalOptions="Center" 
-                   HorizontalOptions="Center" />
-            
-            <ImageButton Source="close.png" 
-                         HorizontalOptions="End" 
-                         VerticalOptions="Center"
-                         Clicked="OnCloseClicked"
-                         HeightRequest="24"
-                         WidthRequest="24">
-                <ImageButton.Source>
-                   <FontImageSource Glyph="X" FontFamily="OpenSansSemibold" Size="20" Color="#5A6080" />
-                </ImageButton.Source>
-            </ImageButton>
+        <!-- Header (Tresor Style) -->
+        <Grid Grid.Row="0" Padding="16,16,16,10">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" VerticalOptions="Center">
+
+                <!-- Back/Close Button -->
+                <Border
+                    WidthRequest="34"
+                    HeightRequest="34"
+                    BackgroundColor="#1F2338"
+                    StrokeThickness="0"
+                    VerticalOptions="Center">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="10" />
+                    </Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
+                    </Border.Shadow>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnCloseClicked" />
+                    </Border.GestureRecognizers>
+                    <Image
+                        Source="chevronright.png"
+                        WidthRequest="18"
+                        HeightRequest="18"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center"
+                        Rotation="180" />
+                </Border>
+
+                <Label
+                    Grid.Column="1"
+                    Text="Neuer 2FA-Eintrag"
+                    FontSize="18"
+                    FontAttributes="Bold"
+                    TextColor="White"
+                    VerticalOptions="Center"
+                    HorizontalOptions="Center" />
+
+                <!-- Spacer to keep title centered -->
+                <Border
+                    Grid.Column="2"
+                    WidthRequest="34"
+                    HeightRequest="34"
+                    Opacity="0"
+                    BackgroundColor="#1F2338"
+                    StrokeThickness="0" />
+            </Grid>
         </Grid>
 
         <!-- Segmented Control (Tabs) -->
-        <Border Grid.Row="1" Margin="16,16" StrokeThickness="0" BackgroundColor="#2A2A3A" StrokeShape="RoundRectangle 8">
+        <Border Grid.Row="1"
+                Margin="16,6,16,16"
+                StrokeThickness="0"
+                BackgroundColor="#1F2338">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="10" />
+            </Border.StrokeShape>
             <Grid ColumnDefinitions="*, *">
                 <Button x:Name="BtnManual" Text="Manuell" Clicked="OnTabClicked" 
-                        BackgroundColor="#7B8CFF" TextColor="White" CornerRadius="8" Margin="2" />
+                        BackgroundColor="#4A5CFF" TextColor="White" CornerRadius="8" Margin="2" HeightRequest="36" FontSize="12" />
                 <Button x:Name="BtnScan" Text="QR Scan" Clicked="OnTabClicked" Grid.Column="1"
-                        BackgroundColor="Transparent" TextColor="#A0A5BD" CornerRadius="8" Margin="2" />
+                        BackgroundColor="Transparent" TextColor="#7F85B2" CornerRadius="8" Margin="2" HeightRequest="36" FontSize="12" />
             </Grid>
         </Border>
 
         <!-- Use a Grid to stack views and toggle visibility -->
         <Grid Grid.Row="2">
             <!-- Manual Form -->
-            <ScrollView x:Name="ManualView" IsVisible="True" Padding="20">
-                <VerticalStackLayout Spacing="16">
+            <ScrollView x:Name="ManualView" IsVisible="True" Padding="16">
+                <VerticalStackLayout Spacing="14">
                     <VerticalStackLayout Spacing="4">
-                        <Label Text="Aussteller (z.B. Google)" TextColor="#A0A5BD" FontSize="12" />
-                        <Entry x:Name="EntryIssuer" Placeholder="e.g. Google" TextColor="White" BackgroundColor="#1F2338" />
+                        <Label Text="Aussteller (z.B. Google)" TextColor="#9EA3C4" FontSize="11" FontAttributes="Bold" />
+                        <Border BackgroundColor="#1F2338" StrokeThickness="0" Padding="12,8">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="10" />
+                            </Border.StrokeShape>
+                            <Entry x:Name="EntryIssuer" Placeholder="z.B. Google" TextColor="White" BackgroundColor="Transparent" PlaceholderColor="#7F85B2" />
+                        </Border>
                     </VerticalStackLayout>
 
                     <VerticalStackLayout Spacing="4">
-                        <Label Text="Account Name (z.B. E-Mail)" TextColor="#A0A5BD" FontSize="12" />
-                        <Entry x:Name="EntryAccount" Placeholder="user@example.com" TextColor="White" BackgroundColor="#1F2338" />
+                        <Label Text="Account (z.B. E-Mail)" TextColor="#9EA3C4" FontSize="11" FontAttributes="Bold" />
+                        <Border BackgroundColor="#1F2338" StrokeThickness="0" Padding="12,8">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="10" />
+                            </Border.StrokeShape>
+                            <Entry x:Name="EntryAccount" Placeholder="user@example.com" TextColor="White" BackgroundColor="Transparent" PlaceholderColor="#7F85B2" />
+                        </Border>
                     </VerticalStackLayout>
 
                     <VerticalStackLayout Spacing="4">
-                        <Label Text="Secret Key (Base32)" TextColor="#A0A5BD" FontSize="12" />
-                        <Entry x:Name="EntrySecret" Placeholder="JBSWY..." TextColor="White" BackgroundColor="#1F2338" />
+                        <Label Text="Secret (Base32)" TextColor="#9EA3C4" FontSize="11" FontAttributes="Bold" />
+                        <Border BackgroundColor="#1F2338" StrokeThickness="0" Padding="12,8">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="10" />
+                            </Border.StrokeShape>
+                            <Entry x:Name="EntrySecret" Placeholder="JBSWY..." TextColor="White" BackgroundColor="Transparent" PlaceholderColor="#7F85B2" />
+                        </Border>
                     </VerticalStackLayout>
 
                     <Button Text="Hinzufügen" Clicked="OnSaveClicked" 
-                            BackgroundColor="#7B8CFF" TextColor="White" 
-                            Margin="0,20,0,0" HeightRequest="50" CornerRadius="12" />
+                            BackgroundColor="#4A5CFF" TextColor="White" 
+                            Margin="0,14,0,0" HeightRequest="40" CornerRadius="10" FontSize="12" FontAttributes="Bold" />
                 </VerticalStackLayout>
             </ScrollView>
 
@@ -78,7 +136,7 @@
                 <Grid VerticalOptions="Center" HorizontalOptions="Center">
                     <Border StrokeThickness="3"
                             BackgroundColor="Transparent"
-                            Stroke="#7B8CFF"
+                            Stroke="#4A5CFF"
                             Opacity="0.6"
                             WidthRequest="280"
                             HeightRequest="280">
@@ -87,14 +145,22 @@
                         </Border.StrokeShape>
                     </Border>
                     
-                    <Label Text="Positioniere QR-Code hier"
-                           TextColor="White"
-                           FontSize="14"
-                           BackgroundColor="#AA000000"
-                           Padding="8,4"
-                           HorizontalOptions="Center"
-                           VerticalOptions="End"
-                           Margin="0,0,0,20" />
+                    <Border
+                        BackgroundColor="#AA000000"
+                        StrokeThickness="0"
+                        Padding="10,6"
+                        HorizontalOptions="Center"
+                        VerticalOptions="End"
+                        Margin="0,0,0,18">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="10" />
+                        </Border.StrokeShape>
+                        <Label
+                            Text="Positioniere QR-Code hier"
+                            TextColor="White"
+                            FontSize="12"
+                            FontAttributes="Bold" />
+                    </Border>
                 </Grid>
                 
                 <!-- QR Code Detection Frame Overlay -->
@@ -112,7 +178,7 @@
                     <Border.Stroke>
                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                             <GradientStop Color="#00FF00" Offset="0" />
-                            <GradientStop Color="#7B8CFF" Offset="1" />
+                            <GradientStop Color="#4A5CFF" Offset="1" />
                         </LinearGradientBrush>
                     </Border.Stroke>
                 </Border>
@@ -120,7 +186,7 @@
                 <!-- Scanning Guide Frame (always visible) -->
                 <Border StrokeThickness="2"
                         BackgroundColor="Transparent"
-                        Stroke="#7B8CFF"
+                        Stroke="#4A5CFF"
                         Opacity="0.5"
                         HorizontalOptions="Center"
                         VerticalOptions="Center"
@@ -131,54 +197,61 @@
                     </Border.StrokeShape>
                 </Border>
                 
-                <!-- Large Capture Button -->
-                <Button x:Name="CaptureButton"
-                        Text="📸 QR-Code erfassen"
+                <!-- Bottom Action Panel -->
+                <Grid
+                    VerticalOptions="End"
+                    Padding="16"
+                    RowDefinitions="Auto,Auto,Auto"
+                    RowSpacing="10">
+
+                    <Border
+                        Grid.Row="0"
+                        BackgroundColor="#AA000000"
+                        StrokeThickness="0"
+                        Padding="12,8"
+                        HorizontalOptions="Center">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="12" />
+                        </Border.StrokeShape>
+                        <Label
+                            Text="Richte die Kamera auf einen QR-Code"
+                            TextColor="White"
+                            FontSize="12"
+                            FontAttributes="Bold" />
+                    </Border>
+
+                    <Border
+                        Grid.Row="1"
+                        BackgroundColor="#AA000000"
+                        StrokeThickness="0"
+                        Padding="10,6"
+                        HorizontalOptions="Center">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="12" />
+                        </Border.StrokeShape>
+                        <Label
+                            x:Name="ScanStatusLabel"
+                            Text="Bereit zum Scannen"
+                            TextColor="#4A5CFF"
+                            FontSize="11" />
+                    </Border>
+
+                    <Button
+                        Grid.Row="2"
+                        x:Name="CaptureButton"
+                        Text="QR-Code erfassen"
                         Clicked="OnCaptureClicked"
-                        VerticalOptions="End"
-                        HorizontalOptions="Center"
-                        Margin="0,0,0,80"
-                        BackgroundColor="#7B8CFF"
+                        BackgroundColor="#4A5CFF"
                         TextColor="White"
-                        FontSize="18"
+                        FontSize="12"
                         FontAttributes="Bold"
-                        Padding="24,12"
-                        CornerRadius="25"
+                        HeightRequest="40"
+                        CornerRadius="10"
+                        Padding="14,6"
                         WidthRequest="250"
-                        HeightRequest="50"
-                        Shadow="{Shadow Brush=#40000000, Radius=8, Offset='0,4'}" />
-                
-                <Label Text="Richte die Kamera auf einen QR-Code" 
-                       VerticalOptions="End" 
-                       HorizontalOptions="Center" 
-                       Margin="0,0,0,140" 
-                       TextColor="White"
-                       FontSize="14"
-                       FontAttributes="Bold"
-                       BackgroundColor="#AA000000"
-                       Padding="12,8" />
-                
-                <Label x:Name="ScanStatusLabel"
-                       Text="Bereit zum Scannen"
-                       VerticalOptions="End" 
-                       HorizontalOptions="Center" 
-                       Margin="0,0,0,50" 
-                       TextColor="#7B8CFF"
-                       FontSize="12"
-                       BackgroundColor="#AA000000"
-                       Padding="8,4" />
-                
-                <!-- Debug Info -->
-                <Label x:Name="DebugLabel"
-                       Text=""
-                       VerticalOptions="Start" 
-                       HorizontalOptions="Start" 
-                       Margin="10" 
-                       TextColor="#FFD700"
-                       FontSize="10"
-                       BackgroundColor="#AA000000"
-                       Padding="6,3"
-                       IsVisible="False" />
+                        HorizontalOptions="Center"
+                        Margin="0,4,0,0" />
+                </Grid>
                 
                 <!-- Control Buttons -->
                 <VerticalStackLayout VerticalOptions="Start" 
@@ -186,19 +259,22 @@
                                     Margin="20"
                                     Spacing="8">
                     <!-- Zoom Controls -->
-                    <Border BackgroundColor="#2A2A3A"
+                    <Border BackgroundColor="#1F2338"
                             StrokeThickness="0"
                             Padding="8,4">
                         <Border.StrokeShape>
                             <RoundRectangle CornerRadius="12" />
                         </Border.StrokeShape>
+                        <Border.Shadow>
+                            <Shadow Brush="#25000000" Radius="10" Offset="0,4" />
+                        </Border.Shadow>
                         <VerticalStackLayout Spacing="4">
                             <Button x:Name="ZoomInButton"
                                     Text="+"
                                     Clicked="OnZoomInClicked" 
-                                    BackgroundColor="#1F2338" 
+                                    BackgroundColor="#2A2F4A" 
                                     TextColor="White" 
-                                    FontSize="20" 
+                                    FontSize="18" 
                                     FontAttributes="Bold"
                                     WidthRequest="40"
                                     HeightRequest="40"
@@ -215,9 +291,9 @@
                             <Button x:Name="ZoomOutButton"
                                     Text="-"
                                     Clicked="OnZoomOutClicked" 
-                                    BackgroundColor="#1F2338" 
+                                    BackgroundColor="#2A2F4A" 
                                     TextColor="White" 
-                                    FontSize="20" 
+                                    FontSize="18" 
                                     FontAttributes="Bold"
                                     WidthRequest="40"
                                     HeightRequest="40"
@@ -228,12 +304,13 @@
                     
                     <!-- Flashlight Button -->
                     <Button x:Name="FlashlightButton"
-                            Text="💡" 
+                            Text="Licht" 
                             Clicked="OnFlashlightClicked" 
-                            BackgroundColor="#2A2A3A" 
-                            TextColor="White" 
-                            FontSize="16"
-                            WidthRequest="56"
+                            BackgroundColor="#1F2338" 
+                            TextColor="#E8EBFF" 
+                            FontSize="12"
+                            FontAttributes="Bold"
+                            WidthRequest="64"
                             HeightRequest="44"
                             CornerRadius="12"
                             Padding="0" />

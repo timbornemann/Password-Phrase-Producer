@@ -16,7 +16,9 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
 {
     private readonly PasswordVaultService _vaultService;
     private readonly IBiometricAuthenticationService _biometricAuthenticationService;
+    private readonly TotpEncryptionService _totpEncryptionService;
     private readonly Command _changePasswordCommand;
+    private readonly Command _changeAuthenticatorPasswordCommand;
     private bool _isListening;
 
     private bool _isVaultUnlocked;
@@ -29,20 +31,34 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     private string? _changePasswordSuccess;
     private bool _isPasswordChangeBusy;
 
+    private bool _hasAuthenticatorPassword;
+    private string _currentAuthenticatorPassword = string.Empty;
+    private string _newAuthenticatorPassword = string.Empty;
+    private string _confirmAuthenticatorPassword = string.Empty;
+    private string? _changeAuthenticatorPasswordError;
+    private string? _changeAuthenticatorPasswordSuccess;
+    private bool _isAuthenticatorPasswordChangeBusy;
+
     public VaultSettingsViewModel(
         PasswordVaultService vaultService,
-        IBiometricAuthenticationService biometricAuthenticationService)
+        IBiometricAuthenticationService biometricAuthenticationService,
+        TotpEncryptionService totpEncryptionService)
     {
         _vaultService = vaultService;
         _biometricAuthenticationService = biometricAuthenticationService;
+        _totpEncryptionService = totpEncryptionService;
 
         _changePasswordCommand = new Command(async () => await ChangeMasterPasswordAsync(), () => !IsPasswordChangeBusy && IsVaultUnlocked);
         ChangePasswordCommand = _changePasswordCommand;
+
+        _changeAuthenticatorPasswordCommand = new Command(async () => await ChangeAuthenticatorPasswordAsync(), () => !IsAuthenticatorPasswordChangeBusy);
+        ChangeAuthenticatorPasswordCommand = _changeAuthenticatorPasswordCommand;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public ICommand ChangePasswordCommand { get; }
+    public ICommand ChangeAuthenticatorPasswordCommand { get; }
 
     public bool IsVaultUnlocked
     {
@@ -136,6 +152,81 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool HasAuthenticatorPassword
+    {
+        get => _hasAuthenticatorPassword;
+        private set
+        {
+            if (SetProperty(ref _hasAuthenticatorPassword, value))
+            {
+                UpdateAuthenticatorPasswordCommandState();
+            }
+        }
+    }
+
+    public string CurrentAuthenticatorPassword
+    {
+        get => _currentAuthenticatorPassword;
+        set
+        {
+            if (SetProperty(ref _currentAuthenticatorPassword, value))
+            {
+                ClearAuthenticatorPasswordFeedback();
+                UpdateAuthenticatorPasswordCommandState();
+            }
+        }
+    }
+
+    public string NewAuthenticatorPassword
+    {
+        get => _newAuthenticatorPassword;
+        set
+        {
+            if (SetProperty(ref _newAuthenticatorPassword, value))
+            {
+                ClearAuthenticatorPasswordFeedback();
+                UpdateAuthenticatorPasswordCommandState();
+            }
+        }
+    }
+
+    public string ConfirmAuthenticatorPassword
+    {
+        get => _confirmAuthenticatorPassword;
+        set
+        {
+            if (SetProperty(ref _confirmAuthenticatorPassword, value))
+            {
+                ClearAuthenticatorPasswordFeedback();
+                UpdateAuthenticatorPasswordCommandState();
+            }
+        }
+    }
+
+    public string? ChangeAuthenticatorPasswordError
+    {
+        get => _changeAuthenticatorPasswordError;
+        private set => SetProperty(ref _changeAuthenticatorPasswordError, value);
+    }
+
+    public string? ChangeAuthenticatorPasswordSuccess
+    {
+        get => _changeAuthenticatorPasswordSuccess;
+        private set => SetProperty(ref _changeAuthenticatorPasswordSuccess, value);
+    }
+
+    public bool IsAuthenticatorPasswordChangeBusy
+    {
+        get => _isAuthenticatorPasswordChangeBusy;
+        private set
+        {
+            if (SetProperty(ref _isAuthenticatorPasswordChangeBusy, value))
+            {
+                UpdateAuthenticatorPasswordCommandState();
+            }
+        }
+    }
+
     public void Activate()
     {
         if (_isListening)
@@ -157,7 +248,10 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
-        => await RefreshVaultStateAsync(cancellationToken).ConfigureAwait(false);
+    {
+        await RefreshVaultStateAsync(cancellationToken).ConfigureAwait(false);
+        await RefreshAuthenticatorStateAsync(cancellationToken).ConfigureAwait(false);
+    }
 
     public async Task RefreshVaultStateAsync(CancellationToken cancellationToken = default)
     {
@@ -179,6 +273,25 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             }
 
             ClearPasswordFeedback();
+        }).ConfigureAwait(false);
+    }
+
+    public async Task RefreshAuthenticatorStateAsync(CancellationToken cancellationToken = default)
+    {
+        // No async work today, but keep signature for symmetry/future changes
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            HasAuthenticatorPassword = _totpEncryptionService.HasPassword;
+
+            // Clear fields if the authenticator is not configured yet
+            if (!HasAuthenticatorPassword)
+            {
+                CurrentAuthenticatorPassword = string.Empty;
+            }
+
+            NewAuthenticatorPassword = string.Empty;
+            ConfirmAuthenticatorPassword = string.Empty;
+            ClearAuthenticatorPasswordFeedback();
         }).ConfigureAwait(false);
     }
 
@@ -248,6 +361,69 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         }
     }
 
+    private async Task ChangeAuthenticatorPasswordAsync()
+    {
+        if (IsAuthenticatorPasswordChangeBusy)
+        {
+            return;
+        }
+
+        try
+        {
+            IsAuthenticatorPasswordChangeBusy = true;
+            ClearAuthenticatorPasswordFeedback();
+
+            if (string.IsNullOrWhiteSpace(NewAuthenticatorPassword))
+            {
+                ChangeAuthenticatorPasswordError = "Bitte gib ein neues Authenticator-Passwort ein.";
+                return;
+            }
+
+            if (!string.Equals(NewAuthenticatorPassword, ConfirmAuthenticatorPassword, StringComparison.Ordinal))
+            {
+                ChangeAuthenticatorPasswordError = "Die Passwörter stimmen nicht überein.";
+                return;
+            }
+
+            if (_totpEncryptionService.HasPassword)
+            {
+                if (string.IsNullOrWhiteSpace(CurrentAuthenticatorPassword))
+                {
+                    ChangeAuthenticatorPasswordError = "Bitte gib dein aktuelles Authenticator-Passwort ein.";
+                    return;
+                }
+
+                await _totpEncryptionService.ChangePasswordAsync(CurrentAuthenticatorPassword, NewAuthenticatorPassword).ConfigureAwait(false);
+            }
+            else
+            {
+                // Not configured yet -> initial setup from settings
+                await _totpEncryptionService.SetupPasswordAsync(NewAuthenticatorPassword).ConfigureAwait(false);
+            }
+
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                HasAuthenticatorPassword = _totpEncryptionService.HasPassword;
+                CurrentAuthenticatorPassword = string.Empty;
+                NewAuthenticatorPassword = string.Empty;
+                ConfirmAuthenticatorPassword = string.Empty;
+                ChangeAuthenticatorPasswordSuccess = "Authenticator-Passwort wurde aktualisiert.";
+            }).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                ChangeAuthenticatorPasswordError = ex.Message;
+                ChangeAuthenticatorPasswordSuccess = null;
+            }).ConfigureAwait(false);
+        }
+        finally
+        {
+            await MainThread.InvokeOnMainThreadAsync(() => IsAuthenticatorPasswordChangeBusy = false).ConfigureAwait(false);
+        }
+    }
+
     private void UpdatePasswordCommandState()
     {
         if (_changePasswordCommand is not null)
@@ -256,10 +432,24 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         }
     }
 
+    private void UpdateAuthenticatorPasswordCommandState()
+    {
+        if (_changeAuthenticatorPasswordCommand is not null)
+        {
+            MainThread.BeginInvokeOnMainThread(_changeAuthenticatorPasswordCommand.ChangeCanExecute);
+        }
+    }
+
     private void ClearPasswordFeedback()
     {
         ChangePasswordError = null;
         ChangePasswordSuccess = null;
+    }
+
+    private void ClearAuthenticatorPasswordFeedback()
+    {
+        ChangeAuthenticatorPasswordError = null;
+        ChangeAuthenticatorPasswordSuccess = null;
     }
 
     private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

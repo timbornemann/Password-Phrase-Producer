@@ -5,37 +5,41 @@ using Google.Protobuf;
 using OtpNet;
 using Password_Phrase_Producer.Models;
 using Password_Phrase_Producer.Services.Security.Protobuf;
-using Password_Phrase_Producer.Services.Vault;
 
 namespace Password_Phrase_Producer.Services.Security;
 
 public class TotpService
 {
-    private const string TotpFileName = "totp.json.enc";
+    private const string TotpFileName = "totp_data.json.enc";
     private readonly string _totpFilePath;
-    private readonly PasswordVaultService _vaultService;
+    private readonly TotpEncryptionService _encryptionService;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
     private readonly SemaphoreSlim _syncLock = new(1, 1);
 
     public event EventHandler? EntriesChanged;
 
-    public TotpService(PasswordVaultService vaultService)
+    public bool IsUnlocked => _encryptionService.IsUnlocked;
+    public bool HasPassword => _encryptionService.HasPassword;
+    // Backward compatible alias
+    public bool HasPin => _encryptionService.HasPin;
+
+    public TotpService(TotpEncryptionService encryptionService)
     {
-        _vaultService = vaultService;
+        _encryptionService = encryptionService;
         _totpFilePath = Path.Combine(FileSystem.AppDataDirectory, TotpFileName);
     }
 
     private void EnsureUnlocked()
     {
-        if (!_vaultService.IsUnlocked)
+        if (!_encryptionService.IsUnlocked)
         {
-            throw new InvalidOperationException("Der Tresor ist gesperrt.");
+            throw new InvalidOperationException("Der Authenticator ist gesperrt.");
         }
     }
 
     public async Task<List<TotpEntry>> GetEntriesAsync(CancellationToken cancellationToken = default)
     {
-        if (!_vaultService.IsUnlocked)
+        if (!_encryptionService.IsUnlocked)
         {
              return new List<TotpEntry>();
         }
@@ -283,19 +287,14 @@ public class TotpService
             return new List<TotpEntry>();
         }
 
-        // Using PasswordVaultService's internal methods via the accessible instance?
-        // Wait, GetUnlockedKey is internal, but EncryptWithKey/DecryptWithKey are static internal.
-        // I can access them via the type PasswordVaultService.
-        
-        var key = _vaultService.GetUnlockedKey();
         byte[] decryptedBytes;
         try 
         {
-            decryptedBytes = PasswordVaultService.DecryptWithKey(encryptedBytes, key);
+            decryptedBytes = _encryptionService.Decrypt(encryptedBytes);
         }
         catch
         {
-            // Decryption failed (maybe wrong key if file was from different setup, or corrupted)
+            // Decryption failed
             return new List<TotpEntry>();
         }
 
@@ -328,11 +327,7 @@ public class TotpService
         var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
         var bytes = Encoding.UTF8.GetBytes(json);
         
-        var key = _vaultService.GetUnlockedKey();
-        var encryptedBytes = PasswordVaultService.EncryptWithKey(bytes, key);
-
-        // Atomic write via temp file could be better but sticking to simple overwrite for now 
-        // as per PasswordVaultService pattern (it does WriteAllBytesAsync directly although it creates directory)
+        var encryptedBytes = _encryptionService.Encrypt(bytes);
         
         Directory.CreateDirectory(Path.GetDirectoryName(_totpFilePath)!);
         await File.WriteAllBytesAsync(_totpFilePath, encryptedBytes, cancellationToken).ConfigureAwait(false);

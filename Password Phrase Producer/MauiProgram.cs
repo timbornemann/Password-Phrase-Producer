@@ -28,6 +28,7 @@ public static class MauiProgram
 #endif
 
         builder.Services.AddSingleton<PasswordVaultService>();
+        builder.Services.AddSingleton<TotpEncryptionService>();
         builder.Services.AddSingleton<TotpService>();
         builder.Services.AddSingleton<IBiometricAuthenticationService, BiometricAuthenticationService>();
         builder.Services.AddTransient<VaultPageViewModel>();
@@ -37,6 +38,7 @@ public static class MauiProgram
         builder.Services.AddTransient<VaultEntryEditorPage>();
         builder.Services.AddTransient<AuthenticatorViewModel>();
         builder.Services.AddTransient<AuthenticatorPage>();
+        builder.Services.AddTransient<AuthenticatorPinPage>();
         builder.Services.AddTransient<AddEntryPage>();
 
         return builder.Build();
