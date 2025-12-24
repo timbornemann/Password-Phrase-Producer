@@ -165,6 +165,13 @@
                             <Border.Shadow>
                                 <Shadow Brush="#25000000" Radius="10" Offset="0,4" />
                             </Border.Shadow>
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" Binding="{Binding IsCopyFeedbackActive}" Value="True">
+                                    <Setter Property="BackgroundColor" Value="#1F2338" />
+                                    <Setter Property="StrokeThickness" Value="1" />
+                                    <Setter Property="Stroke" Value="#4A5CFF" />
+                                </DataTrigger>
+                            </Border.Triggers>
 
                             <Grid RowDefinitions="Auto,Auto" RowSpacing="10" ColumnDefinitions="*,Auto">
                                 <Grid.GestureRecognizers>
@@ -203,6 +210,11 @@
                                         <Border.StrokeShape>
                                             <RoundRectangle CornerRadius="8" />
                                         </Border.StrokeShape>
+                                        <Border.Triggers>
+                                            <DataTrigger TargetType="Border" Binding="{Binding IsCopyFeedbackActive}" Value="True">
+                                                <Setter Property="BackgroundColor" Value="#4A5CFF" />
+                                            </DataTrigger>
+                                        </Border.Triggers>
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer
                                                 Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:AuthenticatorViewModel}}, Path=CopyCodeCommand}"

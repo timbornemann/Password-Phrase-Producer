@@ -113,6 +113,10 @@
                             </Border.StrokeShape>
                             <Entry x:Name="EntrySecret" Placeholder="JBSWY..." TextColor="White" BackgroundColor="Transparent" PlaceholderColor="#7F85B2" />
                         </Border>
+                        <Label
+                            Text="Hinweis: Leerzeichen/Bindestriche werden automatisch entfernt."
+                            TextColor="#5A6080"
+                            FontSize="11" />
                     </VerticalStackLayout>
 
                     <Button Text="Hinzufügen" Clicked="OnSaveClicked" 

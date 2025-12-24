@@ -1,11 +1,15 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Windows.Input;
 using System.Windows.Input;
+using CommunityToolkit.Maui.Views;
 using Password_Phrase_Producer.Models;
+using Password_Phrase_Producer.Services;
 using Password_Phrase_Producer.Services.Security;
 using Password_Phrase_Producer.Views;
+using Password_Phrase_Producer.Views.Dialogs;
 
 namespace Password_Phrase_Producer.ViewModels;
 
@@ -143,8 +147,21 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
     {
         if (item == null) return;
 
-        var confirm = await Application.Current!.MainPage!.DisplayAlert("Löschen", $"Möchtest du '{item.Issuer} ({item.AccountName})' wirklich löschen?", "Löschen", "Abbrechen");
-        if (confirm)
+        var page = GetCurrentPage();
+        if (page is null)
+        {
+            return;
+        }
+
+        var popup = new ConfirmationPopup(
+            "Eintrag löschen",
+            $"Möchtest du '{item.Issuer} ({item.AccountName})' wirklich löschen?",
+            "Löschen",
+            "Abbrechen",
+            confirmIsDestructive: true);
+
+        var result = await page.ShowPopupAsync(popup);
+        if (result is bool confirm && confirm)
         {
             await _totpService.DeleteEntryAsync(item.Entry.Id);
         }
@@ -157,14 +174,49 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
         // Remove spaces for clipboard
         var cleanCode = item.Code.Replace(" ", "");
         await Clipboard.SetTextAsync(cleanCode);
-        
-        // Use a Toast or similar if available, otherwise just silent or verify in UI
-        // Assuming ToastService or similar usage if available. 
-        // For now, no explicit dependency on ToastService to keep it simple, or I can add it.
-        // I will just let the user know via vibration/haptic if possible or nothing.
-        // Or I can verify if there is a ToastService in the project.
-        // Yes, there is Services/ToastService.cs. I should use it, but I don't want to inject it right now withoutchecking constructor.
-        // I will just leave it as clipboard copy.
+
+        // Visual feedback for copy button + toast (match Vault behavior)
+        var token = item.NextCopyFeedbackToken();
+        item.IsCopyFeedbackActive = true;
+        await ToastService.ShowCopiedAsync("Code");
+
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(700);
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                if (item.CopyFeedbackToken == token)
+                {
+                    item.IsCopyFeedbackActive = false;
+                }
+            });
+        });
+    }
+
+    private static Page? GetCurrentPage()
+    {
+        try
+        {
+            if (Application.Current?.MainPage is Page mainPage)
+            {
+                if (mainPage is Shell shell)
+                {
+                    return shell.CurrentPage;
+                }
+
+                if (mainPage is NavigationPage navPage)
+                {
+                    return navPage.CurrentPage;
+                }
+
+                return mainPage;
+            }
+        }
+        catch
+        {
+        }
+
+        return null;
     }
 
     private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
@@ -182,6 +234,8 @@ public class TotpViewModelItem : INotifyPropertyChanged
     private int _remainingSeconds;
     private double _progress;
     private int _period = 30;
+    private bool _isCopyFeedbackActive;
+    private int _copyFeedbackToken;
 
     public TotpEntry Entry { get; }
 
@@ -200,6 +254,17 @@ public class TotpViewModelItem : INotifyPropertyChanged
         get => _code;
         set { if (_code != value) { _code = value; OnPropertyChanged(); } }
     }
+
+    public bool IsCopyFeedbackActive
+    {
+        get => _isCopyFeedbackActive;
+        set { if (_isCopyFeedbackActive != value) { _isCopyFeedbackActive = value; OnPropertyChanged(); } }
+    }
+
+    public int CopyFeedbackToken => _copyFeedbackToken;
+
+    public int NextCopyFeedbackToken()
+        => Interlocked.Increment(ref _copyFeedbackToken);
 
     public int RemainingSeconds
     {

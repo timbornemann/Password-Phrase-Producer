@@ -75,7 +75,7 @@ public partial class AddEntryPage : ContentPage
     {
         var issuer = EntryIssuer.Text?.Trim();
         var account = EntryAccount.Text?.Trim();
-        var secretStr = EntrySecret.Text?.Trim()?.Replace(" ", "").ToUpperInvariant();
+        var secretStr = NormalizeBase32Secret(EntrySecret.Text);
 
         if (string.IsNullOrEmpty(secretStr))
         {
@@ -97,10 +97,31 @@ public partial class AddEntryPage : ContentPage
             await CloseCameraAsync();
             await Navigation.PopModalAsync();
         }
+        catch (System.FormatException)
+        {
+            await DisplayAlert("Fehler", "Ungültiges Secret Format (Base32). Erlaubt sind A–Z und 2–7. Leerzeichen/Bindestriche sind ok.", "OK");
+        }
         catch
         {
             await DisplayAlert("Fehler", "Ungültiges Secret Format (Base32).", "OK");
         }
+    }
+
+    private static string NormalizeBase32Secret(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return string.Empty;
+        }
+
+        // Many providers group secrets with spaces/dashes or contain non-breaking spaces/newlines.
+        // Normalize by removing all whitespace, hyphens and padding '='.
+        var cleaned = new string(input
+            .Trim()
+            .Where(c => !char.IsWhiteSpace(c) && c != '-' && c != '=')
+            .ToArray());
+
+        return cleaned.ToUpperInvariant();
     }
 
     private async Task StartCameraAsync()
