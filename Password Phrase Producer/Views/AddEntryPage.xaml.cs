@@ -1,5 +1,6 @@
 using Camera.MAUI;
 using Camera.MAUI.ZXingHelper;
+using Microsoft.Maui.ApplicationModel;
 using Password_Phrase_Producer.Services.Security;
 using Password_Phrase_Producer.Models;
 using ZXing;
@@ -66,7 +67,17 @@ public partial class AddEntryPage : ContentPage
                 BtnScan.TextColor = Colors.White;
                 BtnManual.BackgroundColor = Colors.Transparent;
                 BtnManual.TextColor = Color.FromArgb("#7F85B2");
-                await StartCameraAsync();
+
+                var cameraStarted = await StartCameraAsync();
+                if (!cameraStarted)
+                {
+                    ManualView.IsVisible = true;
+                    ScanView.IsVisible = false;
+                    BtnManual.BackgroundColor = Color.FromArgb("#4A5CFF");
+                    BtnManual.TextColor = Colors.White;
+                    BtnScan.BackgroundColor = Colors.Transparent;
+                    BtnScan.TextColor = Color.FromArgb("#7F85B2");
+                }
             }
         }
     }
@@ -124,10 +135,16 @@ public partial class AddEntryPage : ContentPage
         return cleaned.ToUpperInvariant();
     }
 
-    private async Task StartCameraAsync()
+    private async Task<bool> StartCameraAsync()
     {
         try
         {
+            var permissionGranted = await EnsureCameraPermissionAsync();
+            if (!permissionGranted)
+            {
+                return false;
+            }
+
             if (cameraView.Cameras.Count > 0)
             {
                 cameraView.Camera = cameraView.Cameras.First();
@@ -150,6 +167,8 @@ public partial class AddEntryPage : ContentPage
                     DetectionFrame.IsVisible = false;
                     UpdateZoomButtonText();
                 });
+
+                return true;
             }
             else
             {
@@ -160,6 +179,8 @@ public partial class AddEntryPage : ContentPage
         {
             await DisplayAlert("Fehler", $"Kamera konnte nicht gestartet werden: {ex.Message}", "OK");
         }
+
+        return false;
     }
     
     private void StartAutoScanTimer()
@@ -179,6 +200,23 @@ public partial class AddEntryPage : ContentPage
     {
         _autoScanTimer?.Dispose();
         _autoScanTimer = null;
+    }
+
+    private async Task<bool> EnsureCameraPermissionAsync()
+    {
+        var status = await Permissions.CheckStatusAsync<Permissions.Camera>();
+        if (status != PermissionStatus.Granted)
+        {
+            status = await Permissions.RequestAsync<Permissions.Camera>();
+        }
+
+        if (status != PermissionStatus.Granted)
+        {
+            await DisplayAlert("Kamera benötigt", "Bitte erlaube den Kamera-Zugriff, um QR-Codes zu scannen.", "OK");
+            return false;
+        }
+
+        return true;
     }
 
     private async Task CloseCameraAsync()
