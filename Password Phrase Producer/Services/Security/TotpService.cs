@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Web;
@@ -287,31 +288,39 @@ public class TotpService
             return new List<TotpEntry>();
         }
 
-        byte[] decryptedBytes;
+        byte[]? decryptedBytes = null;
         try 
         {
             decryptedBytes = _encryptionService.Decrypt(encryptedBytes);
+            
+            if (decryptedBytes.Length == 0)
+            {
+                return new List<TotpEntry>();
+            }
+
+            var json = Encoding.UTF8.GetString(decryptedBytes);
+            try
+            {
+                var snapshot = JsonSerializer.Deserialize<TotpSnapshotDto>(json, _jsonOptions);
+                return snapshot?.Entries.Select(e => e.ToModel()).ToList() ?? new List<TotpEntry>();
+            }
+            catch
+            {
+                 return new List<TotpEntry>();
+            }
         }
         catch
         {
             // Decryption failed
             return new List<TotpEntry>();
         }
-
-        if (decryptedBytes.Length == 0)
+        finally
         {
-            return new List<TotpEntry>();
-        }
-
-        var json = Encoding.UTF8.GetString(decryptedBytes);
-        try
-        {
-            var snapshot = JsonSerializer.Deserialize<TotpSnapshotDto>(json, _jsonOptions);
-            return snapshot?.Entries.Select(e => e.ToModel()).ToList() ?? new List<TotpEntry>();
-        }
-        catch
-        {
-             return new List<TotpEntry>();
+            if (decryptedBytes is not null)
+            {
+                // Sensible Daten aus dem Speicher löschen
+                Array.Clear(decryptedBytes);
+            }
         }
     }
 
@@ -327,12 +336,25 @@ public class TotpService
         var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
         var bytes = Encoding.UTF8.GetBytes(json);
         
-        var encryptedBytes = _encryptionService.Encrypt(bytes);
-        
-        Directory.CreateDirectory(Path.GetDirectoryName(_totpFilePath)!);
-        await File.WriteAllBytesAsync(_totpFilePath, encryptedBytes, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var encryptedBytes = _encryptionService.Encrypt(bytes);
+            
+            Directory.CreateDirectory(Path.GetDirectoryName(_totpFilePath)!);
+            await File.WriteAllBytesAsync(_totpFilePath, encryptedBytes, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            // Plain-Text JSON-Bytes aus dem Speicher löschen
+            Array.Clear(bytes);
+        }
     }
 
+    /// <summary>
+    /// Creates an unencrypted backup. WARNING: This method creates backups with plain-text TOTP secrets.
+    /// Use ExportWithFilePasswordAsync for secure encrypted exports.
+    /// </summary>
+    [Obsolete("Use ExportWithFilePasswordAsync for secure encrypted exports. This method creates unencrypted backups.")]
     public async Task<byte[]> CreateBackupAsync(CancellationToken cancellationToken = default)
     {
         EnsureUnlocked();
@@ -358,6 +380,194 @@ public class TotpService
         {
             _syncLock.Release();
         }
+    }
+
+    /// <summary>
+    /// Exports TOTP entries encrypted with a file password, similar to vault exports.
+    /// </summary>
+    public async Task<byte[]> ExportWithFilePasswordAsync(string filePassword, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);
+        EnsureUnlocked();
+
+        const int KeySizeBytes = 32;
+        const int SaltSizeBytes = 16;
+        const int Pbkdf2Iterations = 200_000;
+
+        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            // 1. Klardaten auslesen
+            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+            var dtos = entries.Select(TotpEntryDto.FromModel).ToList();
+
+            var snapshot = new TotpSnapshotDto
+            {
+                Entries = dtos,
+                ExportedAt = DateTimeOffset.UtcNow
+            };
+
+            var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
+            var plainBytes = Encoding.UTF8.GetBytes(json);
+
+            try
+            {
+                // 2. Mit Datei-Passwort verschlüsseln (neue Salt/Key für Export)
+                var salt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
+                var key = DeriveKey(filePassword, salt, Pbkdf2Iterations);
+                try
+                {
+                    var encrypted = EncryptWithKey(plainBytes, key);
+                    var verifier = CreateVerifier(key);
+
+                    // 3. Format: { salt, verifier, iterations, cipherText }
+                    var exportDto = new PortableBackupDto
+                    {
+                        Salt = Convert.ToBase64String(salt),
+                        Verifier = Convert.ToBase64String(verifier),
+                        Iterations = Pbkdf2Iterations,
+                        CipherText = Convert.ToBase64String(encrypted),
+                        CreatedAt = DateTimeOffset.UtcNow
+                    };
+
+                    return Encoding.UTF8.GetBytes(JsonSerializer.Serialize(exportDto, _jsonOptions));
+                }
+                finally
+                {
+                    Array.Clear(key);
+                }
+            }
+            finally
+            {
+                // Plain-Text Daten aus dem Speicher löschen
+                Array.Clear(plainBytes);
+            }
+        }
+        finally
+        {
+            _syncLock.Release();
+        }
+    }
+
+    private static byte[] DeriveKey(string password, byte[] salt, int iterations)
+    {
+        const int KeySizeBytes = 32;
+        using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, iterations, HashAlgorithmName.SHA256);
+        return pbkdf2.GetBytes(KeySizeBytes);
+    }
+
+    private static byte[] CreateVerifier(byte[] key)
+    {
+        using var sha = SHA256.Create();
+        return sha.ComputeHash(key);
+    }
+
+    public async Task ImportWithFilePasswordAsync(Stream stream, string filePassword, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);
+        EnsureUnlocked();
+
+        // 1. Datei lesen und parsen
+        using var reader = new StreamReader(stream, Encoding.UTF8, leaveOpen: true);
+        var json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        var dto = JsonSerializer.Deserialize<PortableBackupDto>(json, _jsonOptions)
+                  ?? throw new InvalidOperationException("Ungültiges Export-Format.");
+
+        // 2. Mit Datei-Passwort entschlüsseln
+        var salt = Convert.FromBase64String(dto.Salt);
+        var key = DeriveKey(filePassword, salt, dto.Iterations);
+
+        // Verifier prüfen
+        var expectedVerifier = Convert.FromBase64String(dto.Verifier);
+        var actualVerifier = CreateVerifier(key);
+        if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
+        {
+            Array.Clear(key);
+            throw new InvalidOperationException("Falsches Datei-Passwort.");
+        }
+
+        var encrypted = Convert.FromBase64String(dto.CipherText);
+        var plainBytes = DecryptWithKey(encrypted, key);
+        Array.Clear(key);
+
+        try
+        {
+            // 3. Klardaten in Tresor einfügen
+            var jsonString = Encoding.UTF8.GetString(plainBytes);
+            var snapshot = JsonSerializer.Deserialize<TotpSnapshotDto>(jsonString, _jsonOptions)
+                          ?? throw new InvalidOperationException("Ungültiges Snapshot-Format.");
+            
+            if (snapshot.Entries is null)
+            {
+                return;
+            }
+
+            var entries = snapshot.Entries.Select(e => e.ToModel()).ToList();
+
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                _syncLock.Release();
+            }
+
+            EntriesChanged?.Invoke(this, EventArgs.Empty);
+        }
+        finally
+        {
+            // Plain-Text Daten aus dem Speicher löschen
+            Array.Clear(plainBytes);
+        }
+    }
+
+    private static byte[] DecryptWithKey(byte[] data, byte[] key)
+    {
+        const int nonceLength = 12;
+        const int tagLength = 16;
+
+        if (data.Length < nonceLength + tagLength)
+        {
+            return Array.Empty<byte>();
+        }
+
+        var cipherLength = data.Length - nonceLength - tagLength;
+        if (cipherLength < 0)
+        {
+            throw new InvalidOperationException("Ungültiges verschlüsseltes Format.");
+        }
+
+        var nonce = new byte[nonceLength];
+        var cipher = new byte[cipherLength];
+        var tag = new byte[tagLength];
+
+        Buffer.BlockCopy(data, 0, nonce, 0, nonceLength);
+        Buffer.BlockCopy(data, nonceLength, cipher, 0, cipherLength);
+        Buffer.BlockCopy(data, nonceLength + cipherLength, tag, 0, tagLength);
+
+        var plain = new byte[cipherLength];
+        using var aes = new AesGcm(key, tagLength);
+        aes.Decrypt(nonce, cipher, tag, plain);
+        return plain;
+    }
+
+    private static byte[] EncryptWithKey(byte[] data, byte[] key)
+    {
+        var nonce = RandomNumberGenerator.GetBytes(12);
+        var cipher = new byte[data.Length];
+        var tag = new byte[16];
+
+        using var aes = new AesGcm(key, tag.Length);
+        aes.Encrypt(nonce, data, cipher, tag);
+
+        var result = new byte[nonce.Length + cipher.Length + tag.Length];
+        Buffer.BlockCopy(nonce, 0, result, 0, nonce.Length);
+        Buffer.BlockCopy(cipher, 0, result, nonce.Length, cipher.Length);
+        Buffer.BlockCopy(tag, 0, result, nonce.Length + cipher.Length, tag.Length);
+        return result;
     }
 
     public async Task RestoreBackupAsync(Stream backupStream, CancellationToken cancellationToken = default)

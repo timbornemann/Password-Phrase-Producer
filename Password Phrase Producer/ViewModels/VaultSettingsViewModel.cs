@@ -581,12 +581,12 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             backup.DataVault = JsonSerializer.Deserialize<PortableBackupDto>(dataVaultBackupJson, _jsonOptions);
         }
 
-        // Export Authenticator if unlocked (still uses old format for now)
+        // Export Authenticator if unlocked (now uses encrypted format)
         if (_totpEncryptionService.IsUnlocked)
         {
-            var authBackupBytes = await _totpService.CreateBackupAsync(cancellationToken).ConfigureAwait(false);
+            var authBackupBytes = await _totpService.ExportWithFilePasswordAsync(filePassword, cancellationToken).ConfigureAwait(false);
             var authBackupJson = Encoding.UTF8.GetString(authBackupBytes);
-            backup.Authenticator = JsonSerializer.Deserialize<AuthenticatorBackupDto>(authBackupJson, _jsonOptions);
+            backup.AuthenticatorEncrypted = JsonSerializer.Deserialize<PortableBackupDto>(authBackupJson, _jsonOptions);
         }
 
         var json = JsonSerializer.Serialize(backup, _jsonOptions);
@@ -619,8 +619,15 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             await _dataVaultService.ImportWithFilePasswordAsync(dataVaultStream, filePassword, cancellationToken).ConfigureAwait(false);
         }
 
-        // Restore Authenticator if present and unlocked (still uses old format for now)
-        if (backup.Authenticator is not null && _totpEncryptionService.IsUnlocked)
+        // Restore Authenticator if present and unlocked (prefer encrypted format)
+        if (backup.AuthenticatorEncrypted is not null && _totpEncryptionService.IsUnlocked)
+        {
+            var authJson = JsonSerializer.Serialize(backup.AuthenticatorEncrypted, _jsonOptions);
+            using var authStream = new MemoryStream(Encoding.UTF8.GetBytes(authJson));
+            await _totpService.ImportWithFilePasswordAsync(authStream, filePassword, cancellationToken).ConfigureAwait(false);
+        }
+        // Fallback to old unencrypted format for backward compatibility
+        else if (backup.Authenticator is not null && _totpEncryptionService.IsUnlocked)
         {
             var authJson = JsonSerializer.Serialize(backup.Authenticator, _jsonOptions);
             using var authStream = new MemoryStream(Encoding.UTF8.GetBytes(authJson));

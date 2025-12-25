@@ -321,24 +321,38 @@ public class DataVaultService
             var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
             var plainBytes = Encoding.UTF8.GetBytes(json);
 
-            // 2. Mit Datei-Passwort verschlüsseln (neue Salt/Key für Export)
-            var salt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
-            var key = DeriveKey(filePassword, salt, Pbkdf2Iterations);
-            var encrypted = EncryptWithKey(plainBytes, key);
-            var verifier = CreateVerifier(key);
-            Array.Clear(key);
-
-            // 3. Format: { salt, verifier, iterations, cipherText }
-            var exportDto = new PortableBackupDto
+            try
             {
-                Salt = Convert.ToBase64String(salt),
-                Verifier = Convert.ToBase64String(verifier),
-                Iterations = Pbkdf2Iterations,
-                CipherText = Convert.ToBase64String(encrypted),
-                CreatedAt = DateTimeOffset.UtcNow
-            };
+                // 2. Mit Datei-Passwort verschlüsseln (neue Salt/Key für Export)
+                var salt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
+                var key = DeriveKey(filePassword, salt, Pbkdf2Iterations);
+                try
+                {
+                    var encrypted = EncryptWithKey(plainBytes, key);
+                    var verifier = CreateVerifier(key);
 
-            return Encoding.UTF8.GetBytes(JsonSerializer.Serialize(exportDto, _jsonOptions));
+                    // 3. Format: { salt, verifier, iterations, cipherText }
+                    var exportDto = new PortableBackupDto
+                    {
+                        Salt = Convert.ToBase64String(salt),
+                        Verifier = Convert.ToBase64String(verifier),
+                        Iterations = Pbkdf2Iterations,
+                        CipherText = Convert.ToBase64String(encrypted),
+                        CreatedAt = DateTimeOffset.UtcNow
+                    };
+
+                    return Encoding.UTF8.GetBytes(JsonSerializer.Serialize(exportDto, _jsonOptions));
+                }
+                finally
+                {
+                    Array.Clear(key);
+                }
+            }
+            finally
+            {
+                // Plain-Text Daten aus dem Speicher löschen
+                Array.Clear(plainBytes);
+            }
         }
         finally
         {
@@ -375,30 +389,38 @@ public class DataVaultService
         var plainBytes = DecryptWithKey(encrypted, key);
         Array.Clear(key);
 
-        // 3. Klardaten in Tresor einfügen
-        var snapshot = JsonSerializer.Deserialize<PasswordVaultSnapshotDto>(plainBytes, _jsonOptions)
-                      ?? throw new InvalidOperationException("Ungültiges Snapshot-Format.");
-        
-        if (snapshot.Entries is null)
-        {
-            return;
-        }
-
-        var entries = snapshot.Entries.Select(e => e.ToModel()).ToList();
-
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+            // 3. Klardaten in Tresor einfügen
+            var snapshot = JsonSerializer.Deserialize<PasswordVaultSnapshotDto>(plainBytes, _jsonOptions)
+                          ?? throw new InvalidOperationException("Ungültiges Snapshot-Format.");
+            
+            if (snapshot.Entries is null)
+            {
+                return;
+            }
+
+            var entries = snapshot.Entries.Select(e => e.ToModel()).ToList();
+
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                _syncLock.Release();
+            }
+
+            // 4. Tresor sperren
+            Lock();
+            MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
         }
         finally
         {
-            _syncLock.Release();
+            // Plain-Text Daten aus dem Speicher löschen
+            Array.Clear(plainBytes);
         }
-
-        // 4. Tresor sperren
-        Lock();
-        MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
     }
 
     private async Task<List<PasswordVaultEntry>> LoadEntriesInternalAsync(CancellationToken cancellationToken)
@@ -411,27 +433,35 @@ public class DataVaultService
         }
 
         var decryptedBytes = await DecryptAsync(vaultFile.Cipher, cancellationToken).ConfigureAwait(false);
-        if (decryptedBytes.Length == 0)
+        try
         {
-            UpdateStoredEntryCount(0);
-            return new List<PasswordVaultEntry>();
+            if (decryptedBytes.Length == 0)
+            {
+                UpdateStoredEntryCount(0);
+                return new List<PasswordVaultEntry>();
+            }
+
+            var json = Encoding.UTF8.GetString(decryptedBytes);
+            var snapshot = JsonSerializer.Deserialize<PasswordVaultSnapshotDto>(json, _jsonOptions);
+
+            if (snapshot?.Entries is null)
+            {
+                UpdateStoredEntryCount(0);
+                return new List<PasswordVaultEntry>();
+            }
+
+            var entries = snapshot.Entries
+                .Select(dto => dto.ToModel())
+                .ToList();
+
+            UpdateStoredEntryCount(entries.Count);
+            return entries;
         }
-
-        var json = Encoding.UTF8.GetString(decryptedBytes);
-        var snapshot = JsonSerializer.Deserialize<PasswordVaultSnapshotDto>(json, _jsonOptions);
-
-        if (snapshot?.Entries is null)
+        finally
         {
-            UpdateStoredEntryCount(0);
-            return new List<PasswordVaultEntry>();
+            // Sensible Daten aus dem Speicher löschen
+            Array.Clear(decryptedBytes);
         }
-
-        var entries = snapshot.Entries
-            .Select(dto => dto.ToModel())
-            .ToList();
-
-        UpdateStoredEntryCount(entries.Count);
-        return entries;
     }
 
     private async Task SaveEntriesInternalAsync(IList<PasswordVaultEntry> entries, CancellationToken cancellationToken)
@@ -449,11 +479,20 @@ public class DataVaultService
         };
 
         var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
-        var encrypted = await EncryptAsync(Encoding.UTF8.GetBytes(json), cancellationToken).ConfigureAwait(false);
-        var vaultFile = await CreateVaultFileContentAsync(encrypted, cancellationToken).ConfigureAwait(false);
+        var plainBytes = Encoding.UTF8.GetBytes(json);
+        try
+        {
+            var encrypted = await EncryptAsync(plainBytes, cancellationToken).ConfigureAwait(false);
+            var vaultFile = await CreateVaultFileContentAsync(encrypted, cancellationToken).ConfigureAwait(false);
 
-        await WriteVaultFileInternalAsync(vaultFile.RawContent, cancellationToken).ConfigureAwait(false);
-        UpdateStoredEntryCount(ordered.Count);
+            await WriteVaultFileInternalAsync(vaultFile.RawContent, cancellationToken).ConfigureAwait(false);
+            UpdateStoredEntryCount(ordered.Count);
+        }
+        finally
+        {
+            // Plain-Text JSON-Bytes aus dem Speicher löschen
+            Array.Clear(plainBytes);
+        }
     }
 
     private Task<byte[]> EncryptAsync(byte[] data, CancellationToken cancellationToken)
@@ -580,9 +619,10 @@ public class DataVaultService
             return 0;
         }
 
+        byte[]? decrypted = null;
         try
         {
-            var decrypted = await DecryptAsync(content.Cipher, cancellationToken).ConfigureAwait(false);
+            decrypted = await DecryptAsync(content.Cipher, cancellationToken).ConfigureAwait(false);
             if (decrypted.Length == 0)
             {
                 UpdateStoredEntryCount(0);
@@ -593,6 +633,14 @@ public class DataVaultService
             var count = snapshot?.Entries?.Count ?? 0;
             UpdateStoredEntryCount(count);
             return count;
+        }
+        finally
+        {
+            if (decrypted is not null)
+            {
+                // Sensible Daten aus dem Speicher löschen
+                Array.Clear(decrypted);
+            }
         }
         catch (InvalidOperationException)
         {

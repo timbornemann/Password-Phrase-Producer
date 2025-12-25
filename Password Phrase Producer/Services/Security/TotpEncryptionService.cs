@@ -102,6 +102,11 @@ public class TotpEncryptionService
         {
             return false;
         }
+        finally
+        {
+            // Passwort-abgeleiteter Schlüssel aus dem Speicher löschen
+            Array.Clear(passwordDerivedKey);
+        }
     }
 
     /// <summary>
@@ -126,13 +131,21 @@ public class TotpEncryptionService
 
         // Re-encrypt master key with new password
         var newPasswordDerivedKey = DeriveKeyFromPassword(newPassword);
-        var encryptedMasterKey = EncryptWithKey(_unlockedKey, newPasswordDerivedKey);
+        try
+        {
+            var encryptedMasterKey = EncryptWithKey(_unlockedKey, newPasswordDerivedKey);
 
-        await File.WriteAllBytesAsync(_keyFilePath, encryptedMasterKey);
+            await File.WriteAllBytesAsync(_keyFilePath, encryptedMasterKey);
 
-        // Update password hash
-        var newPasswordHash = HashPassword(newPassword);
-        Preferences.Set(PasswordPrefsKey, newPasswordHash);
+            // Update password hash
+            var newPasswordHash = HashPassword(newPassword);
+            Preferences.Set(PasswordPrefsKey, newPasswordHash);
+        }
+        finally
+        {
+            // Neuer Passwort-abgeleiteter Schlüssel aus dem Speicher löschen
+            Array.Clear(newPasswordDerivedKey);
+        }
     }
 
     // Backward compatible wrappers
