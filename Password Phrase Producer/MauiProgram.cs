@@ -28,12 +28,15 @@ public static class MauiProgram
 #endif
 
         builder.Services.AddSingleton<PasswordVaultService>();
+        builder.Services.AddSingleton<DataVaultService>();
         builder.Services.AddSingleton<TotpEncryptionService>();
         builder.Services.AddSingleton<TotpService>();
         builder.Services.AddSingleton<IBiometricAuthenticationService, BiometricAuthenticationService>();
         builder.Services.AddTransient<VaultPageViewModel>();
+        builder.Services.AddTransient<DataVaultPageViewModel>();
         builder.Services.AddTransient<VaultSettingsViewModel>();
         builder.Services.AddTransient<VaultPage>();
+        builder.Services.AddTransient<DataVaultPage>();
         builder.Services.AddTransient<SettingsPage>();
         builder.Services.AddTransient<VaultEntryEditorPage>();
         builder.Services.AddTransient<AuthenticatorViewModel>();

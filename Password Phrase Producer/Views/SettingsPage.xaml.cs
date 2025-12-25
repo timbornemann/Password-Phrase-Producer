@@ -71,6 +71,16 @@ public partial class SettingsPage : ContentPage
             await _viewModel.RefreshVaultStateAsync();
         });
 
+    private async void OnExportDataVaultBackupClicked(object? sender, EventArgs e)
+        => await ExecuteSettingsActionAsync(ExportDataVaultBackupAsync);
+
+    private async void OnImportDataVaultBackupClicked(object? sender, EventArgs e)
+        => await ExecuteSettingsActionAsync(async () =>
+        {
+            await ImportDataVaultBackupAsync();
+            await _viewModel.RefreshDataVaultStateAsync();
+        });
+
     private async void OnExportEncryptedClicked(object? sender, EventArgs e)
         => await ExecuteSettingsActionAsync(ExportEncryptedAsync);
 
@@ -79,6 +89,16 @@ public partial class SettingsPage : ContentPage
         {
             await ImportEncryptedAsync();
             await _viewModel.RefreshVaultStateAsync();
+        });
+
+    private async void OnExportDataVaultEncryptedClicked(object? sender, EventArgs e)
+        => await ExecuteSettingsActionAsync(ExportDataVaultEncryptedAsync);
+
+    private async void OnImportDataVaultEncryptedClicked(object? sender, EventArgs e)
+        => await ExecuteSettingsActionAsync(async () =>
+        {
+            await ImportDataVaultEncryptedAsync();
+            await _viewModel.RefreshDataVaultStateAsync();
         });
 
     private async Task ExportBackupAsync()
@@ -108,6 +128,33 @@ public partial class SettingsPage : ContentPage
         await _viewModel.RestoreBackupAsync(stream);
     }
 
+    private async Task ExportDataVaultBackupAsync()
+    {
+        var backupBytes = await _viewModel.CreateDataVaultBackupAsync();
+        await using var stream = new MemoryStream(backupBytes);
+        var result = await FileSaver.Default.SaveAsync("datentresor-backup.json", stream, CancellationToken.None);
+        if (!result.IsSuccessful && result.Exception is not null)
+        {
+            throw new InvalidOperationException(result.Exception.Message, result.Exception);
+        }
+    }
+
+    private async Task ImportDataVaultBackupAsync()
+    {
+        var file = await FilePicker.Default.PickAsync(new PickOptions
+        {
+            PickerTitle = "Datentresor-Backup auswählen"
+        });
+
+        if (file is null)
+        {
+            return;
+        }
+
+        await using var stream = await file.OpenReadAsync();
+        await _viewModel.RestoreDataVaultBackupAsync(stream);
+    }
+
     private async Task ExportEncryptedAsync()
     {
         var bytes = await _viewModel.ExportEncryptedVaultAsync();
@@ -133,6 +180,33 @@ public partial class SettingsPage : ContentPage
 
         await using var stream = await file.OpenReadAsync();
         await _viewModel.ImportEncryptedVaultAsync(stream);
+    }
+
+    private async Task ExportDataVaultEncryptedAsync()
+    {
+        var bytes = await _viewModel.ExportEncryptedDataVaultAsync();
+        await using var stream = new MemoryStream(bytes);
+        var result = await FileSaver.Default.SaveAsync("data-vault.json.enc", stream, CancellationToken.None);
+        if (!result.IsSuccessful && result.Exception is not null)
+        {
+            throw new InvalidOperationException(result.Exception.Message, result.Exception);
+        }
+    }
+
+    private async Task ImportDataVaultEncryptedAsync()
+    {
+        var file = await FilePicker.Default.PickAsync(new PickOptions
+        {
+            PickerTitle = "Verschlüsselte Datentresordatei auswählen"
+        });
+
+        if (file is null)
+        {
+            return;
+        }
+
+        await using var stream = await file.OpenReadAsync();
+        await _viewModel.ImportEncryptedDataVaultAsync(stream);
     }
 
     private async Task ExecuteSettingsActionAsync(Func<Task> action)

@@ -137,6 +137,16 @@
             ContentTemplate="{DataTemplate views:VaultPage}" />
     </FlyoutItem>
 
+    <!-- Datentresor -->
+    <FlyoutItem Title="Datentresor"
+                Route="data-vault"
+                FlyoutIcon="D"
+                FlyoutDisplayOptions="AsSingleItem">
+        <ShellContent
+            Title="Datentresor"
+            ContentTemplate="{DataTemplate views:DataVaultPage}" />
+    </FlyoutItem>
+
     <!-- Passwort erstellen -->
     <FlyoutItem Title="Passwort erstellen"
                 Route="generate"
@@ -166,5 +176,6 @@
             Title="Einstellungen"
             ContentTemplate="{DataTemplate views:SettingsPage}" />
     </FlyoutItem>
+
 
 </Shell>

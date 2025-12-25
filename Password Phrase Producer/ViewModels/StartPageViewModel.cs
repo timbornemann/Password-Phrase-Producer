@@ -15,6 +15,7 @@ public class StartPageViewModel
         FeaturedMode = ModeOptions.FirstOrDefault();
         NavigateToModeCommand = new Command<PasswordModeOption>(NavigateToMode);
         NavigateToVaultCommand = new Command(NavigateToVault);
+        NavigateToDataVaultCommand = new Command(NavigateToDataVault);
         NavigateToGenerationCommand = new Command(NavigateToGeneration);
         NavigateToAuthenticatorCommand = new Command(NavigateToAuthenticator);
     }
@@ -25,6 +26,7 @@ public class StartPageViewModel
 
     public ICommand NavigateToModeCommand { get; }
     public ICommand NavigateToVaultCommand { get; }
+    public ICommand NavigateToDataVaultCommand { get; }
     public ICommand NavigateToGenerationCommand { get; }
     public ICommand NavigateToAuthenticatorCommand { get; }
 
@@ -42,6 +44,12 @@ public class StartPageViewModel
     {
         // Navigate to the Vault page (defined in AppShell with route 'vault')
         await Shell.Current.GoToAsync("//vault");
+    }
+
+    private async void NavigateToDataVault()
+    {
+        // Navigate to the Data Vault page (defined in AppShell with route 'data-vault')
+        await Shell.Current.GoToAsync("//data-vault");
     }
 
     private async void NavigateToGeneration()
