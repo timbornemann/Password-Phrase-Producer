@@ -63,7 +63,7 @@
             </Grid>
 
             <!-- Main Options Container -->
-            <VerticalStackLayout Spacing="12">
+            <VerticalStackLayout Spacing="20">
                 
                 <!-- Vault Option -->
                 <Border StrokeThickness="0"

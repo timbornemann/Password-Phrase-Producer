@@ -16,14 +16,16 @@ public partial class AuthenticatorPinPage : ContentPage
         if (_isSetupMode)
         {
             TitleLabel.Text = "Authenticator einrichten";
-            SubtitleLabel.Text = "Erstelle ein Passwort zum Schutz deiner 2FA-Codes";
+            SubtitleLabel.Text = "Bitte gib dein Master-Passwort ein.";
             UnlockButton.Text = "Passwort erstellen";
-            ConfirmPinBorder.IsVisible = true;
-            HintLabel.IsVisible = true;
+            ConfirmPinEntry.IsVisible = true;
             BackButton.IsVisible = false; // Kein Zurück im Setup-Mode
         }
         else
         {
+            TitleLabel.Text = "Authenticator gesperrt";
+            SubtitleLabel.Text = "Bitte gib dein Master-Passwort ein.";
+            UnlockButton.Text = "Entsperren";
             BackButton.IsVisible = true; // Zurück-Button im Unlock-Mode
         }
     }
@@ -138,17 +140,21 @@ public partial class AuthenticatorPinPage : ContentPage
     private void ShowError(string message)
     {
         ErrorLabel.Text = message;
-        ErrorLabel.IsVisible = true;
+        ErrorLabel.IsVisible = !string.IsNullOrWhiteSpace(message);
         
         // Hide error after 3 seconds
-        Task.Run(async () =>
+        if (!string.IsNullOrWhiteSpace(message))
         {
-            await Task.Delay(3000);
-            MainThread.BeginInvokeOnMainThread(() =>
+            Task.Run(async () =>
             {
-                ErrorLabel.IsVisible = false;
+                await Task.Delay(3000);
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    ErrorLabel.IsVisible = false;
+                    ErrorLabel.Text = string.Empty;
+                });
             });
-        });
+        }
     }
 
     protected override bool OnBackButtonPressed()

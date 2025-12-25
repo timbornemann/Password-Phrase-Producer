@@ -134,7 +134,7 @@
 
                 <CollectionView.EmptyView>
                     <VerticalStackLayout
-                        Padding="20"
+                        Padding="0,0,10,0"
                         Spacing="10"
                         HorizontalOptions="Center"
                         VerticalOptions="Center">
