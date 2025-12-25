@@ -524,21 +524,6 @@ public partial class VaultPage : ContentPage
         }
     }
 
-    private async void OnExportBackupClicked(object? sender, EventArgs e)
-        => await ExecuteVaultActionAsync(ExportBackupAsync);
-
-    private async void OnImportBackupClicked(object? sender, EventArgs e)
-        => await ExecuteVaultActionAsync(async () =>
-        {
-            await ImportBackupAsync();
-            await _viewModel.EnsureAccessStateAsync();
-        });
-
-    private async void OnExportEncryptedClicked(object? sender, EventArgs e)
-        => await ExecuteVaultActionAsync(ExportEncryptedAsync);
-
-    private async void OnImportEncryptedClicked(object? sender, EventArgs e)
-        => await ExecuteVaultActionAsync(ImportEncryptedAsync);
 
     private async void OnChangePasswordMenuItemClicked(object? sender, EventArgs e)
     {
