@@ -2,10 +2,11 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
+using Password_Phrase_Producer.Services.Vault;
 
 namespace Password_Phrase_Producer.Models;
 
-public class PasswordVaultEntry : INotifyPropertyChanged
+public class PasswordVaultEntry : INotifyPropertyChanged, IIdentifiable, ITimestamped
 {
     private Guid _id = Guid.NewGuid();
     private string _label = string.Empty;

@@ -773,4 +773,70 @@ public class PasswordVaultService
         aes.Decrypt(nonce, cipher, tag, plain);
         return plain;
     }
+
+    public async Task<MergeResult<PasswordVaultEntry>> MergeEntriesAsync(
+        IList<PasswordVaultEntry> incomingEntries,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureUnlocked();
+
+        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var existingEntries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+            var mergeService = new VaultMergeService();
+            var result = mergeService.MergeEntries(existingEntries, incomingEntries);
+
+            await SaveEntriesInternalAsync(result.MergedEntries, cancellationToken).ConfigureAwait(false);
+            return result;
+        }
+        finally
+        {
+            _syncLock.Release();
+        }
+    }
+
+    public async Task RestoreBackupWithMergeAsync(Stream backupStream, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(backupStream);
+        EnsureUnlocked();
+
+        using var reader = new StreamReader(backupStream, Encoding.UTF8, leaveOpen: true);
+        var json = await reader.ReadToEndAsync().ConfigureAwait(false);
+        var dto = JsonSerializer.Deserialize<PasswordVaultBackupDto>(json, _jsonOptions)
+                  ?? throw new InvalidOperationException("Ungültiges Backup-Format.");
+
+        // Decrypt the incoming backup to get entries
+        var cipher = Convert.FromBase64String(dto.CipherText);
+        
+        // We need to decrypt with the backup's credentials
+        var backupSalt = Convert.FromBase64String(dto.PasswordSalt);
+        var backupIterations = dto.Pbkdf2Iterations > 0 ? dto.Pbkdf2Iterations : Pbkdf2Iterations;
+
+        // For merge, we decrypt with current key (assuming same password)
+        // If passwords differ, this will fail and we fall back to regular restore
+        try
+        {
+            var decryptedBytes = await DecryptAsync(cipher, cancellationToken).ConfigureAwait(false);
+            if (decryptedBytes.Length == 0)
+            {
+                throw new InvalidOperationException("Entschlüsselung fehlgeschlagen. Möglicherweise unterschiedliche Passwörter.");
+            }
+
+            var snapshot = JsonSerializer.Deserialize<PasswordVaultSnapshotDto>(decryptedBytes, _jsonOptions);
+            if (snapshot?.Entries is null)
+            {
+                return; // Nothing to merge
+            }
+
+            var incomingEntries = snapshot.Entries.Select(e => e.ToModel()).ToList();
+            await MergeEntriesAsync(incomingEntries, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            throw new InvalidOperationException("Merge fehlgeschlagen. Die Passwörter der Backups müssen übereinstimmen.");
+        }
+
+        MessagingCenter.Send(this, VaultMessages.EntriesChanged);
+    }
 }

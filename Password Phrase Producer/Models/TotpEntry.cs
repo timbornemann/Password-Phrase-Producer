@@ -1,4 +1,5 @@
 using System;
+using Password_Phrase_Producer.Services.Vault;
 
 namespace Password_Phrase_Producer.Models;
 
@@ -9,7 +10,7 @@ public enum TotpAlgorithm
     Sha512
 }
 
-public class TotpEntry
+public class TotpEntry : IIdentifiable, ITimestamped
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Issuer { get; set; } = string.Empty;

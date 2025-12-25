@@ -102,6 +102,48 @@
                     </Border.Shadow>
                     <VerticalStackLayout Spacing="10">
                         <Label
+                            Text="Gesamtbackup"
+                            FontSize="16"
+                            FontAttributes="Bold"
+                            TextColor="White" />
+                        <Label
+                            Text="Exportiere oder importiere alle Daten (Passwort-Tresor, Datentresor und Authenticator) in einer Datei. Alle Bereiche müssen entsperrt sein."
+                            FontSize="12"
+                            TextColor="#9EA3C4" />
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                            <Button
+                                Text="Alles exportieren"
+                                Clicked="OnExportFullBackupClicked"
+                                BackgroundColor="#4A5CFF"
+                                TextColor="White"
+                                FontSize="11"
+                                Padding="8,6"
+                                CornerRadius="10" />
+                            <Button
+                                Grid.Column="1"
+                                Text="Alles importieren"
+                                Clicked="OnImportFullBackupClicked"
+                                BackgroundColor="#1F2338"
+                                TextColor="White"
+                                FontSize="11"
+                                Padding="8,6"
+                                CornerRadius="10" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border
+                    BackgroundColor="#1B2036"
+                    Padding="14"
+                    StrokeThickness="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="16" />
+                    </Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow Brush="#25000000" Radius="12" Offset="0,6" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="10">
+                        <Label
                             Text="Datensicherung"
                             FontSize="16"
                             FontAttributes="Bold"
@@ -229,16 +271,25 @@
                             FontAttributes="Bold"
                             TextColor="White" />
                         <Label
-                            Text="Der Passwort Tresor muss entsperrt sein, um das Passwort zu ändern."
+                            Text="Gib dein aktuelles Passwort ein, um es zu ändern."
                             TextColor="#9EA3C4"
-                            FontSize="12">
-                            <Label.Triggers>
-                                <DataTrigger TargetType="Label" Binding="{Binding IsVaultUnlocked}" Value="True">
+                            FontSize="12" />
+
+                        <Entry
+                            Text="{Binding CurrentMasterPassword}"
+                            Placeholder="Aktuelles Master-Passwort"
+                            PlaceholderColor="#7F85B2"
+                            TextColor="White"
+                            BackgroundColor="#1F2338"
+                            IsPassword="True"
+                            FontSize="13"
+                            HeightRequest="38">
+                            <Entry.Triggers>
+                                <DataTrigger TargetType="Entry" Binding="{Binding IsVaultUnlocked}" Value="True">
                                     <Setter Property="IsVisible" Value="False" />
                                 </DataTrigger>
-                            </Label.Triggers>
-                        </Label>
-
+                            </Entry.Triggers>
+                        </Entry>
                         <Entry
                             Text="{Binding NewMasterPassword}"
                             Placeholder="Neues Master-Passwort"
@@ -246,7 +297,6 @@
                             TextColor="White"
                             BackgroundColor="#1F2338"
                             IsPassword="True"
-                            IsEnabled="{Binding IsVaultUnlocked}"
                             FontSize="13"
                             HeightRequest="38" />
                         <Entry
@@ -256,15 +306,13 @@
                             TextColor="White"
                             BackgroundColor="#1F2338"
                             IsPassword="True"
-                            IsEnabled="{Binding IsVaultUnlocked}"
                             FontSize="13"
                             HeightRequest="38" />
 
                         <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding CanUseBiometric}">
                             <Switch
                                 Grid.Column="0"
-                                IsToggled="{Binding EnableBiometric}"
-                                IsEnabled="{Binding IsVaultUnlocked}" />
+                                IsToggled="{Binding EnableBiometric}" />
                             <Label
                                 Grid.Column="1"
                                 Text="Biometrische Anmeldung speichern"
@@ -323,16 +371,25 @@
                             FontAttributes="Bold"
                             TextColor="White" />
                         <Label
-                            Text="Der Datentresor muss entsperrt sein, um das Passwort zu ändern."
+                            Text="Gib dein aktuelles Passwort ein, um es zu ändern."
                             TextColor="#9EA3C4"
-                            FontSize="12">
-                            <Label.Triggers>
-                                <DataTrigger TargetType="Label" Binding="{Binding IsDataVaultUnlocked}" Value="True">
+                            FontSize="12" />
+
+                        <Entry
+                            Text="{Binding CurrentDataVaultMasterPassword}"
+                            Placeholder="Aktuelles Master-Passwort"
+                            PlaceholderColor="#7F85B2"
+                            TextColor="White"
+                            BackgroundColor="#1F2338"
+                            IsPassword="True"
+                            FontSize="13"
+                            HeightRequest="38">
+                            <Entry.Triggers>
+                                <DataTrigger TargetType="Entry" Binding="{Binding IsDataVaultUnlocked}" Value="True">
                                     <Setter Property="IsVisible" Value="False" />
                                 </DataTrigger>
-                            </Label.Triggers>
-                        </Label>
-
+                            </Entry.Triggers>
+                        </Entry>
                         <Entry
                             Text="{Binding NewDataVaultMasterPassword}"
                             Placeholder="Neues Master-Passwort"
@@ -340,7 +397,6 @@
                             TextColor="White"
                             BackgroundColor="#1F2338"
                             IsPassword="True"
-                            IsEnabled="{Binding IsDataVaultUnlocked}"
                             FontSize="13"
                             HeightRequest="38" />
                         <Entry
@@ -350,15 +406,13 @@
                             TextColor="White"
                             BackgroundColor="#1F2338"
                             IsPassword="True"
-                            IsEnabled="{Binding IsDataVaultUnlocked}"
                             FontSize="13"
                             HeightRequest="38" />
 
                         <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding CanUseDataVaultBiometric}">
                             <Switch
                                 Grid.Column="0"
-                                IsToggled="{Binding EnableDataVaultBiometric}"
-                                IsEnabled="{Binding IsDataVaultUnlocked}" />
+                                IsToggled="{Binding EnableDataVaultBiometric}" />
                             <Label
                                 Grid.Column="1"
                                 Text="Biometrische Anmeldung speichern"
@@ -396,6 +450,48 @@
                                 Color="#63F5A8"
                                 WidthRequest="24"
                                 HeightRequest="24" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border
+                    BackgroundColor="#1B2036"
+                    Padding="14"
+                    StrokeThickness="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="16" />
+                    </Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow Brush="#25000000" Radius="12" Offset="0,6" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="10">
+                        <Label
+                            Text="Authenticator Datensicherung"
+                            FontSize="16"
+                            FontAttributes="Bold"
+                            TextColor="White" />
+                        <Label
+                            Text="Exportiere oder importiere deine 2FA-Einträge."
+                            FontSize="12"
+                            TextColor="#9EA3C4" />
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                            <Button
+                                Text="Authenticator exportieren"
+                                Clicked="OnExportAuthenticatorClicked"
+                                BackgroundColor="#4A5CFF"
+                                TextColor="White"
+                                FontSize="11"
+                                Padding="8,6"
+                                CornerRadius="10" />
+                            <Button
+                                Grid.Column="1"
+                                Text="Authenticator importieren"
+                                Clicked="OnImportAuthenticatorClicked"
+                                BackgroundColor="#1F2338"
+                                TextColor="White"
+                                FontSize="11"
+                                Padding="8,6"
+                                CornerRadius="10" />
                         </Grid>
                     </VerticalStackLayout>
                 </Border>

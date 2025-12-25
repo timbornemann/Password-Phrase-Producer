@@ -332,6 +332,111 @@ public class TotpService
         Directory.CreateDirectory(Path.GetDirectoryName(_totpFilePath)!);
         await File.WriteAllBytesAsync(_totpFilePath, encryptedBytes, cancellationToken).ConfigureAwait(false);
     }
+
+    public async Task<byte[]> CreateBackupAsync(CancellationToken cancellationToken = default)
+    {
+        EnsureUnlocked();
+
+        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+            var dtos = entries.Select(TotpEntryDto.FromModel).ToList();
+
+            var backup = new Models.AuthenticatorBackupDto
+            {
+                Version = 1,
+                Entries = dtos,
+                PasswordHash = _encryptionService.HasPassword ? "protected" : string.Empty,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            var json = JsonSerializer.Serialize(backup, _jsonOptions);
+            return Encoding.UTF8.GetBytes(json);
+        }
+        finally
+        {
+            _syncLock.Release();
+        }
+    }
+
+    public async Task RestoreBackupAsync(Stream backupStream, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(backupStream);
+        EnsureUnlocked();
+
+        using var reader = new StreamReader(backupStream, Encoding.UTF8, leaveOpen: true);
+        var json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        var backup = JsonSerializer.Deserialize<Models.AuthenticatorBackupDto>(json, _jsonOptions)
+                     ?? throw new InvalidOperationException("Ungültiges Backup-Format.");
+
+        var entries = backup.Entries.Select(dto => dto.ToModel()).ToList();
+
+        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _syncLock.Release();
+        }
+
+        EntriesChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public async Task<List<TotpEntry>> GetEntriesForExportAsync(CancellationToken cancellationToken = default)
+    {
+        EnsureUnlocked();
+
+        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _syncLock.Release();
+        }
+    }
+
+    public async Task<Services.Vault.MergeResult<TotpEntry>> MergeEntriesAsync(
+        IList<TotpEntry> incomingEntries,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureUnlocked();
+
+        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var existingEntries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+            var mergeService = new Services.Vault.VaultMergeService();
+            var result = mergeService.MergeEntries(existingEntries, incomingEntries);
+
+            await SaveEntriesInternalAsync(result.MergedEntries, cancellationToken).ConfigureAwait(false);
+            return result;
+        }
+        finally
+        {
+            _syncLock.Release();
+        }
+    }
+
+    public async Task RestoreBackupWithMergeAsync(Stream backupStream, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(backupStream);
+        EnsureUnlocked();
+
+        using var reader = new StreamReader(backupStream, Encoding.UTF8, leaveOpen: true);
+        var json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        var backup = JsonSerializer.Deserialize<Models.AuthenticatorBackupDto>(json, _jsonOptions)
+                     ?? throw new InvalidOperationException("Ungültiges Backup-Format.");
+
+        var incomingEntries = backup.Entries.Select(dto => dto.ToModel()).ToList();
+        await MergeEntriesAsync(incomingEntries, cancellationToken).ConfigureAwait(false);
+
+        EntriesChanged?.Invoke(this, EventArgs.Empty);
+    }
 }
 
 public record TotpCode(string Code, int RemainingSeconds, int Period);
