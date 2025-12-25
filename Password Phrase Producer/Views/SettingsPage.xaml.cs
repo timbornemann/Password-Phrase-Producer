@@ -136,11 +136,28 @@ public partial class SettingsPage : ContentPage
         };
     }
 
-    protected override async void OnAppearing()
+    protected override void OnAppearing()
     {
         base.OnAppearing();
         _viewModel.Activate();
-        await _viewModel.InitializeAsync();
+        
+        // Run initialization in background to avoid blocking UI thread
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _viewModel.InitializeAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                // Log error and show user-friendly message
+                System.Diagnostics.Debug.WriteLine($"Error initializing settings page: {ex}");
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    await DisplayAlert("Fehler", "Die Einstellungen konnten nicht geladen werden. Bitte versuche es erneut.", "OK");
+                }).ConfigureAwait(false);
+            }
+        });
     }
 
     protected override void OnDisappearing()

@@ -26,6 +26,8 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     private readonly Command _changeDataVaultPasswordCommand;
     private readonly Command _changeAuthenticatorPasswordCommand;
     private bool _isListening;
+    private bool _hasVaultMasterPassword;
+    private bool _hasDataVaultMasterPassword;
 
     private bool _isVaultUnlocked;
     private bool _canUseBiometric;
@@ -393,17 +395,44 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        await RefreshVaultStateAsync(cancellationToken).ConfigureAwait(false);
-        await RefreshDataVaultStateAsync(cancellationToken).ConfigureAwait(false);
-        await RefreshAuthenticatorStateAsync(cancellationToken).ConfigureAwait(false);
+        // Load master password states and biometric availability in parallel to speed up initialization
+        var vaultPasswordTask = _vaultService.HasMasterPasswordAsync(cancellationToken);
+        var dataVaultPasswordTask = _dataVaultService.HasMasterPasswordAsync(cancellationToken);
+        var biometricAvailableTask = _biometricAuthenticationService.IsAvailableAsync(cancellationToken);
+        
+        // Wait for all parallel operations
+        await Task.WhenAll(vaultPasswordTask, dataVaultPasswordTask, biometricAvailableTask).ConfigureAwait(false);
+        
+        _hasVaultMasterPassword = await vaultPasswordTask.ConfigureAwait(false);
+        _hasDataVaultMasterPassword = await dataVaultPasswordTask.ConfigureAwait(false);
+        
+        // Now refresh states in parallel (they will check biometric again, but that's okay for correctness)
+        await Task.WhenAll(
+            RefreshVaultStateAsync(cancellationToken),
+            RefreshDataVaultStateAsync(cancellationToken),
+            RefreshAuthenticatorStateAsync(cancellationToken)
+        ).ConfigureAwait(false);
     }
 
     public async Task RefreshVaultStateAsync(CancellationToken cancellationToken = default)
     {
         var unlocked = _vaultService.IsUnlocked;
-        var canUseBiometric = await _biometricAuthenticationService.IsAvailableAsync(cancellationToken).ConfigureAwait(false);
-        var biometricConfigured = canUseBiometric && await _vaultService.HasBiometricKeyAsync(cancellationToken).ConfigureAwait(false);
+        
+        // Check biometric availability and key in parallel
+        var biometricAvailableTask = _biometricAuthenticationService.IsAvailableAsync(cancellationToken);
+        var biometricKeyTask = _vaultService.HasBiometricKeyAsync(cancellationToken);
+        var masterPasswordTask = _vaultService.HasMasterPasswordAsync(cancellationToken);
+        
+        await Task.WhenAll(biometricAvailableTask, biometricKeyTask, masterPasswordTask).ConfigureAwait(false);
+        
+        var canUseBiometric = await biometricAvailableTask.ConfigureAwait(false);
+        var hasBiometricKey = await biometricKeyTask.ConfigureAwait(false);
+        var biometricConfigured = canUseBiometric && hasBiometricKey;
+        
+        // Update master password state
+        _hasVaultMasterPassword = await masterPasswordTask.ConfigureAwait(false);
 
+        // Always use MainThread.InvokeOnMainThreadAsync to ensure we're on the UI thread
         await MainThread.InvokeOnMainThreadAsync(() =>
         {
             IsVaultUnlocked = unlocked;
@@ -424,9 +453,22 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     public async Task RefreshDataVaultStateAsync(CancellationToken cancellationToken = default)
     {
         var unlocked = _dataVaultService.IsUnlocked;
-        var canUseBiometric = await _biometricAuthenticationService.IsAvailableAsync(cancellationToken).ConfigureAwait(false);
-        var biometricConfigured = canUseBiometric && await _dataVaultService.HasBiometricKeyAsync(cancellationToken).ConfigureAwait(false);
+        
+        // Check biometric availability and key in parallel
+        var biometricAvailableTask = _biometricAuthenticationService.IsAvailableAsync(cancellationToken);
+        var biometricKeyTask = _dataVaultService.HasBiometricKeyAsync(cancellationToken);
+        var masterPasswordTask = _dataVaultService.HasMasterPasswordAsync(cancellationToken);
+        
+        await Task.WhenAll(biometricAvailableTask, biometricKeyTask, masterPasswordTask).ConfigureAwait(false);
+        
+        var canUseBiometric = await biometricAvailableTask.ConfigureAwait(false);
+        var hasBiometricKey = await biometricKeyTask.ConfigureAwait(false);
+        var biometricConfigured = canUseBiometric && hasBiometricKey;
+        
+        // Update master password state
+        _hasDataVaultMasterPassword = await masterPasswordTask.ConfigureAwait(false);
 
+        // Always use MainThread.InvokeOnMainThreadAsync to ensure we're on the UI thread
         await MainThread.InvokeOnMainThreadAsync(() =>
         {
             IsDataVaultUnlocked = unlocked;
@@ -447,6 +489,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     public async Task RefreshAuthenticatorStateAsync(CancellationToken cancellationToken = default)
     {
         // No async work today, but keep signature for symmetry/future changes
+        // Always use MainThread.InvokeOnMainThreadAsync to ensure we're on the UI thread
         await MainThread.InvokeOnMainThreadAsync(() =>
         {
             HasAuthenticatorPassword = _totpEncryptionService.HasPassword;
@@ -507,8 +550,8 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
 
     public bool IsAuthenticatorUnlocked => _totpEncryptionService.IsUnlocked;
 
-    public bool IsPasswordVaultConfigured => _vaultService.IsUnlocked || HasVaultMasterPassword();
-    public bool IsDataVaultConfigured => _dataVaultService.IsUnlocked || HasDataVaultMasterPassword();
+    public bool IsPasswordVaultConfigured => _vaultService.IsUnlocked || _hasVaultMasterPassword;
+    public bool IsDataVaultConfigured => _dataVaultService.IsUnlocked || _hasDataVaultMasterPassword;
 
     public void LockVault()
     {
@@ -635,15 +678,6 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         }
     }
 
-    private bool HasVaultMasterPassword()
-    {
-        return _vaultService.HasMasterPasswordAsync().GetAwaiter().GetResult();
-    }
-
-    private bool HasDataVaultMasterPassword()
-    {
-        return _dataVaultService.HasMasterPasswordAsync().GetAwaiter().GetResult();
-    }
 
     private async Task ChangeMasterPasswordAsync()
     {
@@ -916,6 +950,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     {
         await _vaultService.ResetVaultAsync(cancellationToken).ConfigureAwait(false);
         LockVault();
+        _hasVaultMasterPassword = false;
         await RefreshVaultStateAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -923,6 +958,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     {
         await _dataVaultService.ResetVaultAsync(cancellationToken).ConfigureAwait(false);
         LockDataVault();
+        _hasDataVaultMasterPassword = false;
         await RefreshDataVaultStateAsync(cancellationToken).ConfigureAwait(false);
     }
 

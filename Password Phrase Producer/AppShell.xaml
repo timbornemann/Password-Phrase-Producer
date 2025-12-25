@@ -168,14 +168,7 @@
     </FlyoutItem>
 
     <!-- Einstellungen (versteckt im Flyout, Navigation über Footer) -->
-    <FlyoutItem Title="Einstellungen"
-                Route="settings"
-                FlyoutIcon="S"
-                FlyoutItemIsVisible="False">
-        <ShellContent
-            Title="Einstellungen"
-            ContentTemplate="{DataTemplate views:SettingsPage}" />
-    </FlyoutItem>
+    <!-- Removed - using routing instead -->
 
 
 </Shell>

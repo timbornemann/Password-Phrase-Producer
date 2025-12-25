@@ -489,7 +489,7 @@ public partial class VaultPage : ContentPage
             return;
         }
 
-        await Shell.Current.GoToAsync("//settings");
+        await Shell.Current.GoToAsync("//home/settings");
     }
 
     private async void OnCategoryFilterTapped(object? sender, TappedEventArgs e)

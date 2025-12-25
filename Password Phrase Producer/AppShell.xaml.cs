@@ -12,6 +12,9 @@ public partial class AppShell : Shell
         
         // Register route for Generation Methods Page
         Routing.RegisterRoute("generation", typeof(GenerationMethodsPage));
+        
+        // Register settings route explicitly (not using DataTemplate)
+        Routing.RegisterRoute("settings", typeof(SettingsPage));
 
         // Hide default flyout icon on all platforms - we use custom menu buttons
         SetValue(Shell.FlyoutIconProperty, null);
@@ -48,6 +51,6 @@ public partial class AppShell : Shell
     {
         // Close flyout and navigate to settings
         FlyoutIsPresented = false;
-        await GoToAsync("//settings");
+        await GoToAsync("//home/settings");
     }
 }
