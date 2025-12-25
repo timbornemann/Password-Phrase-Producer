@@ -634,14 +634,6 @@ public class DataVaultService
             UpdateStoredEntryCount(count);
             return count;
         }
-        finally
-        {
-            if (decrypted is not null)
-            {
-                // Sensible Daten aus dem Speicher löschen
-                Array.Clear(decrypted);
-            }
-        }
         catch (InvalidOperationException)
         {
             return GetStoredEntryCount();
@@ -653,6 +645,14 @@ public class DataVaultService
         catch
         {
             return GetStoredEntryCount();
+        }
+        finally
+        {
+            if (decrypted is not null)
+            {
+                // Sensible Daten aus dem Speicher löschen
+                Array.Clear(decrypted);
+            }
         }
     }
 
@@ -865,6 +865,37 @@ public class DataVaultService
         catch
         {
             throw new InvalidOperationException("Merge fehlgeschlagen. Die Passwörter der Backups müssen übereinstimmen.");
+        }
+
+        MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
+    }
+
+    public async Task ResetVaultAsync(CancellationToken cancellationToken = default)
+    {
+        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            // Lock the vault
+            Lock();
+
+            // Delete vault file
+            if (File.Exists(_vaultFilePath))
+            {
+                File.Delete(_vaultFilePath);
+            }
+
+            // Clear SecureStorage entries
+            SecureStorage.Default.Remove(PasswordSaltStorageKey);
+            SecureStorage.Default.Remove(PasswordVerifierStorageKey);
+            SecureStorage.Default.Remove(PasswordIterationsStorageKey);
+            SecureStorage.Default.Remove(BiometricKeyStorageKey);
+
+            // Clear entry count
+            ClearStoredEntryCount();
+        }
+        finally
+        {
+            _syncLock.Release();
         }
 
         MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);

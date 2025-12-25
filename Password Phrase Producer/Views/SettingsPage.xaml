@@ -229,6 +229,16 @@
                                 WidthRequest="24"
                                 HeightRequest="24" />
                         </Grid>
+
+                        <Button
+                            Text="Passwort-Tresor zurücksetzen"
+                            Clicked="OnResetPasswordVaultClicked"
+                            BackgroundColor="#FF4444"
+                            TextColor="White"
+                            FontSize="13"
+                            CornerRadius="12"
+                            Padding="12,8"
+                            Margin="0,8,0,0" />
                     </VerticalStackLayout>
                 </Border>
 
@@ -329,6 +339,16 @@
                                 WidthRequest="24"
                                 HeightRequest="24" />
                         </Grid>
+
+                        <Button
+                            Text="Datentresor zurücksetzen"
+                            Clicked="OnResetDataVaultClicked"
+                            BackgroundColor="#FF4444"
+                            TextColor="White"
+                            FontSize="13"
+                            CornerRadius="12"
+                            Padding="12,8"
+                            Margin="0,8,0,0" />
                     </VerticalStackLayout>
                 </Border>
 
@@ -427,6 +447,16 @@
                                 WidthRequest="24"
                                 HeightRequest="24" />
                         </Grid>
+
+                        <Button
+                            Text="2FA-Tresor zurücksetzen"
+                            Clicked="OnResetAuthenticatorClicked"
+                            BackgroundColor="#FF4444"
+                            TextColor="White"
+                            FontSize="13"
+                            CornerRadius="12"
+                            Padding="12,8"
+                            Margin="0,8,0,0" />
                     </VerticalStackLayout>
                 </Border>
             </VerticalStackLayout>

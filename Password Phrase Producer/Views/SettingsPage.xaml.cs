@@ -569,4 +569,64 @@ public partial class SettingsPage : ContentPage
             throw;
         }
     }
+
+    private async void OnResetPasswordVaultClicked(object? sender, EventArgs e)
+    {
+        var confirmed = await DisplayAlert(
+            "Passwort-Tresor zurücksetzen",
+            "Möchtest du den Passwort-Tresor wirklich zurücksetzen? Alle gespeicherten Passwörter und das Master-Passwort werden unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+            "Zurücksetzen",
+            "Abbrechen");
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        await ExecuteSettingsActionAsync(async () =>
+        {
+            await _viewModel.ResetPasswordVaultAsync();
+            await DisplayAlert("Erfolg", "Der Passwort-Tresor wurde erfolgreich zurückgesetzt.", "OK");
+        });
+    }
+
+    private async void OnResetDataVaultClicked(object? sender, EventArgs e)
+    {
+        var confirmed = await DisplayAlert(
+            "Datentresor zurücksetzen",
+            "Möchtest du den Datentresor wirklich zurücksetzen? Alle gespeicherten Daten und das Master-Passwort werden unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+            "Zurücksetzen",
+            "Abbrechen");
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        await ExecuteSettingsActionAsync(async () =>
+        {
+            await _viewModel.ResetDataVaultAsync();
+            await DisplayAlert("Erfolg", "Der Datentresor wurde erfolgreich zurückgesetzt.", "OK");
+        });
+    }
+
+    private async void OnResetAuthenticatorClicked(object? sender, EventArgs e)
+    {
+        var confirmed = await DisplayAlert(
+            "2FA-Tresor zurücksetzen",
+            "Möchtest du den 2FA-Tresor wirklich zurücksetzen? Alle gespeicherten 2FA-Codes und das Authenticator-Passwort werden unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+            "Zurücksetzen",
+            "Abbrechen");
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        await ExecuteSettingsActionAsync(async () =>
+        {
+            await _viewModel.ResetAuthenticatorAsync();
+            await DisplayAlert("Erfolg", "Der 2FA-Tresor wurde erfolgreich zurückgesetzt.", "OK");
+        });
+    }
 }

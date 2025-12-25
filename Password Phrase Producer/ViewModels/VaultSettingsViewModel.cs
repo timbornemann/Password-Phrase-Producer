@@ -911,4 +911,25 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    public async Task ResetPasswordVaultAsync(CancellationToken cancellationToken = default)
+    {
+        await _vaultService.ResetVaultAsync(cancellationToken).ConfigureAwait(false);
+        LockVault();
+        await RefreshVaultStateAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task ResetDataVaultAsync(CancellationToken cancellationToken = default)
+    {
+        await _dataVaultService.ResetVaultAsync(cancellationToken).ConfigureAwait(false);
+        LockDataVault();
+        await RefreshDataVaultStateAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task ResetAuthenticatorAsync(CancellationToken cancellationToken = default)
+    {
+        await _totpService.ResetVaultAsync(cancellationToken).ConfigureAwait(false);
+        LockAuthenticator();
+        await RefreshAuthenticatorStateAsync(cancellationToken).ConfigureAwait(false);
+    }
 }

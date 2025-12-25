@@ -647,6 +647,28 @@ public class TotpService
 
         EntriesChanged?.Invoke(this, EventArgs.Empty);
     }
+
+    public async Task ResetVaultAsync(CancellationToken cancellationToken = default)
+    {
+        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            // Delete TOTP data file
+            if (File.Exists(_totpFilePath))
+            {
+                File.Delete(_totpFilePath);
+            }
+
+            // Reset encryption service (clears password and key file)
+            _encryptionService.Reset();
+        }
+        finally
+        {
+            _syncLock.Release();
+        }
+
+        EntriesChanged?.Invoke(this, EventArgs.Empty);
+    }
 }
 
 public record TotpCode(string Code, int RemainingSeconds, int Period);

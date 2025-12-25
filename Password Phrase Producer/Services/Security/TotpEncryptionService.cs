@@ -1,5 +1,7 @@
+using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.Maui.Storage;
 
 namespace Password_Phrase_Producer.Services.Security;
 
@@ -11,6 +13,11 @@ public class TotpEncryptionService
     private const string KeyFileName = "totp.key";
     // Backward compatible key name (previously "PIN")
     private const string PasswordPrefsKey = "totp_pin_hash";
+    private const string PasswordSaltStorageKey = "TotpPasswordSalt";
+    private const string PasswordVerifierStorageKey = "TotpPasswordVerifier";
+    private const string PasswordIterationsStorageKey = "TotpPasswordIterations";
+    private const int SaltSizeBytes = 16;
+    private const int Pbkdf2Iterations = 200_000;
     private readonly string _keyFilePath;
     private byte[]? _unlockedKey;
     private bool _isUnlocked;
@@ -20,7 +27,20 @@ public class TotpEncryptionService
     /// <summary>
     /// True when a password (previously called PIN) has been configured.
     /// </summary>
-    public bool HasPassword => Preferences.ContainsKey(PasswordPrefsKey);
+    public bool HasPassword
+    {
+        get
+        {
+            // Check new format first (SecureStorage)
+            var salt = SecureStorage.Default.GetAsync(PasswordSaltStorageKey).GetAwaiter().GetResult();
+            if (!string.IsNullOrEmpty(salt))
+            {
+                return true;
+            }
+            // Fallback to old format (Preferences)
+            return Preferences.ContainsKey(PasswordPrefsKey);
+        }
+    }
 
     // Backward compatible alias for older callers
     public bool HasPin => HasPassword;
@@ -47,21 +67,31 @@ public class TotpEncryptionService
             rng.GetBytes(masterKey);
         }
 
-        // Encrypt the master key with password-derived key
-        var passwordDerivedKey = DeriveKeyFromPassword(password);
-        var encryptedMasterKey = EncryptWithKey(masterKey, passwordDerivedKey);
+        // Generate a unique salt for this user
+        var salt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
+        var passwordDerivedKey = DeriveKeyFromPassword(password, salt);
+        try
+        {
+            var encryptedMasterKey = EncryptWithKey(masterKey, passwordDerivedKey);
+            var verifier = CreateVerifier(passwordDerivedKey);
 
-        // Save encrypted master key to file
-        Directory.CreateDirectory(Path.GetDirectoryName(_keyFilePath)!);
-        await File.WriteAllBytesAsync(_keyFilePath, encryptedMasterKey);
+            // Save encrypted master key to file
+            Directory.CreateDirectory(Path.GetDirectoryName(_keyFilePath)!);
+            await File.WriteAllBytesAsync(_keyFilePath, encryptedMasterKey);
 
-        // Store password hash for verification
-        var passwordHash = HashPassword(password);
-        Preferences.Set(PasswordPrefsKey, passwordHash);
+            // Store password metadata (salt, verifier, iterations) in SecureStorage
+            await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, Convert.ToBase64String(salt));
+            await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, Convert.ToBase64String(verifier));
+            await SecureStorage.Default.SetAsync(PasswordIterationsStorageKey, Pbkdf2Iterations.ToString());
 
-        // Unlock immediately
-        _unlockedKey = masterKey;
-        _isUnlocked = true;
+            // Unlock immediately
+            _unlockedKey = masterKey;
+            _isUnlocked = true;
+        }
+        finally
+        {
+            Array.Clear(passwordDerivedKey);
+        }
     }
 
     /// <summary>
@@ -74,23 +104,84 @@ public class TotpEncryptionService
             return false;
         }
 
-        // Verify password hash
-        var storedHash = Preferences.Get(PasswordPrefsKey, string.Empty);
-        var passwordHash = HashPassword(password);
+        // Get password metadata
+        var saltBase64 = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey);
+        var verifierBase64 = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey);
+        var iterationsStr = await SecureStorage.Default.GetAsync(PasswordIterationsStorageKey);
 
+        // Fallback to old format if metadata not found (backward compatibility)
+        if (string.IsNullOrEmpty(saltBase64) || string.IsNullOrEmpty(verifierBase64))
+        {
+            return await UnlockWithPasswordLegacyAsync(password);
+        }
+
+        if (!int.TryParse(iterationsStr, out var iterations) || iterations <= 0)
+        {
+            iterations = Pbkdf2Iterations;
+        }
+
+        var salt = Convert.FromBase64String(saltBase64);
+        var passwordDerivedKey = DeriveKeyFromPassword(password, salt, iterations);
+
+        try
+        {
+            // Verify password using verifier
+            var expectedVerifier = Convert.FromBase64String(verifierBase64);
+            var actualVerifier = CreateVerifier(passwordDerivedKey);
+
+            if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
+            {
+                return false; // Wrong password
+            }
+
+            // Load and decrypt master key
+            if (!File.Exists(_keyFilePath))
+            {
+                return false;
+            }
+
+            var encryptedMasterKey = await File.ReadAllBytesAsync(_keyFilePath);
+            _unlockedKey = DecryptWithKey(encryptedMasterKey, passwordDerivedKey);
+            _isUnlocked = true;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+        finally
+        {
+            // Passwort-abgeleiteter Schlüssel aus dem Speicher löschen
+            Array.Clear(passwordDerivedKey);
+        }
+    }
+
+    /// <summary>
+    /// Legacy unlock method for backward compatibility with old format
+    /// </summary>
+    private async Task<bool> UnlockWithPasswordLegacyAsync(string password)
+    {
+        // Verify password hash (old format)
+        var storedHash = Preferences.Get(PasswordPrefsKey, string.Empty);
+        if (string.IsNullOrEmpty(storedHash))
+        {
+            return false;
+        }
+
+        var passwordHash = HashPasswordLegacy(password);
         if (storedHash != passwordHash)
         {
             return false; // Wrong password
         }
 
-        // Load and decrypt master key
+        // Load and decrypt master key with legacy fixed salt
         if (!File.Exists(_keyFilePath))
         {
             return false;
         }
 
         var encryptedMasterKey = await File.ReadAllBytesAsync(_keyFilePath);
-        var passwordDerivedKey = DeriveKeyFromPassword(password);
+        var passwordDerivedKey = DeriveKeyFromPasswordLegacy(password);
 
         try
         {
@@ -104,7 +195,6 @@ public class TotpEncryptionService
         }
         finally
         {
-            // Passwort-abgeleiteter Schlüssel aus dem Speicher löschen
             Array.Clear(passwordDerivedKey);
         }
     }
@@ -129,17 +219,23 @@ public class TotpEncryptionService
             throw new ArgumentException("Passwort darf nicht leer sein.", nameof(newPassword));
         }
 
-        // Re-encrypt master key with new password
-        var newPasswordDerivedKey = DeriveKeyFromPassword(newPassword);
+        // Generate new salt for the new password
+        var newSalt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
+        var newPasswordDerivedKey = DeriveKeyFromPassword(newPassword, newSalt);
         try
         {
             var encryptedMasterKey = EncryptWithKey(_unlockedKey, newPasswordDerivedKey);
+            var newVerifier = CreateVerifier(newPasswordDerivedKey);
 
             await File.WriteAllBytesAsync(_keyFilePath, encryptedMasterKey);
 
-            // Update password hash
-            var newPasswordHash = HashPassword(newPassword);
-            Preferences.Set(PasswordPrefsKey, newPasswordHash);
+            // Update password metadata
+            await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, Convert.ToBase64String(newSalt));
+            await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, Convert.ToBase64String(newVerifier));
+            await SecureStorage.Default.SetAsync(PasswordIterationsStorageKey, Pbkdf2Iterations.ToString());
+
+            // Remove old password hash if it exists
+            Preferences.Remove(PasswordPrefsKey);
         }
         finally
         {
@@ -164,6 +260,27 @@ public class TotpEncryptionService
             _unlockedKey = null;
         }
         _isUnlocked = false;
+    }
+
+    /// <summary>
+    /// Reset the service by deleting all stored data and passwords
+    /// </summary>
+    public void Reset()
+    {
+        // Lock first
+        Lock();
+
+        // Delete key file
+        if (File.Exists(_keyFilePath))
+        {
+            File.Delete(_keyFilePath);
+        }
+
+        // Clear password preferences and metadata
+        Preferences.Remove(PasswordPrefsKey);
+        SecureStorage.Default.Remove(PasswordSaltStorageKey);
+        SecureStorage.Default.Remove(PasswordVerifierStorageKey);
+        SecureStorage.Default.Remove(PasswordIterationsStorageKey);
     }
 
     /// <summary>
@@ -198,20 +315,41 @@ public class TotpEncryptionService
 
     #region Private Helpers
 
-    private static byte[] DeriveKeyFromPassword(string password)
+    /// <summary>
+    /// Derive key from password using PBKDF2 with user-specific salt
+    /// </summary>
+    private static byte[] DeriveKeyFromPassword(string password, byte[] salt, int iterations = Pbkdf2Iterations)
     {
-        // Use PBKDF2 to derive a key from password
-        const int iterations = 100000;
         const int keySize = 32; // 256 bits
-
-        // Use a fixed salt (in production, should be random per setup, but for simplicity)
-        var salt = Encoding.UTF8.GetBytes("TotpAuthenticatorSalt_v1");
-
         using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, iterations, HashAlgorithmName.SHA256);
         return pbkdf2.GetBytes(keySize);
     }
 
-    private static string HashPassword(string password)
+    /// <summary>
+    /// Legacy key derivation with fixed salt (for backward compatibility)
+    /// </summary>
+    private static byte[] DeriveKeyFromPasswordLegacy(string password)
+    {
+        const int iterations = 100000;
+        const int keySize = 32;
+        var salt = Encoding.UTF8.GetBytes("TotpAuthenticatorSalt_v1");
+        using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, iterations, HashAlgorithmName.SHA256);
+        return pbkdf2.GetBytes(keySize);
+    }
+
+    /// <summary>
+    /// Create a verifier hash from a key (for password verification)
+    /// </summary>
+    private static byte[] CreateVerifier(byte[] key)
+    {
+        using var sha = SHA256.Create();
+        return sha.ComputeHash(key);
+    }
+
+    /// <summary>
+    /// Legacy password hashing (for backward compatibility only)
+    /// </summary>
+    private static string HashPasswordLegacy(string password)
     {
         using var sha256 = SHA256.Create();
         var bytes = Encoding.UTF8.GetBytes(password);
