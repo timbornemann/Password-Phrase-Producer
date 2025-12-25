@@ -463,29 +463,17 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         }).ConfigureAwait(false);
     }
 
-    public Task<byte[]> CreateBackupAsync(CancellationToken cancellationToken = default)
-        => _vaultService.CreateBackupAsync(cancellationToken);
+    public Task<byte[]> ExportWithFilePasswordAsync(string filePassword, CancellationToken cancellationToken = default)
+        => _vaultService.ExportWithFilePasswordAsync(filePassword, cancellationToken);
 
-    public Task RestoreBackupAsync(Stream backupStream, CancellationToken cancellationToken = default)
-        => _vaultService.RestoreBackupAsync(backupStream, cancellationToken);
+    public Task ImportWithFilePasswordAsync(Stream stream, string filePassword, CancellationToken cancellationToken = default)
+        => _vaultService.ImportWithFilePasswordAsync(stream, filePassword, cancellationToken);
 
-    public Task<byte[]> ExportEncryptedVaultAsync(CancellationToken cancellationToken = default)
-        => _vaultService.ExportEncryptedVaultAsync(cancellationToken);
+    public Task<byte[]> ExportDataVaultWithFilePasswordAsync(string filePassword, CancellationToken cancellationToken = default)
+        => _dataVaultService.ExportWithFilePasswordAsync(filePassword, cancellationToken);
 
-    public Task ImportEncryptedVaultAsync(Stream encryptedStream, CancellationToken cancellationToken = default)
-        => _vaultService.ImportEncryptedVaultAsync(encryptedStream, cancellationToken);
-
-    public Task<byte[]> CreateDataVaultBackupAsync(CancellationToken cancellationToken = default)
-        => _dataVaultService.CreateBackupAsync(cancellationToken);
-
-    public Task RestoreDataVaultBackupAsync(Stream backupStream, CancellationToken cancellationToken = default)
-        => _dataVaultService.RestoreBackupAsync(backupStream, cancellationToken);
-
-    public Task<byte[]> ExportEncryptedDataVaultAsync(CancellationToken cancellationToken = default)
-        => _dataVaultService.ExportEncryptedVaultAsync(cancellationToken);
-
-    public Task ImportEncryptedDataVaultAsync(Stream encryptedStream, CancellationToken cancellationToken = default)
-        => _dataVaultService.ImportEncryptedVaultAsync(encryptedStream, cancellationToken);
+    public Task ImportDataVaultWithFilePasswordAsync(Stream stream, string filePassword, CancellationToken cancellationToken = default)
+        => _dataVaultService.ImportWithFilePasswordAsync(stream, filePassword, cancellationToken);
 
     public async Task<bool> UnlockVaultWithPasswordAsync(string password, CancellationToken cancellationToken = default)
     {
@@ -567,31 +555,33 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         WriteIndented = true
     };
 
-    public async Task<byte[]> CreateFullBackupAsync(CancellationToken cancellationToken = default)
+    public async Task<byte[]> CreateFullBackupAsync(string filePassword, CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);
+
         var backup = new FullBackupDto
         {
-            Version = 1,
+            Version = 2,
             CreatedAt = DateTimeOffset.UtcNow
         };
 
         // Export Password Vault if unlocked
         if (_vaultService.IsUnlocked)
         {
-            var vaultBackupBytes = await _vaultService.CreateBackupAsync(cancellationToken).ConfigureAwait(false);
+            var vaultBackupBytes = await _vaultService.ExportWithFilePasswordAsync(filePassword, cancellationToken).ConfigureAwait(false);
             var vaultBackupJson = Encoding.UTF8.GetString(vaultBackupBytes);
-            backup.PasswordVault = JsonSerializer.Deserialize<PasswordVaultBackupDto>(vaultBackupJson, _jsonOptions);
+            backup.PasswordVault = JsonSerializer.Deserialize<PortableBackupDto>(vaultBackupJson, _jsonOptions);
         }
 
         // Export Data Vault if unlocked
         if (_dataVaultService.IsUnlocked)
         {
-            var dataVaultBackupBytes = await _dataVaultService.CreateBackupAsync(cancellationToken).ConfigureAwait(false);
+            var dataVaultBackupBytes = await _dataVaultService.ExportWithFilePasswordAsync(filePassword, cancellationToken).ConfigureAwait(false);
             var dataVaultBackupJson = Encoding.UTF8.GetString(dataVaultBackupBytes);
-            backup.DataVault = JsonSerializer.Deserialize<PasswordVaultBackupDto>(dataVaultBackupJson, _jsonOptions);
+            backup.DataVault = JsonSerializer.Deserialize<PortableBackupDto>(dataVaultBackupJson, _jsonOptions);
         }
 
-        // Export Authenticator if unlocked
+        // Export Authenticator if unlocked (still uses old format for now)
         if (_totpEncryptionService.IsUnlocked)
         {
             var authBackupBytes = await _totpService.CreateBackupAsync(cancellationToken).ConfigureAwait(false);
@@ -603,9 +593,10 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         return Encoding.UTF8.GetBytes(json);
     }
 
-    public async Task RestoreFullBackupAsync(Stream backupStream, bool useMerge = false, CancellationToken cancellationToken = default)
+    public async Task RestoreFullBackupAsync(Stream backupStream, string filePassword, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(backupStream);
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);
 
         using var reader = new StreamReader(backupStream, Encoding.UTF8, leaveOpen: true);
         var json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
@@ -617,14 +608,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         {
             var vaultJson = JsonSerializer.Serialize(backup.PasswordVault, _jsonOptions);
             using var vaultStream = new MemoryStream(Encoding.UTF8.GetBytes(vaultJson));
-            if (useMerge)
-            {
-                await _vaultService.RestoreBackupWithMergeAsync(vaultStream, cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                await _vaultService.RestoreBackupAsync(vaultStream, cancellationToken).ConfigureAwait(false);
-            }
+            await _vaultService.ImportWithFilePasswordAsync(vaultStream, filePassword, cancellationToken).ConfigureAwait(false);
         }
 
         // Restore Data Vault if present and unlocked
@@ -632,29 +616,15 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         {
             var dataVaultJson = JsonSerializer.Serialize(backup.DataVault, _jsonOptions);
             using var dataVaultStream = new MemoryStream(Encoding.UTF8.GetBytes(dataVaultJson));
-            if (useMerge)
-            {
-                await _dataVaultService.RestoreBackupWithMergeAsync(dataVaultStream, cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                await _dataVaultService.RestoreBackupAsync(dataVaultStream, cancellationToken).ConfigureAwait(false);
-            }
+            await _dataVaultService.ImportWithFilePasswordAsync(dataVaultStream, filePassword, cancellationToken).ConfigureAwait(false);
         }
 
-        // Restore Authenticator if present and unlocked
+        // Restore Authenticator if present and unlocked (still uses old format for now)
         if (backup.Authenticator is not null && _totpEncryptionService.IsUnlocked)
         {
             var authJson = JsonSerializer.Serialize(backup.Authenticator, _jsonOptions);
             using var authStream = new MemoryStream(Encoding.UTF8.GetBytes(authJson));
-            if (useMerge)
-            {
-                await _totpService.RestoreBackupWithMergeAsync(authStream, cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                await _totpService.RestoreBackupAsync(authStream, cancellationToken).ConfigureAwait(false);
-            }
+            await _totpService.RestoreBackupAsync(authStream, cancellationToken).ConfigureAwait(false);
         }
     }
 

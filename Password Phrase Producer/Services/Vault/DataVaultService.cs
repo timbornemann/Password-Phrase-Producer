@@ -296,32 +296,49 @@ public class DataVaultService
         MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
     }
 
-    public async Task<byte[]> CreateBackupAsync(CancellationToken cancellationToken = default)
+    public async Task<byte[]> ExportWithFilePasswordAsync(string filePassword, CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);
         EnsureUnlocked();
 
         await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var vaultFile = await ReadVaultFileAsync(cancellationToken).ConfigureAwait(false);
-            var encryptedPayload = vaultFile.Cipher;
-            var iterations = await GetStoredPbkdf2IterationsAsync().ConfigureAwait(false);
-            var salt = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false)
-                       ?? throw new InvalidOperationException("Kein Master-Passwort konfiguriert.");
-            var verifier = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey).ConfigureAwait(false)
-                          ?? throw new InvalidOperationException("Kein Master-Passwort konfiguriert.");
+            // 1. Klardaten auslesen
+            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+            var ordered = entries
+                .OrderBy(e => e.DisplayCategory, StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(e => e.Label, StringComparer.CurrentCultureIgnoreCase)
+                .Select(PasswordVaultEntryDto.FromModel)
+                .ToList();
 
-            var backup = new PasswordVaultBackupDto
+            var snapshot = new PasswordVaultSnapshotDto
             {
-                CipherText = Convert.ToBase64String(encryptedPayload),
-                PasswordSalt = salt,
-                PasswordVerifier = verifier,
-                Pbkdf2Iterations = iterations,
+                Entries = ordered,
+                ExportedAt = DateTimeOffset.UtcNow
+            };
+
+            var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
+            var plainBytes = Encoding.UTF8.GetBytes(json);
+
+            // 2. Mit Datei-Passwort verschlüsseln (neue Salt/Key für Export)
+            var salt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
+            var key = DeriveKey(filePassword, salt, Pbkdf2Iterations);
+            var encrypted = EncryptWithKey(plainBytes, key);
+            var verifier = CreateVerifier(key);
+            Array.Clear(key);
+
+            // 3. Format: { salt, verifier, iterations, cipherText }
+            var exportDto = new PortableBackupDto
+            {
+                Salt = Convert.ToBase64String(salt),
+                Verifier = Convert.ToBase64String(verifier),
+                Iterations = Pbkdf2Iterations,
+                CipherText = Convert.ToBase64String(encrypted),
                 CreatedAt = DateTimeOffset.UtcNow
             };
 
-            var json = JsonSerializer.Serialize(backup, _jsonOptions);
-            return Encoding.UTF8.GetBytes(json);
+            return Encoding.UTF8.GetBytes(JsonSerializer.Serialize(exportDto, _jsonOptions));
         }
         finally
         {
@@ -329,86 +346,58 @@ public class DataVaultService
         }
     }
 
-    public async Task RestoreBackupAsync(Stream backupStream, CancellationToken cancellationToken = default)
+    public async Task ImportWithFilePasswordAsync(Stream stream, string filePassword, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(backupStream);
+        ArgumentNullException.ThrowIfNull(stream);
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);
+        EnsureUnlocked();
 
-        using var reader = new StreamReader(backupStream, Encoding.UTF8, leaveOpen: true);
+        // 1. Datei lesen und parsen
+        using var reader = new StreamReader(stream, Encoding.UTF8, leaveOpen: true);
         var json = await reader.ReadToEndAsync().ConfigureAwait(false);
-        var dto = JsonSerializer.Deserialize<PasswordVaultBackupDto>(json, _jsonOptions)
-                  ?? throw new InvalidOperationException("Ungültiges Backup-Format.");
+        var dto = JsonSerializer.Deserialize<PortableBackupDto>(json, _jsonOptions)
+                  ?? throw new InvalidOperationException("Ungültiges Export-Format.");
 
-        var cipher = Convert.FromBase64String(dto.CipherText);
+        // 2. Mit Datei-Passwort entschlüsseln
+        var salt = Convert.FromBase64String(dto.Salt);
+        var key = DeriveKey(filePassword, salt, dto.Iterations);
 
-        var iterations = dto.Pbkdf2Iterations > 0 ? dto.Pbkdf2Iterations : Pbkdf2Iterations;
-        await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, dto.PasswordSalt).ConfigureAwait(false);
-        await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, dto.PasswordVerifier).ConfigureAwait(false);
-        await SetStoredPbkdf2IterationsAsync(iterations).ConfigureAwait(false);
-        SecureStorage.Default.Remove(BiometricKeyStorageKey);
-        _encryptionKey = null;
+        // Verifier prüfen
+        var expectedVerifier = Convert.FromBase64String(dto.Verifier);
+        var actualVerifier = CreateVerifier(key);
+        if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
+        {
+            Array.Clear(key);
+            throw new InvalidOperationException("Falsches Datei-Passwort.");
+        }
 
-        var vaultFile = await CreateVaultFileContentAsync(cipher, cancellationToken).ConfigureAwait(false);
+        var encrypted = Convert.FromBase64String(dto.CipherText);
+        var plainBytes = DecryptWithKey(encrypted, key);
+        Array.Clear(key);
+
+        // 3. Klardaten in Tresor einfügen
+        var snapshot = JsonSerializer.Deserialize<PasswordVaultSnapshotDto>(plainBytes, _jsonOptions)
+                      ?? throw new InvalidOperationException("Ungültiges Snapshot-Format.");
+        
+        if (snapshot.Entries is null)
+        {
+            return;
+        }
+
+        var entries = snapshot.Entries.Select(e => e.ToModel()).ToList();
 
         await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            await WriteVaultFileInternalAsync(vaultFile.RawContent, cancellationToken).ConfigureAwait(false);
+            await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
             _syncLock.Release();
         }
 
-        ClearStoredEntryCount();
-        MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
-    }
-
-    public async Task<byte[]> ExportEncryptedVaultAsync(CancellationToken cancellationToken = default)
-    {
-        EnsureUnlocked();
-
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            return await ReadEncryptedFileAsync(cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            _syncLock.Release();
-        }
-    }
-
-    public async Task ImportEncryptedVaultAsync(Stream encryptedStream, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(encryptedStream);
-        EnsureUnlocked();
-
-        using var memoryStream = new MemoryStream();
-        await encryptedStream.CopyToAsync(memoryStream, cancellationToken).ConfigureAwait(false);
-        var payload = memoryStream.ToArray();
-
-        var importedContent = ParseVaultFile(payload);
-
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            await WriteVaultFileInternalAsync(payload, cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            _syncLock.Release();
-        }
-
-        if (importedContent.Cipher.Length == 0)
-        {
-            UpdateStoredEntryCount(0);
-        }
-        else
-        {
-            _ = await TryGetEntryCountAsync(importedContent, cancellationToken).ConfigureAwait(false);
-        }
-
-        await UpdatePasswordMetadataAsync(importedContent).ConfigureAwait(false);
+        // 4. Tresor sperren
+        Lock();
         MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
     }
 

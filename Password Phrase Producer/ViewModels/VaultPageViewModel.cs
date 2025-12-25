@@ -283,17 +283,11 @@ public class VaultPageViewModel : INotifyPropertyChanged
         IsBiometricConfigured = EnableBiometric;
     }
 
-    public Task<byte[]> CreateBackupAsync(CancellationToken cancellationToken = default)
-        => _vaultService.CreateBackupAsync(cancellationToken);
+    public Task<byte[]> ExportWithFilePasswordAsync(string filePassword, CancellationToken cancellationToken = default)
+        => _vaultService.ExportWithFilePasswordAsync(filePassword, cancellationToken);
 
-    public Task RestoreBackupAsync(Stream backupStream, CancellationToken cancellationToken = default)
-        => _vaultService.RestoreBackupAsync(backupStream, cancellationToken);
-
-    public Task<byte[]> ExportEncryptedVaultAsync(CancellationToken cancellationToken = default)
-        => _vaultService.ExportEncryptedVaultAsync(cancellationToken);
-
-    public Task ImportEncryptedVaultAsync(Stream encryptedStream, CancellationToken cancellationToken = default)
-        => _vaultService.ImportEncryptedVaultAsync(encryptedStream, cancellationToken);
+    public Task ImportWithFilePasswordAsync(Stream stream, string filePassword, CancellationToken cancellationToken = default)
+        => _vaultService.ImportWithFilePasswordAsync(stream, filePassword, cancellationToken);
 
     public async Task EnsureAccessStateAsync(CancellationToken cancellationToken = default)
     {

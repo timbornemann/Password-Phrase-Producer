@@ -462,9 +462,20 @@ public partial class DataVaultPage : ContentPage
 
     private async Task ExportBackupAsync()
     {
-        var backupBytes = await _viewModel.CreateBackupAsync();
+        var filePassword = await DisplayPasswordPromptAsync(
+            "Export-Passwort",
+            "Gib ein Passwort zum Verschlüsseln der Export-Datei ein:",
+            "Export",
+            "Abbrechen");
+
+        if (string.IsNullOrEmpty(filePassword))
+        {
+            return;
+        }
+
+        var backupBytes = await _viewModel.ExportDataVaultWithFilePasswordAsync(filePassword);
         await using var stream = new MemoryStream(backupBytes);
-        var result = await FileSaver.Default.SaveAsync("vault-backup.json", stream, CancellationToken.None);
+        var result = await FileSaver.Default.SaveAsync("data-vault-export.json.enc", stream, CancellationToken.None);
         if (!result.IsSuccessful && result.Exception is not null)
         {
             throw new InvalidOperationException(result.Exception.Message, result.Exception);
@@ -475,7 +486,7 @@ public partial class DataVaultPage : ContentPage
     {
         var file = await FilePicker.Default.PickAsync(new PickOptions
         {
-            PickerTitle = "Backup auswählen"
+            PickerTitle = "Export-Datei auswählen"
         });
 
         if (file is null)
@@ -483,15 +494,37 @@ public partial class DataVaultPage : ContentPage
             return;
         }
 
+        var filePassword = await DisplayPasswordPromptAsync(
+            "Export-Passwort",
+            "Gib das Passwort der Export-Datei ein:",
+            "Import",
+            "Abbrechen");
+
+        if (string.IsNullOrEmpty(filePassword))
+        {
+            return;
+        }
+
         await using var stream = await file.OpenReadAsync();
-        await _viewModel.RestoreBackupAsync(stream);
+        await _viewModel.ImportDataVaultWithFilePasswordAsync(stream, filePassword);
     }
 
     private async Task ExportEncryptedAsync()
     {
-        var bytes = await _viewModel.ExportEncryptedVaultAsync();
+        var filePassword = await DisplayPasswordPromptAsync(
+            "Export-Passwort",
+            "Gib ein Passwort zum Verschlüsseln der Export-Datei ein:",
+            "Export",
+            "Abbrechen");
+
+        if (string.IsNullOrEmpty(filePassword))
+        {
+            return;
+        }
+
+        var bytes = await _viewModel.ExportDataVaultWithFilePasswordAsync(filePassword);
         await using var stream = new MemoryStream(bytes);
-        var result = await FileSaver.Default.SaveAsync("vault.json.enc", stream, CancellationToken.None);
+        var result = await FileSaver.Default.SaveAsync("data-vault-export.json.enc", stream, CancellationToken.None);
         if (!result.IsSuccessful && result.Exception is not null)
         {
             throw new InvalidOperationException(result.Exception.Message, result.Exception);
@@ -502,7 +535,7 @@ public partial class DataVaultPage : ContentPage
     {
         var file = await FilePicker.Default.PickAsync(new PickOptions
         {
-            PickerTitle = "Verschlüsselte Datentresordatei auswählen"
+            PickerTitle = "Export-Datei auswählen"
         });
 
         if (file is null)
@@ -510,8 +543,19 @@ public partial class DataVaultPage : ContentPage
             return;
         }
 
+        var filePassword = await DisplayPasswordPromptAsync(
+            "Export-Passwort",
+            "Gib das Passwort der Export-Datei ein:",
+            "Import",
+            "Abbrechen");
+
+        if (string.IsNullOrEmpty(filePassword))
+        {
+            return;
+        }
+
         await using var stream = await file.OpenReadAsync();
-        await _viewModel.ImportEncryptedVaultAsync(stream);
+        await _viewModel.ImportDataVaultWithFilePasswordAsync(stream, filePassword);
     }
 
     private async Task ChangeMasterPasswordAsync()

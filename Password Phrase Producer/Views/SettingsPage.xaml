@@ -149,12 +149,12 @@
                             FontAttributes="Bold"
                             TextColor="White" />
                         <Label
-                            Text="Exportiere verschlüsselte Passwort Tresordaten oder Backups und importiere vorhandene Dateien."
+                            Text="Exportiere verschlüsselte Passwort Tresordaten mit einem separaten Datei-Passwort und importiere vorhandene Dateien."
                             FontSize="12"
                             TextColor="#9EA3C4" />
                         <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,*" ColumnSpacing="10" RowSpacing="10">
                             <Button
-                                Text="Backup exportieren"
+                                Text="Tresor exportieren"
                                 Clicked="OnExportBackupClicked"
                                 BackgroundColor="#4A5CFF"
                                 TextColor="White"
@@ -163,7 +163,7 @@
                                 CornerRadius="10" />
                             <Button
                                 Grid.Column="1"
-                                Text="Backup importieren"
+                                Text="Tresor importieren"
                                 Clicked="OnImportBackupClicked"
                                 BackgroundColor="#1F2338"
                                 TextColor="White"
@@ -172,7 +172,7 @@
                                 CornerRadius="10" />
                             <Button
                                 Grid.Row="1"
-                                Text="Passwort Tresor exportieren"
+                                Text="Tresor exportieren (alt)"
                                 Clicked="OnExportEncryptedClicked"
                                 BackgroundColor="#4A5CFF"
                                 TextColor="White"
@@ -182,7 +182,7 @@
                             <Button
                                 Grid.Row="1"
                                 Grid.Column="1"
-                                Text="Passwort Tresor importieren"
+                                Text="Tresor importieren (alt)"
                                 Clicked="OnImportEncryptedClicked"
                                 BackgroundColor="#1F2338"
                                 TextColor="White"
@@ -210,12 +210,12 @@
                             FontAttributes="Bold"
                             TextColor="White" />
                         <Label
-                            Text="Verwalte Backups und verschlüsselte Datentresor-Dateien."
+                            Text="Exportiere verschlüsselte Datentresor-Dateien mit einem separaten Datei-Passwort und importiere vorhandene Dateien."
                             FontSize="12"
                             TextColor="#9EA3C4" />
                         <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,*" ColumnSpacing="10" RowSpacing="10">
                             <Button
-                                Text="Datentresor-Backup exportieren"
+                                Text="Datentresor exportieren"
                                 Clicked="OnExportDataVaultBackupClicked"
                                 BackgroundColor="#4A5CFF"
                                 TextColor="White"
@@ -224,7 +224,7 @@
                                 CornerRadius="10" />
                             <Button
                                 Grid.Column="1"
-                                Text="Datentresor-Backup importieren"
+                                Text="Datentresor importieren"
                                 Clicked="OnImportDataVaultBackupClicked"
                                 BackgroundColor="#1F2338"
                                 TextColor="White"
@@ -233,7 +233,7 @@
                                 CornerRadius="10" />
                             <Button
                                 Grid.Row="1"
-                                Text="Datentresor exportieren"
+                                Text="Datentresor exportieren (alt)"
                                 Clicked="OnExportDataVaultEncryptedClicked"
                                 BackgroundColor="#4A5CFF"
                                 TextColor="White"
@@ -243,7 +243,7 @@
                             <Button
                                 Grid.Row="1"
                                 Grid.Column="1"
-                                Text="Datentresor importieren"
+                                Text="Datentresor importieren (alt)"
                                 Clicked="OnImportDataVaultEncryptedClicked"
                                 BackgroundColor="#1F2338"
                                 TextColor="White"
