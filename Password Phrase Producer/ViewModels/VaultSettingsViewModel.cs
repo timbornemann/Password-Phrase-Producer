@@ -15,9 +15,11 @@ namespace Password_Phrase_Producer.ViewModels;
 public class VaultSettingsViewModel : INotifyPropertyChanged
 {
     private readonly PasswordVaultService _vaultService;
+    private readonly DataVaultService _dataVaultService;
     private readonly IBiometricAuthenticationService _biometricAuthenticationService;
     private readonly TotpEncryptionService _totpEncryptionService;
     private readonly Command _changePasswordCommand;
+    private readonly Command _changeDataVaultPasswordCommand;
     private readonly Command _changeAuthenticatorPasswordCommand;
     private bool _isListening;
 
@@ -31,6 +33,16 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     private string? _changePasswordSuccess;
     private bool _isPasswordChangeBusy;
 
+    private bool _isDataVaultUnlocked;
+    private bool _canUseDataVaultBiometric;
+    private bool _isDataVaultBiometricConfigured;
+    private bool _enableDataVaultBiometric;
+    private string _newDataVaultMasterPassword = string.Empty;
+    private string _confirmDataVaultMasterPassword = string.Empty;
+    private string? _changeDataVaultPasswordError;
+    private string? _changeDataVaultPasswordSuccess;
+    private bool _isDataVaultPasswordChangeBusy;
+
     private bool _hasAuthenticatorPassword;
     private string _currentAuthenticatorPassword = string.Empty;
     private string _newAuthenticatorPassword = string.Empty;
@@ -41,15 +53,20 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
 
     public VaultSettingsViewModel(
         PasswordVaultService vaultService,
+        DataVaultService dataVaultService,
         IBiometricAuthenticationService biometricAuthenticationService,
         TotpEncryptionService totpEncryptionService)
     {
         _vaultService = vaultService;
+        _dataVaultService = dataVaultService;
         _biometricAuthenticationService = biometricAuthenticationService;
         _totpEncryptionService = totpEncryptionService;
 
         _changePasswordCommand = new Command(async () => await ChangeMasterPasswordAsync(), () => !IsPasswordChangeBusy && IsVaultUnlocked);
         ChangePasswordCommand = _changePasswordCommand;
+
+        _changeDataVaultPasswordCommand = new Command(async () => await ChangeDataVaultPasswordAsync(), () => !IsDataVaultPasswordChangeBusy && IsDataVaultUnlocked);
+        ChangeDataVaultPasswordCommand = _changeDataVaultPasswordCommand;
 
         _changeAuthenticatorPasswordCommand = new Command(async () => await ChangeAuthenticatorPasswordAsync(), () => !IsAuthenticatorPasswordChangeBusy);
         ChangeAuthenticatorPasswordCommand = _changeAuthenticatorPasswordCommand;
@@ -58,6 +75,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public ICommand ChangePasswordCommand { get; }
+    public ICommand ChangeDataVaultPasswordCommand { get; }
     public ICommand ChangeAuthenticatorPasswordCommand { get; }
 
     public bool IsVaultUnlocked
@@ -148,6 +166,98 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             if (SetProperty(ref _isPasswordChangeBusy, value))
             {
                 UpdatePasswordCommandState();
+            }
+        }
+    }
+
+    public bool IsDataVaultUnlocked
+    {
+        get => _isDataVaultUnlocked;
+        private set
+        {
+            if (SetProperty(ref _isDataVaultUnlocked, value))
+            {
+                UpdateDataVaultPasswordCommandState();
+            }
+        }
+    }
+
+    public bool CanUseDataVaultBiometric
+    {
+        get => _canUseDataVaultBiometric;
+        private set
+        {
+            if (SetProperty(ref _canUseDataVaultBiometric, value))
+            {
+                UpdateDataVaultPasswordCommandState();
+            }
+        }
+    }
+
+    public bool IsDataVaultBiometricConfigured
+    {
+        get => _isDataVaultBiometricConfigured;
+        private set => SetProperty(ref _isDataVaultBiometricConfigured, value);
+    }
+
+    public bool EnableDataVaultBiometric
+    {
+        get => _enableDataVaultBiometric;
+        set
+        {
+            if (SetProperty(ref _enableDataVaultBiometric, value))
+            {
+                UpdateDataVaultPasswordCommandState();
+            }
+        }
+    }
+
+    public string NewDataVaultMasterPassword
+    {
+        get => _newDataVaultMasterPassword;
+        set
+        {
+            if (SetProperty(ref _newDataVaultMasterPassword, value))
+            {
+                ClearDataVaultPasswordFeedback();
+                UpdateDataVaultPasswordCommandState();
+            }
+        }
+    }
+
+    public string ConfirmDataVaultMasterPassword
+    {
+        get => _confirmDataVaultMasterPassword;
+        set
+        {
+            if (SetProperty(ref _confirmDataVaultMasterPassword, value))
+            {
+                ClearDataVaultPasswordFeedback();
+                UpdateDataVaultPasswordCommandState();
+            }
+        }
+    }
+
+    public string? ChangeDataVaultPasswordError
+    {
+        get => _changeDataVaultPasswordError;
+        private set => SetProperty(ref _changeDataVaultPasswordError, value);
+    }
+
+    public string? ChangeDataVaultPasswordSuccess
+    {
+        get => _changeDataVaultPasswordSuccess;
+        private set => SetProperty(ref _changeDataVaultPasswordSuccess, value);
+    }
+
+    public bool IsDataVaultPasswordChangeBusy
+    {
+        get => _isDataVaultPasswordChangeBusy;
+        private set
+        {
+            if (SetProperty(ref _isDataVaultPasswordChangeBusy, value))
+            {
+                UpdateDataVaultPasswordCommandState();
             }
         }
     }
@@ -250,6 +360,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         await RefreshVaultStateAsync(cancellationToken).ConfigureAwait(false);
+        await RefreshDataVaultStateAsync(cancellationToken).ConfigureAwait(false);
         await RefreshAuthenticatorStateAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -273,6 +384,29 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             }
 
             ClearPasswordFeedback();
+        }).ConfigureAwait(false);
+    }
+
+    public async Task RefreshDataVaultStateAsync(CancellationToken cancellationToken = default)
+    {
+        var unlocked = _dataVaultService.IsUnlocked;
+        var canUseBiometric = await _biometricAuthenticationService.IsAvailableAsync(cancellationToken).ConfigureAwait(false);
+        var biometricConfigured = canUseBiometric && await _dataVaultService.HasBiometricKeyAsync(cancellationToken).ConfigureAwait(false);
+
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            IsDataVaultUnlocked = unlocked;
+            CanUseDataVaultBiometric = canUseBiometric;
+            IsDataVaultBiometricConfigured = biometricConfigured;
+            EnableDataVaultBiometric = biometricConfigured;
+
+            if (!unlocked)
+            {
+                NewDataVaultMasterPassword = string.Empty;
+                ConfirmDataVaultMasterPassword = string.Empty;
+            }
+
+            ClearDataVaultPasswordFeedback();
         }).ConfigureAwait(false);
     }
 
@@ -306,6 +440,18 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
 
     public Task ImportEncryptedVaultAsync(Stream encryptedStream, CancellationToken cancellationToken = default)
         => _vaultService.ImportEncryptedVaultAsync(encryptedStream, cancellationToken);
+
+    public Task<byte[]> CreateDataVaultBackupAsync(CancellationToken cancellationToken = default)
+        => _dataVaultService.CreateBackupAsync(cancellationToken);
+
+    public Task RestoreDataVaultBackupAsync(Stream backupStream, CancellationToken cancellationToken = default)
+        => _dataVaultService.RestoreBackupAsync(backupStream, cancellationToken);
+
+    public Task<byte[]> ExportEncryptedDataVaultAsync(CancellationToken cancellationToken = default)
+        => _dataVaultService.ExportEncryptedVaultAsync(cancellationToken);
+
+    public Task ImportEncryptedDataVaultAsync(Stream encryptedStream, CancellationToken cancellationToken = default)
+        => _dataVaultService.ImportEncryptedVaultAsync(encryptedStream, cancellationToken);
 
     private async Task ChangeMasterPasswordAsync()
     {
@@ -424,6 +570,60 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         }
     }
 
+    private async Task ChangeDataVaultPasswordAsync()
+    {
+        if (IsDataVaultPasswordChangeBusy)
+        {
+            return;
+        }
+
+        try
+        {
+            IsDataVaultPasswordChangeBusy = true;
+            ClearDataVaultPasswordFeedback();
+
+            if (!IsDataVaultUnlocked)
+            {
+                ChangeDataVaultPasswordError = "Der Datentresor muss entsperrt sein, bevor du das Passwort ändern kannst.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(NewDataVaultMasterPassword))
+            {
+                ChangeDataVaultPasswordError = "Bitte gib ein neues Master-Passwort ein.";
+                return;
+            }
+
+            if (!string.Equals(NewDataVaultMasterPassword, ConfirmDataVaultMasterPassword, StringComparison.Ordinal))
+            {
+                ChangeDataVaultPasswordError = "Die Passwörter stimmen nicht überein.";
+                return;
+            }
+
+            await _dataVaultService.ChangeMasterPasswordAsync(NewDataVaultMasterPassword, EnableDataVaultBiometric && CanUseDataVaultBiometric).ConfigureAwait(false);
+
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                NewDataVaultMasterPassword = string.Empty;
+                ConfirmDataVaultMasterPassword = string.Empty;
+                ChangeDataVaultPasswordSuccess = "Master-Passwort wurde aktualisiert.";
+                IsDataVaultBiometricConfigured = EnableDataVaultBiometric && CanUseDataVaultBiometric;
+            }).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                ChangeDataVaultPasswordError = ex.Message;
+                ChangeDataVaultPasswordSuccess = null;
+            }).ConfigureAwait(false);
+        }
+        finally
+        {
+            await MainThread.InvokeOnMainThreadAsync(() => IsDataVaultPasswordChangeBusy = false).ConfigureAwait(false);
+        }
+    }
+
     private void UpdatePasswordCommandState()
     {
         if (_changePasswordCommand is not null)
@@ -440,6 +640,14 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         }
     }
 
+    private void UpdateDataVaultPasswordCommandState()
+    {
+        if (_changeDataVaultPasswordCommand is not null)
+        {
+            MainThread.BeginInvokeOnMainThread(_changeDataVaultPasswordCommand.ChangeCanExecute);
+        }
+    }
+
     private void ClearPasswordFeedback()
     {
         ChangePasswordError = null;
@@ -450,6 +658,12 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     {
         ChangeAuthenticatorPasswordError = null;
         ChangeAuthenticatorPasswordSuccess = null;
+    }
+
+    private void ClearDataVaultPasswordFeedback()
+    {
+        ChangeDataVaultPasswordError = null;
+        ChangeDataVaultPasswordSuccess = null;
     }
 
     private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
