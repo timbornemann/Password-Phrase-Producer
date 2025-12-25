@@ -467,7 +467,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
 
             if (!IsVaultUnlocked)
             {
-                ChangePasswordError = "Der Tresor muss entsperrt sein, bevor du das Passwort ändern kannst.";
+                ChangePasswordError = "Der Passwort Tresor muss entsperrt sein, bevor du das Passwort ändern kannst.";
                 return;
             }
 

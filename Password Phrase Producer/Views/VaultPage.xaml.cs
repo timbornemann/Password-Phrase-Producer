@@ -65,12 +65,12 @@ public partial class VaultPage : ContentPage
     {
         if (!_viewModel.IsUnlocked)
         {
-            await DisplayAlert("Tresor gesperrt", "Bitte entsperre den Tresor, bevor du neue Einträge hinzufügst.", "OK");
+            await DisplayAlert("Passwort Tresor gesperrt", "Bitte entsperre den Passwort Tresor, bevor du neue Einträge hinzufügst.", "OK");
             return;
         }
 
         var entry = new PasswordVaultEntry();
-        await ShowEditorAsync(entry, "Neuer Tresor-Eintrag");
+        await ShowEditorAsync(entry, "Neuer Passwort Tresor-Eintrag");
     }
 
     private async Task HandlePendingVaultRequestAsync()
@@ -110,7 +110,7 @@ public partial class VaultPage : ContentPage
             Password = request.Password
         };
 
-        await ShowEditorAsync(entry, "Passwort zum Tresor hinzufügen");
+        await ShowEditorAsync(entry, "Passwort zum Passwort Tresor hinzufügen");
     }
 
     private void AttachUnlockSubscription()
@@ -544,7 +544,7 @@ public partial class VaultPage : ContentPage
     {
         if (!_viewModel.IsUnlocked)
         {
-            await DisplayAlert("Tresor gesperrt", "Bitte entsperre den Tresor, bevor du das Master-Passwort ändern kannst.", "OK");
+            await DisplayAlert("Passwort Tresor gesperrt", "Bitte entsperre den Passwort Tresor, bevor du das Master-Passwort ändern kannst.", "OK");
             return;
         }
 
@@ -593,7 +593,7 @@ public partial class VaultPage : ContentPage
     {
         var file = await FilePicker.Default.PickAsync(new PickOptions
         {
-            PickerTitle = "Verschlüsselte Tresordatei auswählen"
+            PickerTitle = "Verschlüsselte Passwort Tresordatei auswählen"
         });
 
         if (file is null)

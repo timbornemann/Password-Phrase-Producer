@@ -78,7 +78,7 @@ public class PasswordGeneratorHostView : ContentView
     {
         var button = new Button
         {
-            Text = "Zum Tresor hinzufügen",
+            Text = "Zum Passwort Tresor hinzufügen",
             HorizontalOptions = LayoutOptions.Fill,
             IsEnabled = false
         };
@@ -135,7 +135,7 @@ public class PasswordGeneratorHostView : ContentView
 
         if (vaultService is null)
         {
-            await ShowAlert("Tresor nicht verfügbar", "Der Tresor-Dienst konnte nicht geladen werden.");
+            await ShowAlert("Passwort Tresor nicht verfügbar", "Der Passwort Tresor-Dienst konnte nicht geladen werden.");
             return;
         }
 
@@ -155,7 +155,7 @@ public class PasswordGeneratorHostView : ContentView
             if (shell is null)
             {
                 VaultNavigationCoordinator.ClearPendingRequest(pendingRequest.Id);
-                await ShowAlert("Navigation nicht verfügbar", "Der Tresor konnte nicht geöffnet werden.");
+                await ShowAlert("Navigation nicht verfügbar", "Der Passwort Tresor konnte nicht geöffnet werden.");
                 return;
             }
 
@@ -166,7 +166,7 @@ public class PasswordGeneratorHostView : ContentView
             catch (Exception ex)
             {
                 VaultNavigationCoordinator.ClearPendingRequest(pendingRequest.Id);
-                await ShowAlert("Navigation fehlgeschlagen", $"Der Tresor konnte nicht geöffnet werden: {ex.Message}");
+                await ShowAlert("Navigation fehlgeschlagen", $"Der Passwort Tresor konnte nicht geöffnet werden: {ex.Message}");
             }
 
             return;
@@ -180,7 +180,7 @@ public class PasswordGeneratorHostView : ContentView
         var navigation = Application.Current?.MainPage?.Navigation;
         if (navigation is null)
         {
-            await ShowAlert("Navigation nicht verfügbar", "Der Tresor-Editor konnte nicht geöffnet werden.");
+            await ShowAlert("Navigation nicht verfügbar", "Der Passwort Tresor-Editor konnte nicht geöffnet werden.");
             return;
         }
 
@@ -191,7 +191,7 @@ public class PasswordGeneratorHostView : ContentView
 
         var availableCategories = await LoadAvailableCategoriesAsync(vaultService);
 
-        var result = await VaultEntryEditorPage.ShowAsync(navigation, entry, "Passwort zum Tresor hinzufügen", availableCategories);
+        var result = await VaultEntryEditorPage.ShowAsync(navigation, entry, "Passwort zum Passwort Tresor hinzufügen", availableCategories);
 
         if (result is null)
         {
@@ -208,7 +208,7 @@ public class PasswordGeneratorHostView : ContentView
             return;
         }
 
-        await ShowAlert("Gespeichert", "Das Passwort wurde erfolgreich im Tresor abgelegt.");
+        await ShowAlert("Gespeichert", "Das Passwort wurde erfolgreich im Passwort Tresor abgelegt.");
     }
 
     private async Task PromptToCreateVault()
@@ -220,9 +220,9 @@ public class PasswordGeneratorHostView : ContentView
         }
 
         var createVault = await mainPage.DisplayAlert(
-            "Tresor benötigt",
-            "Du musst zuerst einen Tresor anlegen, bevor du Passwörter speichern kannst.",
-            "Tresor erstellen",
+            "Passwort Tresor benötigt",
+            "Du musst zuerst einen Passwort Tresor anlegen, bevor du Passwörter speichern kannst.",
+            "Passwort Tresor erstellen",
             "Abbrechen");
 
         if (createVault)

@@ -63,7 +63,7 @@
 
                     <Label
                         Grid.Column="1"
-                        Text="Tresor"
+                        Text="Passwort Tresor"
                         FontSize="18"
                         FontAttributes="Bold"
                         VerticalOptions="Center"
@@ -597,7 +597,7 @@
 
                     <VerticalStackLayout Spacing="6" HorizontalOptions="Center" VerticalOptions="Center">
                         <Label
-                            Text="Tresor gesperrt"
+                            Text="Passwort Tresor gesperrt"
                             FontSize="18"
                             FontAttributes="Bold"
                             TextColor="White"

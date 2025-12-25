@@ -53,13 +53,13 @@ public partial class VaultEntryEditorPage : ContentPage
         }
         catch (NullReferenceException ex)
         {
-            var message = $"Beim Öffnen des Tresor-Editors trat eine NullReferenceException im Navigationssystem auf.";
+            var message = $"Beim Öffnen des Passwort Tresor-Editors trat eine NullReferenceException im Navigationssystem auf.";
             Debug.WriteLine($"[VaultEntryEditorPage] {message}\n{ex}");
             throw CreateNavigationException(message, diagnostics, navigationHost, ex);
         }
         catch (Exception ex)
         {
-            var message = $"PushModalAsync für den Tresor-Editor ist fehlgeschlagen ({navigationHost.GetType().FullName}). Grund: {ex.Message}";
+            var message = $"PushModalAsync für den Passwort Tresor-Editor ist fehlgeschlagen ({navigationHost.GetType().FullName}). Grund: {ex.Message}";
             Debug.WriteLine($"[VaultEntryEditorPage] {message}\n{ex}");
             throw CreateNavigationException(message, diagnostics, navigationHost, ex);
         }
@@ -323,7 +323,7 @@ public partial class VaultEntryEditorPage : ContentPage
         if (resolved is null)
         {
             var diagnostics = candidateLog.ToString();
-            const string message = "Kein Navigationsstack verfügbar, um den Tresor-Editor zu öffnen.";
+            const string message = "Kein Navigationsstack verfügbar, um den Passwort Tresor-Editor zu öffnen.";
 
             throw CreateNavigationException(message, diagnostics, resolved, null);
         }

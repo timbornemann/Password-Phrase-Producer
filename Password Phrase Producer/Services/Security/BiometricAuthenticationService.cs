@@ -64,7 +64,7 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
             callback.SetPrompt(prompt);
 
             var promptInfoBuilder = new AndroidX.Biometric.BiometricPrompt.PromptInfo.Builder()
-                .SetTitle("Tresor entsperren")
+                .SetTitle("Passwort Tresor entsperren")
                 .SetSubtitle(reason)
                 .SetNegativeButtonText("Abbrechen")
                 .SetConfirmationRequired(false);
@@ -150,7 +150,7 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
     {
         var request = new Plugin.Maui.Biometric.AuthenticationRequest
         {
-            Title = "Tresor entsperren",
+            Title = "Passwort Tresor entsperren",
             Subtitle = reason,
             NegativeText = "Abbrechen"
         };

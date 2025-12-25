@@ -127,13 +127,13 @@
             ContentTemplate="{DataTemplate local:StartPage}" />
     </FlyoutItem>
 
-    <!-- Tresor -->
-    <FlyoutItem Title="Tresor"
+    <!-- Passwort Tresor -->
+    <FlyoutItem Title="Passwort Tresor"
                 Route="vault"
                 FlyoutIcon="T"
                 FlyoutDisplayOptions="AsSingleItem">
         <ShellContent
-            Title="Tresor"
+            Title="Passwort Tresor"
             ContentTemplate="{DataTemplate views:VaultPage}" />
     </FlyoutItem>
 

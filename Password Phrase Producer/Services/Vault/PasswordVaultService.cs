@@ -204,7 +204,7 @@ public class PasswordVaultService
     {
         if (!IsUnlocked)
         {
-            throw new InvalidOperationException("Der Tresor ist gesperrt.");
+            throw new InvalidOperationException("Der Passwort Tresor ist gesperrt.");
         }
 
         if (enabled)
@@ -685,7 +685,7 @@ public class PasswordVaultService
     {
         if (_encryptionKey is null)
         {
-            throw new InvalidOperationException("Der Tresor ist gesperrt.");
+            throw new InvalidOperationException("Der Passwort Tresor ist gesperrt.");
         }
 
         return _encryptionKey;
@@ -695,7 +695,7 @@ public class PasswordVaultService
     {
         if (!IsUnlocked)
         {
-            throw new InvalidOperationException("Der Tresor ist gesperrt.");
+            throw new InvalidOperationException("Der Passwort Tresor ist gesperrt.");
         }
     }
 

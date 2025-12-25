@@ -170,7 +170,7 @@ public partial class SettingsPage : ContentPage
     {
         var file = await FilePicker.Default.PickAsync(new PickOptions
         {
-            PickerTitle = "Verschlüsselte Tresordatei auswählen"
+            PickerTitle = "Verschlüsselte Passwort Tresordatei auswählen"
         });
 
         if (file is null)

@@ -107,7 +107,7 @@
                             FontAttributes="Bold"
                             TextColor="White" />
                         <Label
-                            Text="Exportiere verschlüsselte Tresordaten oder Backups und importiere vorhandene Dateien."
+                            Text="Exportiere verschlüsselte Passwort Tresordaten oder Backups und importiere vorhandene Dateien."
                             FontSize="12"
                             TextColor="#9EA3C4" />
                         <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,*" ColumnSpacing="10" RowSpacing="10">
@@ -130,7 +130,7 @@
                                 CornerRadius="10" />
                             <Button
                                 Grid.Row="1"
-                                Text="Tresor exportieren"
+                                Text="Passwort Tresor exportieren"
                                 Clicked="OnExportEncryptedClicked"
                                 BackgroundColor="#4A5CFF"
                                 TextColor="White"
@@ -140,7 +140,7 @@
                             <Button
                                 Grid.Row="1"
                                 Grid.Column="1"
-                                Text="Tresor importieren"
+                                Text="Passwort Tresor importieren"
                                 Clicked="OnImportEncryptedClicked"
                                 BackgroundColor="#1F2338"
                                 TextColor="White"
@@ -229,7 +229,7 @@
                             FontAttributes="Bold"
                             TextColor="White" />
                         <Label
-                            Text="Der Tresor muss entsperrt sein, um das Passwort zu ändern."
+                            Text="Der Passwort Tresor muss entsperrt sein, um das Passwort zu ändern."
                             TextColor="#9EA3C4"
                             FontSize="12">
                             <Label.Triggers>

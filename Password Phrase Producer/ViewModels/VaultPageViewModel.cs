@@ -392,7 +392,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
             IsBusy = true;
             UnlockError = null;
 
-            var authenticated = await _biometricAuthenticationService.AuthenticateAsync("Authentifiziere dich, um den Tresor zu entsperren.", cancellationToken);
+            var authenticated = await _biometricAuthenticationService.AuthenticateAsync("Authentifiziere dich, um den Passwort Tresor zu entsperren.", cancellationToken);
             if (!authenticated)
             {
                 UnlockError = "Die biometrische Authentifizierung wurde abgebrochen.";
@@ -463,7 +463,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Fehler beim Aktualisieren des Tresors: {ex}");
+            Debug.WriteLine($"Fehler beim Aktualisieren des Passwort Tresors: {ex}");
         }
     }
 
