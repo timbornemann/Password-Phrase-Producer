@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Windows.Input;
-using System.Windows.Input;
+using Microsoft.Maui.ApplicationModel;
 using CommunityToolkit.Maui.Views;
 using Password_Phrase_Producer.Models;
 using Password_Phrase_Producer.Services;
@@ -70,10 +70,10 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
         {
             _timer = _dispatcher.CreateTimer();
             _timer.Interval = TimeSpan.FromSeconds(1);
-            _timer.Tick += (s, e) => UpdateCodes();
+            _timer.Tick += (s, e) => _dispatcher.Dispatch(UpdateCodes);
         }
         _timer.Start();
-        UpdateCodes(); // Initial update
+        _dispatcher.Dispatch(UpdateCodes); // Initial update
     }
 
     private void StopTimer()
@@ -294,5 +294,17 @@ public class TotpViewModelItem : INotifyPropertyChanged
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    {
+        if (MainThread.IsMainThread)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+        else
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            });
+        }
+    }
 }

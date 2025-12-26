@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Maui.Storage;
+using CommunityToolkit.Maui.Views;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
@@ -589,13 +590,15 @@ public partial class SettingsPage : ContentPage
 
     private async void OnResetPasswordVaultClicked(object? sender, EventArgs e)
     {
-        var confirmed = await DisplayAlert(
+        var popup = new ConfirmationPopup(
             "Passwort-Tresor zurücksetzen",
             "Möchtest du den Passwort-Tresor wirklich zurücksetzen? Alle gespeicherten Passwörter und das Master-Passwort werden unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
             "Zurücksetzen",
-            "Abbrechen");
+            "Abbrechen",
+            confirmIsDestructive: true);
 
-        if (!confirmed)
+        var result = await this.ShowPopupAsync(popup);
+        if (result is not bool confirm || !confirm)
         {
             return;
         }
@@ -603,19 +606,22 @@ public partial class SettingsPage : ContentPage
         await ExecuteSettingsActionAsync(async () =>
         {
             await _viewModel.ResetPasswordVaultAsync();
-            await DisplayAlert("Erfolg", "Der Passwort-Tresor wurde erfolgreich zurückgesetzt.", "OK");
+            var successPopup = new SuccessPopup("Erfolg", "Der Passwort-Tresor wurde erfolgreich zurückgesetzt.", "OK");
+            await this.ShowPopupAsync(successPopup);
         });
     }
 
     private async void OnResetDataVaultClicked(object? sender, EventArgs e)
     {
-        var confirmed = await DisplayAlert(
+        var popup = new ConfirmationPopup(
             "Datentresor zurücksetzen",
             "Möchtest du den Datentresor wirklich zurücksetzen? Alle gespeicherten Daten und das Master-Passwort werden unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
             "Zurücksetzen",
-            "Abbrechen");
+            "Abbrechen",
+            confirmIsDestructive: true);
 
-        if (!confirmed)
+        var result = await this.ShowPopupAsync(popup);
+        if (result is not bool confirm || !confirm)
         {
             return;
         }
@@ -623,19 +629,22 @@ public partial class SettingsPage : ContentPage
         await ExecuteSettingsActionAsync(async () =>
         {
             await _viewModel.ResetDataVaultAsync();
-            await DisplayAlert("Erfolg", "Der Datentresor wurde erfolgreich zurückgesetzt.", "OK");
+            var successPopup = new SuccessPopup("Erfolg", "Der Datentresor wurde erfolgreich zurückgesetzt.", "OK");
+            await this.ShowPopupAsync(successPopup);
         });
     }
 
     private async void OnResetAuthenticatorClicked(object? sender, EventArgs e)
     {
-        var confirmed = await DisplayAlert(
+        var popup = new ConfirmationPopup(
             "2FA-Tresor zurücksetzen",
             "Möchtest du den 2FA-Tresor wirklich zurücksetzen? Alle gespeicherten 2FA-Codes und das Authenticator-Passwort werden unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
             "Zurücksetzen",
-            "Abbrechen");
+            "Abbrechen",
+            confirmIsDestructive: true);
 
-        if (!confirmed)
+        var result = await this.ShowPopupAsync(popup);
+        if (result is not bool confirm || !confirm)
         {
             return;
         }
@@ -643,7 +652,8 @@ public partial class SettingsPage : ContentPage
         await ExecuteSettingsActionAsync(async () =>
         {
             await _viewModel.ResetAuthenticatorAsync();
-            await DisplayAlert("Erfolg", "Der 2FA-Tresor wurde erfolgreich zurückgesetzt.", "OK");
+            var successPopup = new SuccessPopup("Erfolg", "Der 2FA-Tresor wurde erfolgreich zurückgesetzt.", "OK");
+            await this.ShowPopupAsync(successPopup);
         });
     }
 }
