@@ -12,6 +12,7 @@ using Microsoft.Maui.Controls;
 using Password_Phrase_Producer.Models;
 using Password_Phrase_Producer.Services.Security;
 using Password_Phrase_Producer.Services.Vault;
+using Password_Phrase_Producer.Services;
 
 namespace Password_Phrase_Producer.ViewModels;
 
@@ -395,42 +396,28 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        // Load master password states and biometric availability in parallel to speed up initialization
-        var vaultPasswordTask = _vaultService.HasMasterPasswordAsync(cancellationToken);
-        var dataVaultPasswordTask = _dataVaultService.HasMasterPasswordAsync(cancellationToken);
-        var biometricAvailableTask = _biometricAuthenticationService.IsAvailableAsync(cancellationToken);
+        // Load master password states and biometric availability sequentially to avoid deadlocks
+        _hasVaultMasterPassword = await _vaultService.HasMasterPasswordAsync(cancellationToken).ConfigureAwait(false);
+        _hasDataVaultMasterPassword = await _dataVaultService.HasMasterPasswordAsync(cancellationToken).ConfigureAwait(false);
         
-        // Wait for all parallel operations
-        await Task.WhenAll(vaultPasswordTask, dataVaultPasswordTask, biometricAvailableTask).ConfigureAwait(false);
-        
-        _hasVaultMasterPassword = await vaultPasswordTask.ConfigureAwait(false);
-        _hasDataVaultMasterPassword = await dataVaultPasswordTask.ConfigureAwait(false);
-        
-        // Now refresh states in parallel (they will check biometric again, but that's okay for correctness)
-        await Task.WhenAll(
-            RefreshVaultStateAsync(cancellationToken),
-            RefreshDataVaultStateAsync(cancellationToken),
-            RefreshAuthenticatorStateAsync(cancellationToken)
-        ).ConfigureAwait(false);
+        // Refresh states sequentially
+        await RefreshVaultStateAsync(cancellationToken).ConfigureAwait(false);
+        await RefreshDataVaultStateAsync(cancellationToken).ConfigureAwait(false);
+        await RefreshAuthenticatorStateAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task RefreshVaultStateAsync(CancellationToken cancellationToken = default)
     {
         var unlocked = _vaultService.IsUnlocked;
         
-        // Check biometric availability and key in parallel
-        var biometricAvailableTask = _biometricAuthenticationService.IsAvailableAsync(cancellationToken);
-        var biometricKeyTask = _vaultService.HasBiometricKeyAsync(cancellationToken);
-        var masterPasswordTask = _vaultService.HasMasterPasswordAsync(cancellationToken);
-        
-        await Task.WhenAll(biometricAvailableTask, biometricKeyTask, masterPasswordTask).ConfigureAwait(false);
-        
-        var canUseBiometric = await biometricAvailableTask.ConfigureAwait(false);
-        var hasBiometricKey = await biometricKeyTask.ConfigureAwait(false);
+        // Check biometric availability and key sequentially
+        var canUseBiometric = await _biometricAuthenticationService.IsAvailableAsync(cancellationToken).ConfigureAwait(false);
+        var hasBiometricKey = await _vaultService.HasBiometricKeyAsync(cancellationToken).ConfigureAwait(false);
         var biometricConfigured = canUseBiometric && hasBiometricKey;
         
         // Update master password state
-        _hasVaultMasterPassword = await masterPasswordTask.ConfigureAwait(false);
+        // Update master password state
+        _hasVaultMasterPassword = await _vaultService.HasMasterPasswordAsync(cancellationToken).ConfigureAwait(false);
 
         // Always use MainThread.InvokeOnMainThreadAsync to ensure we're on the UI thread
         await MainThread.InvokeOnMainThreadAsync(() =>
@@ -454,19 +441,14 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     {
         var unlocked = _dataVaultService.IsUnlocked;
         
-        // Check biometric availability and key in parallel
-        var biometricAvailableTask = _biometricAuthenticationService.IsAvailableAsync(cancellationToken);
-        var biometricKeyTask = _dataVaultService.HasBiometricKeyAsync(cancellationToken);
-        var masterPasswordTask = _dataVaultService.HasMasterPasswordAsync(cancellationToken);
-        
-        await Task.WhenAll(biometricAvailableTask, biometricKeyTask, masterPasswordTask).ConfigureAwait(false);
-        
-        var canUseBiometric = await biometricAvailableTask.ConfigureAwait(false);
-        var hasBiometricKey = await biometricKeyTask.ConfigureAwait(false);
+        // Check biometric availability and key sequentially
+        var canUseBiometric = await _biometricAuthenticationService.IsAvailableAsync(cancellationToken).ConfigureAwait(false);
+        var hasBiometricKey = await _dataVaultService.HasBiometricKeyAsync(cancellationToken).ConfigureAwait(false);
         var biometricConfigured = canUseBiometric && hasBiometricKey;
         
         // Update master password state
-        _hasDataVaultMasterPassword = await masterPasswordTask.ConfigureAwait(false);
+        // Update master password state
+        _hasDataVaultMasterPassword = await _dataVaultService.HasMasterPasswordAsync(cancellationToken).ConfigureAwait(false);
 
         // Always use MainThread.InvokeOnMainThreadAsync to ensure we're on the UI thread
         await MainThread.InvokeOnMainThreadAsync(() =>
@@ -488,11 +470,13 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
 
     public async Task RefreshAuthenticatorStateAsync(CancellationToken cancellationToken = default)
     {
-        // No async work today, but keep signature for symmetry/future changes
+        // Fetch state asynchronously on background thread
+        var hasPassword = await _totpEncryptionService.HasPasswordAsync().ConfigureAwait(false);
+
         // Always use MainThread.InvokeOnMainThreadAsync to ensure we're on the UI thread
         await MainThread.InvokeOnMainThreadAsync(() =>
         {
-            HasAuthenticatorPassword = _totpEncryptionService.HasPassword;
+            HasAuthenticatorPassword = hasPassword;
 
             // Clear fields if the authenticator is not configured yet
             if (!HasAuthenticatorPassword)
@@ -775,11 +759,12 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
                 return;
             }
 
-            if (_totpEncryptionService.HasPassword)
+              // If setting a new password (not changing existing one), we don't need to unlock old one
+            if (await _totpEncryptionService.HasPasswordAsync().ConfigureAwait(false))
             {
-                if (string.IsNullOrWhiteSpace(CurrentAuthenticatorPassword))
+                if (!await _totpEncryptionService.UnlockWithPasswordAsync(CurrentAuthenticatorPassword))
                 {
-                    ChangeAuthenticatorPasswordError = "Bitte gib dein aktuelles Authenticator-Passwort ein.";
+                    ChangeAuthenticatorPasswordError = "Das aktuelle Passwort ist falsch.";
                     return;
                 }
 
@@ -787,20 +772,23 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             }
             else
             {
-                // Not configured yet -> initial setup from settings
                 await _totpEncryptionService.SetupPasswordAsync(NewAuthenticatorPassword).ConfigureAwait(false);
             }
 
-            // Lock the authenticator after password change
-            _totpEncryptionService.Lock();
-
-            await MainThread.InvokeOnMainThreadAsync(() =>
+            // Verify the setup worked
+            if (!await _totpEncryptionService.UnlockWithPasswordAsync(NewAuthenticatorPassword).ConfigureAwait(false))
             {
-                HasAuthenticatorPassword = _totpEncryptionService.HasPassword;
-                CurrentAuthenticatorPassword = string.Empty;
+                throw new InvalidOperationException("Neue Einrichtung konnte nicht verifiziert werden.");
+            }
+
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                HasAuthenticatorPassword = await _totpEncryptionService.HasPasswordAsync().ConfigureAwait(false);
                 NewAuthenticatorPassword = string.Empty;
                 ConfirmAuthenticatorPassword = string.Empty;
-                ChangeAuthenticatorPasswordSuccess = "Authenticator-Passwort wurde aktualisiert.";
+                CurrentAuthenticatorPassword = string.Empty;
+                
+                await ToastService.ShowAsync("Passwort erfolgreich geändert");
             }).ConfigureAwait(false);
         }
         catch (Exception ex)

@@ -27,18 +27,30 @@ public class TotpEncryptionService
     /// <summary>
     /// True when a password (previously called PIN) has been configured.
     /// </summary>
+    /// <summary>
+    /// Checks asynchronously if a password has been configured.
+    /// </summary>
+    public async Task<bool> HasPasswordAsync()
+    {
+        // Check new format first (SecureStorage)
+        var salt = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false);
+        if (!string.IsNullOrEmpty(salt))
+        {
+            return true;
+        }
+        // Fallback to old format (Preferences)
+        return Preferences.ContainsKey(PasswordPrefsKey);
+    }
+
+    /// <summary>
+    /// True when a password (previously called PIN) has been configured.
+    /// WARNING: This property performs synchronous I/O and may block the calling thread. Use HasPasswordAsync() instead where possible.
+    /// </summary>
     public bool HasPassword
     {
         get
         {
-            // Check new format first (SecureStorage)
-            var salt = SecureStorage.Default.GetAsync(PasswordSaltStorageKey).GetAwaiter().GetResult();
-            if (!string.IsNullOrEmpty(salt))
-            {
-                return true;
-            }
-            // Fallback to old format (Preferences)
-            return Preferences.ContainsKey(PasswordPrefsKey);
+            return HasPasswordAsync().GetAwaiter().GetResult();
         }
     }
 
@@ -99,7 +111,7 @@ public class TotpEncryptionService
     /// </summary>
     public async Task<bool> UnlockWithPasswordAsync(string password)
     {
-        if (!HasPassword)
+        if (!await HasPasswordAsync().ConfigureAwait(false))
         {
             return false;
         }

@@ -5,14 +5,35 @@ namespace Password_Phrase_Producer.Views;
 public partial class AuthenticatorPinPage : ContentPage
 {
     private readonly TotpEncryptionService _encryptionService;
-    private readonly bool _isSetupMode;
+    private bool _isSetupMode;
 
     public AuthenticatorPinPage(TotpEncryptionService encryptionService)
     {
         InitializeComponent();
         _encryptionService = encryptionService;
-        _isSetupMode = !_encryptionService.HasPassword;
+        
+        // Initial state (will be updated in OnAppearing)
+        TitleLabel.Text = "Lade...";
+        UnlockButton.IsEnabled = false;
+    }
 
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+        try
+        {
+            _isSetupMode = !await _encryptionService.HasPasswordAsync();
+            UpdateUiState();
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Fehler beim Laden: {ex.Message}");
+        }
+    }
+
+    private void UpdateUiState()
+    {
+        UnlockButton.IsEnabled = true;
         if (_isSetupMode)
         {
             TitleLabel.Text = "Authenticator einrichten";
