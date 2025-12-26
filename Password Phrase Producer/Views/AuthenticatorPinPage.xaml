@@ -20,7 +20,7 @@
 
     <ScrollView HorizontalOptions="Fill" VerticalOptions="Fill">
         <Grid HorizontalOptions="Fill" VerticalOptions="Center" MinimumHeightRequest="400">
-            <VerticalStackLayout Spacing="16" HorizontalOptions="Center" VerticalOptions="Center" MaximumWidthRequest="360" Padding="18">
+            <VerticalStackLayout Spacing="16" HorizontalOptions="Center" VerticalOptions="Center" MaximumWidthRequest="360">
                 <Border
                     x:Name="BackButton"
                     Padding="10,6"
