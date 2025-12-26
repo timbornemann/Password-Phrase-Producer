@@ -11,6 +11,9 @@ namespace Password_Phrase_Producer.Services.Security;
 public class TotpEncryptionService
 {
     private const string KeyFileName = "totp.key";
+    private static readonly byte[] KeyFileHeader = { (byte)'T', (byte)'O', (byte)'T', (byte)'P', 0x01 };
+    private const int NonceLength = 12;
+    private const int TagLength = 16;
     // Backward compatible key name (previously "PIN")
     private const string PasswordPrefsKey = "totp_pin_hash";
     private const string PasswordSaltStorageKey = "TotpPasswordSalt";
@@ -153,8 +156,13 @@ public class TotpEncryptionService
             }
 
             var encryptedMasterKey = await File.ReadAllBytesAsync(_keyFilePath);
-            _unlockedKey = DecryptWithKey(encryptedMasterKey, passwordDerivedKey);
+            _unlockedKey = DecryptWithKey(encryptedMasterKey, passwordDerivedKey, out var usedLegacyFormat);
             _isUnlocked = true;
+
+            if (usedLegacyFormat)
+            {
+                await MigrateKeyFileAsync(_unlockedKey, passwordDerivedKey).ConfigureAwait(false);
+            }
             return true;
         }
         catch
@@ -197,8 +205,13 @@ public class TotpEncryptionService
 
         try
         {
-            _unlockedKey = DecryptWithKey(encryptedMasterKey, passwordDerivedKey);
+            _unlockedKey = DecryptWithKey(encryptedMasterKey, passwordDerivedKey, out var usedLegacyFormat);
             _isUnlocked = true;
+
+            if (usedLegacyFormat)
+            {
+                await MigrateKeyFileAsync(_unlockedKey, passwordDerivedKey).ConfigureAwait(false);
+            }
             return true;
         }
         catch
@@ -322,7 +335,7 @@ public class TotpEncryptionService
     public byte[] Decrypt(byte[] ciphertext)
     {
         var key = GetUnlockedKey();
-        return DecryptWithKey(ciphertext, key);
+        return DecryptWithKey(ciphertext, key, out _);
     }
 
     #region Private Helpers
@@ -371,39 +384,128 @@ public class TotpEncryptionService
 
     private static byte[] EncryptWithKey(byte[] plaintext, byte[] key)
     {
-        using var aes = Aes.Create();
-        aes.Key = key;
-        aes.GenerateIV();
+        var nonce = RandomNumberGenerator.GetBytes(NonceLength);
+        var cipher = new byte[plaintext.Length];
+        var tag = new byte[TagLength];
 
-        using var encryptor = aes.CreateEncryptor();
-        var ciphertext = encryptor.TransformFinalBlock(plaintext, 0, plaintext.Length);
+        using var aes = new AesGcm(key, tag.Length);
+        aes.Encrypt(nonce, plaintext, cipher, tag);
 
-        // Prepend IV to ciphertext
-        var result = new byte[aes.IV.Length + ciphertext.Length];
-        Buffer.BlockCopy(aes.IV, 0, result, 0, aes.IV.Length);
-        Buffer.BlockCopy(ciphertext, 0, result, aes.IV.Length, ciphertext.Length);
+        var result = new byte[KeyFileHeader.Length + nonce.Length + cipher.Length + tag.Length];
+        Buffer.BlockCopy(KeyFileHeader, 0, result, 0, KeyFileHeader.Length);
+        Buffer.BlockCopy(nonce, 0, result, KeyFileHeader.Length, nonce.Length);
+        Buffer.BlockCopy(cipher, 0, result, KeyFileHeader.Length + nonce.Length, cipher.Length);
+        Buffer.BlockCopy(tag, 0, result, KeyFileHeader.Length + nonce.Length + cipher.Length, tag.Length);
 
         return result;
     }
 
-    private static byte[] DecryptWithKey(byte[] ciphertextWithIv, byte[] key)
+    private static byte[] DecryptWithKey(byte[] data, byte[] key, out bool usedLegacyFormat)
+    {
+        if (HasKeyFileHeader(data))
+        {
+            usedLegacyFormat = false;
+            return DecryptWithAead(data, key);
+        }
+
+        usedLegacyFormat = true;
+        return DecryptWithLegacyFormat(data, key);
+    }
+
+    private static bool HasKeyFileHeader(byte[] data)
+    {
+        if (data.Length < KeyFileHeader.Length)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < KeyFileHeader.Length; i++)
+        {
+            if (data[i] != KeyFileHeader[i])
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static byte[] DecryptWithAead(byte[] data, byte[] key)
+    {
+        if (data.Length < KeyFileHeader.Length + NonceLength + TagLength)
+        {
+            throw new InvalidOperationException("Ungültiges verschlüsseltes Format.");
+        }
+
+        var cipherLength = data.Length - KeyFileHeader.Length - NonceLength - TagLength;
+        if (cipherLength < 0)
+        {
+            throw new InvalidOperationException("Ungültiges verschlüsseltes Format.");
+        }
+
+        var nonce = new byte[NonceLength];
+        var cipher = new byte[cipherLength];
+        var tag = new byte[TagLength];
+
+        try
+        {
+            Buffer.BlockCopy(data, KeyFileHeader.Length, nonce, 0, nonce.Length);
+            Buffer.BlockCopy(data, KeyFileHeader.Length + nonce.Length, cipher, 0, cipher.Length);
+            Buffer.BlockCopy(data, KeyFileHeader.Length + nonce.Length + cipher.Length, tag, 0, tag.Length);
+
+            var plain = new byte[cipherLength];
+            using var aes = new AesGcm(key, tag.Length);
+            aes.Decrypt(nonce, cipher, tag, plain);
+            return plain;
+        }
+        catch (CryptographicException ex)
+        {
+            throw new InvalidOperationException("Entschlüsselung fehlgeschlagen.", ex);
+        }
+        finally
+        {
+            Array.Clear(nonce);
+            Array.Clear(cipher);
+            Array.Clear(tag);
+        }
+    }
+
+    private static byte[] DecryptWithLegacyFormat(byte[] data, byte[] key)
     {
         using var aes = Aes.Create();
         aes.Key = key;
 
-        // Extract IV (first 16 bytes)
-        var iv = new byte[aes.IV.Length];
-        Buffer.BlockCopy(ciphertextWithIv, 0, iv, 0, iv.Length);
-        aes.IV = iv;
+        var ivLength = aes.IV.Length;
+        if (data.Length < ivLength)
+        {
+            throw new InvalidOperationException("Ungültiges verschlüsseltes Format.");
+        }
 
-        // Extract ciphertext (rest)
-        var ciphertext = new byte[ciphertextWithIv.Length - iv.Length];
-        Buffer.BlockCopy(ciphertextWithIv, iv.Length, ciphertext, 0, ciphertext.Length);
+        var iv = new byte[ivLength];
+        var ciphertext = new byte[data.Length - ivLength];
 
-        using var decryptor = aes.CreateDecryptor();
-        return decryptor.TransformFinalBlock(ciphertext, 0, ciphertext.Length);
+        try
+        {
+            Buffer.BlockCopy(data, 0, iv, 0, iv.Length);
+            Buffer.BlockCopy(data, iv.Length, ciphertext, 0, ciphertext.Length);
+            aes.IV = iv;
+
+            using var decryptor = aes.CreateDecryptor();
+            return decryptor.TransformFinalBlock(ciphertext, 0, ciphertext.Length);
+        }
+        finally
+        {
+            Array.Clear(iv);
+            Array.Clear(ciphertext);
+        }
+    }
+
+    private async Task MigrateKeyFileAsync(byte[] masterKey, byte[] passwordDerivedKey)
+    {
+        var encryptedMasterKey = EncryptWithKey(masterKey, passwordDerivedKey);
+        Directory.CreateDirectory(Path.GetDirectoryName(_keyFilePath)!);
+        await File.WriteAllBytesAsync(_keyFilePath, encryptedMasterKey).ConfigureAwait(false);
     }
 
     #endregion
 }
-
