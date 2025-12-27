@@ -369,7 +369,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
                     return;
                 }
 
-                if (CanUseBiometric)
+                if (CanUseBiometric && EnableBiometric != IsBiometricConfigured)
                 {
                     await _vaultService.SetBiometricUnlockAsync(EnableBiometric, cancellationToken);
                     IsBiometricConfigured = EnableBiometric;

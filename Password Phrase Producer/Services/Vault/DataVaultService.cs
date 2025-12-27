@@ -242,7 +242,9 @@ public class DataVaultService
             }
             catch (Exception)
             {
-                throw;
+                 // Encrypt failed (user cancelled or error)
+                 // Cleanup and do not crash
+                 SecureStorage.Default.Remove(BiometricKeyStorageKey);
             }
         }
         else

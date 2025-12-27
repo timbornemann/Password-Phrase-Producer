@@ -244,11 +244,11 @@ public class PasswordVaultService
             }
             catch (Exception)
             {
-                 // Encrypt failed (user cancelled)
-                 // We don't enable it.
-                 // Ideally we should propagate error or just not set it.
-                 // Retrowing allows UI to show error.
-                 throw;
+                 // Encrypt failed (user cancelled or error)
+                 // We don't enable it and clean up any potential partial state.
+                 // We catch and swallow the exception here to prevent app crash if this was triggered 
+                 // by an auto-enable logic after password login.
+                 SecureStorage.Default.Remove(BiometricKeyStorageKey);
             }
         }
         else
