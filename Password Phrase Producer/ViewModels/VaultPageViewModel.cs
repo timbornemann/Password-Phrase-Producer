@@ -386,13 +386,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
             IsBusy = true;
             UnlockError = null;
 
-            var authenticated = await _biometricAuthenticationService.AuthenticateAsync("Authentifiziere dich, um den Passwort Tresor zu entsperren.", cancellationToken);
-            if (!authenticated)
-            {
-                UnlockError = "Die biometrische Authentifizierung wurde abgebrochen.";
-                return;
-            }
-
+            // Authentication is now handled within TryUnlockWithStoredKeyAsync (Decryption requires auth)
             var unlocked = await _vaultService.TryUnlockWithStoredKeyAsync(cancellationToken);
             if (!unlocked)
             {
@@ -404,6 +398,10 @@ public class VaultPageViewModel : INotifyPropertyChanged
             EnableBiometric = true;
             IsBiometricConfigured = true;
             await OnUnlockedAsync(cancellationToken);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            UnlockError = "Die biometrische Authentifizierung wurde abgebrochen.";
         }
         finally
         {

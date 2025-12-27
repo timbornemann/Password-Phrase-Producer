@@ -386,13 +386,6 @@ public class DataVaultPageViewModel : INotifyPropertyChanged
             IsBusy = true;
             UnlockError = null;
 
-            var authenticated = await _biometricAuthenticationService.AuthenticateAsync("Authentifiziere dich, um den Datentresor zu entsperren.", cancellationToken);
-            if (!authenticated)
-            {
-                UnlockError = "Die biometrische Authentifizierung wurde abgebrochen.";
-                return;
-            }
-
             var unlocked = await _vaultService.TryUnlockWithStoredKeyAsync(cancellationToken);
             if (!unlocked)
             {
@@ -404,6 +397,10 @@ public class DataVaultPageViewModel : INotifyPropertyChanged
             EnableBiometric = true;
             IsBiometricConfigured = true;
             await OnUnlockedAsync(cancellationToken);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            UnlockError = "Die biometrische Authentifizierung wurde abgebrochen.";
         }
         finally
         {

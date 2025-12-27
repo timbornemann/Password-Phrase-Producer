@@ -24,7 +24,8 @@ public class DataVaultService
     private const string PasswordSaltStorageKey = "DataVaultMasterPasswordSalt";
     private const string PasswordVerifierStorageKey = "DataVaultMasterPasswordVerifier";
     private const string PasswordIterationsStorageKey = "DataVaultMasterPasswordIterations";
-    private const string BiometricKeyStorageKey = "DataVaultBiometricKey";
+    private const string BiometricKeyStorageKey = "DataVaultBiometricKey_V2"; // New version for secure storage
+    private const string LegacyBiometricKeyStorageKey = "DataVaultBiometricKey"; // Old insecure key
     private const int KeySizeBytes = 32;
     private const int SaltSizeBytes = 16;
     private const int Pbkdf2Iterations = 200_000;
@@ -39,11 +40,13 @@ public class DataVaultService
         WriteIndented = true
     };
 
+    private readonly IBiometricAuthenticationService _biometricService;
     private readonly string _vaultFilePath;
     private byte[]? _encryptionKey;
 
-    public DataVaultService()
+    public DataVaultService(IBiometricAuthenticationService biometricService)
     {
+        _biometricService = biometricService;
         _vaultFilePath = Path.Combine(FileSystem.AppDataDirectory, VaultFileName);
     }
 
@@ -58,7 +61,19 @@ public class DataVaultService
     public async Task<bool> HasBiometricKeyAsync(CancellationToken cancellationToken = default)
     {
         var stored = await SecureStorage.Default.GetAsync(BiometricKeyStorageKey).ConfigureAwait(false);
-        return !string.IsNullOrEmpty(stored);
+        if (!string.IsNullOrEmpty(stored))
+        {
+            return true;
+        }
+
+        // Check for legacy key and remove it if it exists (forcing migration/re-login)
+        var legacy = await SecureStorage.Default.GetAsync(LegacyBiometricKeyStorageKey).ConfigureAwait(false);
+        if (!string.IsNullOrEmpty(legacy))
+        {
+             SecureStorage.Default.Remove(LegacyBiometricKeyStorageKey);
+        }
+
+        return false;
     }
 
     public void Lock()
@@ -89,7 +104,7 @@ public class DataVaultService
 
         if (enableBiometrics)
         {
-            await SecureStorage.Default.SetAsync(BiometricKeyStorageKey, Convert.ToBase64String(key)).ConfigureAwait(false);
+             await SetBiometricUnlockAsync(true, cancellationToken).ConfigureAwait(false);
         }
         else
         {
@@ -157,7 +172,7 @@ public class DataVaultService
 
             if (enableBiometrics)
             {
-                await SecureStorage.Default.SetAsync(BiometricKeyStorageKey, Convert.ToBase64String(newKey)).ConfigureAwait(false);
+                 await SetBiometricUnlockAsync(true, cancellationToken).ConfigureAwait(false);
             }
             else
             {
@@ -182,22 +197,42 @@ public class DataVaultService
 
         if (string.IsNullOrEmpty(storedKeyBase64) || string.IsNullOrEmpty(metadata.Verifier))
         {
+             // If V2 key is missing, check/clear Legacy key just in case HasBiometricKeyAsync wasn't called
+            var legacy = await SecureStorage.Default.GetAsync(LegacyBiometricKeyStorageKey).ConfigureAwait(false);
+             if (!string.IsNullOrEmpty(legacy))
+            {
+                 SecureStorage.Default.Remove(LegacyBiometricKeyStorageKey);
+            }
             return false;
         }
 
-        var key = Convert.FromBase64String(storedKeyBase64);
-        var expectedVerifier = Convert.FromBase64String(metadata.Verifier);
-        var actualVerifier = CreateVerifier(key);
-
-        if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
+        try 
         {
-            SecureStorage.Default.Remove(BiometricKeyStorageKey);
-            Array.Clear(key);
-            return false;
-        }
+            var encryptedKey = Convert.FromBase64String(storedKeyBase64);
+            var key = await _biometricService.DecryptAsync(encryptedKey, cancellationToken).ConfigureAwait(false);
 
-        _encryptionKey = key;
-        return true;
+            var expectedVerifier = Convert.FromBase64String(metadata.Verifier);
+            var actualVerifier = CreateVerifier(key);
+
+            if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
+            {
+                SecureStorage.Default.Remove(BiometricKeyStorageKey);
+                Array.Clear(key);
+                return false;
+            }
+
+            _encryptionKey = key;
+            return true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+             // Decryption failed or cancelled
+             return false;
+        }
     }
 
     public async Task SetBiometricUnlockAsync(bool enabled, CancellationToken cancellationToken = default)
@@ -209,7 +244,15 @@ public class DataVaultService
 
         if (enabled)
         {
-            await SecureStorage.Default.SetAsync(BiometricKeyStorageKey, Convert.ToBase64String(_encryptionKey!)).ConfigureAwait(false);
+            try 
+            {
+                var encrypted = await _biometricService.EncryptAsync(_encryptionKey!, cancellationToken).ConfigureAwait(false);
+                await SecureStorage.Default.SetAsync(BiometricKeyStorageKey, Convert.ToBase64String(encrypted)).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
         else
         {
