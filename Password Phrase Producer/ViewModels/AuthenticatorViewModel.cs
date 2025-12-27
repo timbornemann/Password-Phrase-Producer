@@ -142,7 +142,7 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
                      await page.DisplayAlert("Fehler", "Ein unerwarteter Fehler ist beim Laden der Authenticator-Daten aufgetreten.", "OK");
                  }
              });
-             Debug.WriteLine(ex);
+
         }
         finally
         {

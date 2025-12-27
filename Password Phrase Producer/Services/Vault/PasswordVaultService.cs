@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
 using Password_Phrase_Producer.Models;
+using Password_Phrase_Producer.Services.Security;
 
 namespace Password_Phrase_Producer.Services.Vault;
 

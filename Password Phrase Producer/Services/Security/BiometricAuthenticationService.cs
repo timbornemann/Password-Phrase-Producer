@@ -204,7 +204,7 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
         
         if (OperatingSystem.IsAndroidVersionAtLeast(30))
         {
-             builder.SetUserAuthenticationParameters(0, Android.Security.Keystore.KeyProperties.AuthBiometricStrong);
+             builder.SetUserAuthenticationParameters(0, (int)Android.Security.Keystore.KeyPropertiesAuthType.BiometricStrong);
         }
         else
         {

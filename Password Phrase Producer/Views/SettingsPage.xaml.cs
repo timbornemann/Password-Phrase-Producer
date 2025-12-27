@@ -427,45 +427,7 @@ public partial class SettingsPage : ContentPage
         }
     }
 
-    private async Task ExportAuthenticatorAsync()
-    {
-        var bytes = await _viewModel.CreateAuthenticatorBackupAsync();
-        await using var stream = new MemoryStream(bytes);
-        var result = await FileSaver.Default.SaveAsync("authenticator-backup.json", stream, CancellationToken.None);
-        if (!result.IsSuccessful && result.Exception is not null)
-        {
-            throw new InvalidOperationException(result.Exception.Message, result.Exception);
-        }
-    }
 
-    private async Task ImportAuthenticatorAsync()
-    {
-        var file = await FilePicker.Default.PickAsync(new PickOptions
-        {
-            PickerTitle = "Authenticator-Backup auswählen"
-        });
-
-        if (file is null)
-        {
-            return;
-        }
-
-        var useMerge = await AskMergeOrReplaceAsync();
-        if (useMerge is null)
-        {
-            return; // Cancelled
-        }
-
-        await using var stream = await file.OpenReadAsync();
-        if (useMerge == true)
-        {
-            await _viewModel.RestoreAuthenticatorBackupWithMergeAsync(stream);
-        }
-        else
-        {
-            await _viewModel.RestoreAuthenticatorBackupAsync(stream);
-        }
-    }
 
     private async Task ExportFullBackupAsync()
     {

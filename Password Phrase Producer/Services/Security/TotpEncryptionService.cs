@@ -15,7 +15,6 @@ public class TotpEncryptionService
     private const int NonceLength = 12;
     private const int TagLength = 16;
     // Backward compatible key name (previously "PIN")
-    private const string PasswordPrefsKey = "totp_pin_hash";
     private const string PasswordSaltStorageKey = "TotpPasswordSalt";
     private const string PasswordVerifierStorageKey = "TotpPasswordVerifier";
     private const string PasswordIterationsStorageKey = "TotpPasswordIterations";
@@ -35,14 +34,8 @@ public class TotpEncryptionService
     /// </summary>
     public async Task<bool> HasPasswordAsync()
     {
-        // Check new format first (SecureStorage)
         var salt = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false);
-        if (!string.IsNullOrEmpty(salt))
-        {
-            return true;
-        }
-        // Fallback to old format (Preferences)
-        return Preferences.ContainsKey(PasswordPrefsKey);
+        return !string.IsNullOrEmpty(salt);
     }
 
     /// <summary>
@@ -56,9 +49,6 @@ public class TotpEncryptionService
             return HasPasswordAsync().GetAwaiter().GetResult();
         }
     }
-
-    // Backward compatible alias for older callers
-    public bool HasPin => HasPassword;
 
     public TotpEncryptionService()
     {
@@ -124,10 +114,10 @@ public class TotpEncryptionService
         var verifierBase64 = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey);
         var iterationsStr = await SecureStorage.Default.GetAsync(PasswordIterationsStorageKey);
 
-        // Fallback to old format if metadata not found (backward compatibility)
         if (string.IsNullOrEmpty(saltBase64) || string.IsNullOrEmpty(verifierBase64))
         {
-            return await UnlockWithPasswordLegacyAsync(password);
+             // Missing metadata means invalid state in new system
+             return false;
         }
 
         if (!int.TryParse(iterationsStr, out var iterations) || iterations <= 0)
@@ -156,13 +146,9 @@ public class TotpEncryptionService
             }
 
             var encryptedMasterKey = await File.ReadAllBytesAsync(_keyFilePath);
-            _unlockedKey = DecryptWithKey(encryptedMasterKey, passwordDerivedKey, out var usedLegacyFormat);
+            _unlockedKey = DecryptWithKey(encryptedMasterKey, passwordDerivedKey);
             _isUnlocked = true;
 
-            if (usedLegacyFormat)
-            {
-                await MigrateKeyFileAsync(_unlockedKey, passwordDerivedKey).ConfigureAwait(false);
-            }
             return true;
         }
         catch
@@ -172,54 +158,6 @@ public class TotpEncryptionService
         finally
         {
             // Passwort-abgeleiteter Schlüssel aus dem Speicher löschen
-            Array.Clear(passwordDerivedKey);
-        }
-    }
-
-    /// <summary>
-    /// Legacy unlock method for backward compatibility with old format
-    /// </summary>
-    private async Task<bool> UnlockWithPasswordLegacyAsync(string password)
-    {
-        // Verify password hash (old format)
-        var storedHash = Preferences.Get(PasswordPrefsKey, string.Empty);
-        if (string.IsNullOrEmpty(storedHash))
-        {
-            return false;
-        }
-
-        var passwordHash = HashPasswordLegacy(password);
-        if (storedHash != passwordHash)
-        {
-            return false; // Wrong password
-        }
-
-        // Load and decrypt master key with legacy fixed salt
-        if (!File.Exists(_keyFilePath))
-        {
-            return false;
-        }
-
-        var encryptedMasterKey = await File.ReadAllBytesAsync(_keyFilePath);
-        var passwordDerivedKey = DeriveKeyFromPasswordLegacy(password);
-
-        try
-        {
-            _unlockedKey = DecryptWithKey(encryptedMasterKey, passwordDerivedKey, out var usedLegacyFormat);
-            _isUnlocked = true;
-
-            if (usedLegacyFormat)
-            {
-                await MigrateKeyFileAsync(_unlockedKey, passwordDerivedKey).ConfigureAwait(false);
-            }
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-        finally
-        {
             Array.Clear(passwordDerivedKey);
         }
     }
@@ -258,9 +196,6 @@ public class TotpEncryptionService
             await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, Convert.ToBase64String(newSalt));
             await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, Convert.ToBase64String(newVerifier));
             await SecureStorage.Default.SetAsync(PasswordIterationsStorageKey, Pbkdf2Iterations.ToString());
-
-            // Remove old password hash if it exists
-            Preferences.Remove(PasswordPrefsKey);
         }
         finally
         {
@@ -268,11 +203,6 @@ public class TotpEncryptionService
             Array.Clear(newPasswordDerivedKey);
         }
     }
-
-    // Backward compatible wrappers
-    public Task SetupPinAsync(string pin) => SetupPasswordAsync(pin);
-    public Task<bool> UnlockWithPinAsync(string pin) => UnlockWithPasswordAsync(pin);
-    public Task ChangePinAsync(string oldPin, string newPin) => ChangePasswordAsync(oldPin, newPin);
 
     /// <summary>
     /// Lock the service
@@ -302,7 +232,6 @@ public class TotpEncryptionService
         }
 
         // Clear password preferences and metadata
-        Preferences.Remove(PasswordPrefsKey);
         SecureStorage.Default.Remove(PasswordSaltStorageKey);
         SecureStorage.Default.Remove(PasswordVerifierStorageKey);
         SecureStorage.Default.Remove(PasswordIterationsStorageKey);
@@ -335,7 +264,7 @@ public class TotpEncryptionService
     public byte[] Decrypt(byte[] ciphertext)
     {
         var key = GetUnlockedKey();
-        return DecryptWithKey(ciphertext, key, out _);
+        return DecryptWithKey(ciphertext, key);
     }
 
     #region Private Helpers
@@ -351,35 +280,12 @@ public class TotpEncryptionService
     }
 
     /// <summary>
-    /// Legacy key derivation with fixed salt (for backward compatibility)
-    /// </summary>
-    private static byte[] DeriveKeyFromPasswordLegacy(string password)
-    {
-        const int iterations = 100000;
-        const int keySize = 32;
-        var salt = Encoding.UTF8.GetBytes("TotpAuthenticatorSalt_v1");
-        using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, iterations, HashAlgorithmName.SHA256);
-        return pbkdf2.GetBytes(keySize);
-    }
-
-    /// <summary>
     /// Create a verifier hash from a key (for password verification)
     /// </summary>
     private static byte[] CreateVerifier(byte[] key)
     {
         using var sha = SHA256.Create();
         return sha.ComputeHash(key);
-    }
-
-    /// <summary>
-    /// Legacy password hashing (for backward compatibility only)
-    /// </summary>
-    private static string HashPasswordLegacy(string password)
-    {
-        using var sha256 = SHA256.Create();
-        var bytes = Encoding.UTF8.GetBytes(password);
-        var hash = sha256.ComputeHash(bytes);
-        return Convert.ToBase64String(hash);
     }
 
     private static byte[] EncryptWithKey(byte[] plaintext, byte[] key)
@@ -400,16 +306,15 @@ public class TotpEncryptionService
         return result;
     }
 
-    private static byte[] DecryptWithKey(byte[] data, byte[] key, out bool usedLegacyFormat)
+    private static byte[] DecryptWithKey(byte[] data, byte[] key)
     {
         if (HasKeyFileHeader(data))
         {
-            usedLegacyFormat = false;
             return DecryptWithAead(data, key);
         }
 
-        usedLegacyFormat = true;
-        return DecryptWithLegacyFormat(data, key);
+        // If no header, assume corrupt or legacy (which we no longer support)
+        throw new InvalidOperationException("Veraltetes Format oder beschädigte Datei.");
     }
 
     private static bool HasKeyFileHeader(byte[] data)
@@ -468,43 +373,6 @@ public class TotpEncryptionService
             Array.Clear(cipher);
             Array.Clear(tag);
         }
-    }
-
-    private static byte[] DecryptWithLegacyFormat(byte[] data, byte[] key)
-    {
-        using var aes = Aes.Create();
-        aes.Key = key;
-
-        var ivLength = aes.IV.Length;
-        if (data.Length < ivLength)
-        {
-            throw new InvalidOperationException("Ungültiges verschlüsseltes Format.");
-        }
-
-        var iv = new byte[ivLength];
-        var ciphertext = new byte[data.Length - ivLength];
-
-        try
-        {
-            Buffer.BlockCopy(data, 0, iv, 0, iv.Length);
-            Buffer.BlockCopy(data, iv.Length, ciphertext, 0, ciphertext.Length);
-            aes.IV = iv;
-
-            using var decryptor = aes.CreateDecryptor();
-            return decryptor.TransformFinalBlock(ciphertext, 0, ciphertext.Length);
-        }
-        finally
-        {
-            Array.Clear(iv);
-            Array.Clear(ciphertext);
-        }
-    }
-
-    private async Task MigrateKeyFileAsync(byte[] masterKey, byte[] passwordDerivedKey)
-    {
-        var encryptedMasterKey = EncryptWithKey(masterKey, passwordDerivedKey);
-        Directory.CreateDirectory(Path.GetDirectoryName(_keyFilePath)!);
-        await File.WriteAllBytesAsync(_keyFilePath, encryptedMasterKey).ConfigureAwait(false);
     }
 
     #endregion

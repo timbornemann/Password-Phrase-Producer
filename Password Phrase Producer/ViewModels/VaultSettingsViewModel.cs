@@ -561,11 +561,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         LockAuthenticator();
     }
 
-    public Task<byte[]> CreateAuthenticatorBackupAsync(CancellationToken cancellationToken = default)
-        => _totpService.CreateBackupAsync(cancellationToken);
 
-    public Task RestoreAuthenticatorBackupAsync(Stream backupStream, CancellationToken cancellationToken = default)
-        => _totpService.RestoreBackupAsync(backupStream, cancellationToken);
 
     public Task RestoreBackupWithMergeAsync(Stream backupStream, CancellationToken cancellationToken = default)
         => _vaultService.RestoreBackupWithMergeAsync(backupStream, cancellationToken);
@@ -658,7 +654,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         {
             var authJson = JsonSerializer.Serialize(backup.Authenticator, _jsonOptions);
             using var authStream = new MemoryStream(Encoding.UTF8.GetBytes(authJson));
-            await _totpService.RestoreBackupAsync(authStream, cancellationToken).ConfigureAwait(false);
+            await _totpService.RestoreLegacyBackupAsync(authStream, cancellationToken).ConfigureAwait(false);
         }
     }
 

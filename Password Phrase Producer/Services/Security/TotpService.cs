@@ -21,8 +21,7 @@ public class TotpService
 
     public bool IsUnlocked => _encryptionService.IsUnlocked;
     public bool HasPassword => _encryptionService.HasPassword;
-    // Backward compatible alias
-    public bool HasPin => _encryptionService.HasPin;
+
 
     public TotpService(TotpEncryptionService encryptionService)
     {
@@ -351,38 +350,6 @@ public class TotpService
     }
 
     /// <summary>
-    /// Creates an unencrypted backup. WARNING: This method creates backups with plain-text TOTP secrets.
-    /// Use ExportWithFilePasswordAsync for secure encrypted exports.
-    /// </summary>
-    [Obsolete("Use ExportWithFilePasswordAsync for secure encrypted exports. This method creates unencrypted backups.")]
-    public async Task<byte[]> CreateBackupAsync(CancellationToken cancellationToken = default)
-    {
-        EnsureUnlocked();
-
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-            var dtos = entries.Select(TotpEntryDto.FromModel).ToList();
-
-            var backup = new Models.AuthenticatorBackupDto
-            {
-                Version = 1,
-                Entries = dtos,
-                PasswordHash = _encryptionService.HasPassword ? "protected" : string.Empty,
-                CreatedAt = DateTimeOffset.UtcNow
-            };
-
-            var json = JsonSerializer.Serialize(backup, _jsonOptions);
-            return Encoding.UTF8.GetBytes(json);
-        }
-        finally
-        {
-            _syncLock.Release();
-        }
-    }
-
-    /// <summary>
     /// Exports TOTP entries encrypted with a file password, similar to vault exports.
     /// </summary>
     public async Task<byte[]> ExportWithFilePasswordAsync(string filePassword, CancellationToken cancellationToken = default)
@@ -570,31 +537,6 @@ public class TotpService
         return result;
     }
 
-    public async Task RestoreBackupAsync(Stream backupStream, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(backupStream);
-        EnsureUnlocked();
-
-        using var reader = new StreamReader(backupStream, Encoding.UTF8, leaveOpen: true);
-        var json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-        var backup = JsonSerializer.Deserialize<Models.AuthenticatorBackupDto>(json, _jsonOptions)
-                     ?? throw new InvalidOperationException("Ungültiges Backup-Format.");
-
-        var entries = backup.Entries.Select(dto => dto.ToModel()).ToList();
-
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            _syncLock.Release();
-        }
-
-        EntriesChanged?.Invoke(this, EventArgs.Empty);
-    }
-
     public async Task<List<TotpEntry>> GetEntriesForExportAsync(CancellationToken cancellationToken = default)
     {
         EnsureUnlocked();
@@ -630,6 +572,40 @@ public class TotpService
         {
             _syncLock.Release();
         }
+    }
+
+    /// <summary>
+    /// Restores a legacy unencrypted backup.
+    /// This is redundant with ImportWithFilePasswordAsync but needed for backward compatibility with old unencrypted exports.
+    /// </summary>
+    public async Task RestoreLegacyBackupAsync(Stream backupStream, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(backupStream);
+        EnsureUnlocked();
+
+        using var reader = new StreamReader(backupStream, Encoding.UTF8, leaveOpen: true);
+        var json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        var backup = JsonSerializer.Deserialize<Models.AuthenticatorBackupDto>(json, _jsonOptions)
+                     ?? throw new InvalidOperationException("Ungültiges Backup-Format.");
+
+        if (backup.Entries is null)
+        {
+            return;
+        }
+
+        var entries = backup.Entries.Select(dto => dto.ToModel()).ToList();
+
+        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _syncLock.Release();
+        }
+
+        EntriesChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public async Task RestoreBackupWithMergeAsync(Stream backupStream, CancellationToken cancellationToken = default)
