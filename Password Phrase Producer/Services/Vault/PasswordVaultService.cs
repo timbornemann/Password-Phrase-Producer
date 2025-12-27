@@ -26,7 +26,7 @@ public class PasswordVaultService
     private const string PasswordVerifierStorageKey = "PasswordVaultMasterPasswordVerifier";
     private const string PasswordIterationsStorageKey = "PasswordVaultMasterPasswordIterations";
     private const string BiometricKeyStorageKey = "PasswordVaultBiometricKey_V2"; // New version for secure storage
-    private const string LegacyBiometricKeyStorageKey = "PasswordVaultBiometricKey"; // Old insecure key
+
     private const int KeySizeBytes = 32;
     private const int SaltSizeBytes = 16;
     private const int Pbkdf2Iterations = 200_000;
@@ -67,12 +67,7 @@ public class PasswordVaultService
             return true;
         }
 
-        // Check for legacy key and remove it if it exists (forcing migration/re-login)
-        var legacy = await SecureStorage.Default.GetAsync(LegacyBiometricKeyStorageKey).ConfigureAwait(false);
-        if (!string.IsNullOrEmpty(legacy))
-        {
-            SecureStorage.Default.Remove(LegacyBiometricKeyStorageKey);
-        }
+
         
         return false;
     }
@@ -198,12 +193,7 @@ public class PasswordVaultService
 
         if (string.IsNullOrEmpty(storedKeyBase64) || string.IsNullOrEmpty(metadata.Verifier))
         {
-            // If V2 key is missing, check/clear Legacy key just in case HasBiometricKeyAsync wasn't called
-            var legacy = await SecureStorage.Default.GetAsync(LegacyBiometricKeyStorageKey).ConfigureAwait(false);
-             if (!string.IsNullOrEmpty(legacy))
-            {
-                 SecureStorage.Default.Remove(LegacyBiometricKeyStorageKey);
-            }
+
             return false;
         }
 

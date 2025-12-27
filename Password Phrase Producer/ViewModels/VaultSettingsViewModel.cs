@@ -649,13 +649,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             using var authStream = new MemoryStream(Encoding.UTF8.GetBytes(authJson));
             await _totpService.ImportWithFilePasswordAsync(authStream, filePassword, cancellationToken).ConfigureAwait(false);
         }
-        // Fallback to old unencrypted format for backward compatibility
-        else if (backup.Authenticator is not null && _totpEncryptionService.IsUnlocked)
-        {
-            var authJson = JsonSerializer.Serialize(backup.Authenticator, _jsonOptions);
-            using var authStream = new MemoryStream(Encoding.UTF8.GetBytes(authJson));
-            await _totpService.RestoreLegacyBackupAsync(authStream, cancellationToken).ConfigureAwait(false);
-        }
+
     }
 
 

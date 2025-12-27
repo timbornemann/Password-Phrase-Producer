@@ -574,39 +574,7 @@ public class TotpService
         }
     }
 
-    /// <summary>
-    /// Restores a legacy unencrypted backup.
-    /// This is redundant with ImportWithFilePasswordAsync but needed for backward compatibility with old unencrypted exports.
-    /// </summary>
-    public async Task RestoreLegacyBackupAsync(Stream backupStream, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(backupStream);
-        EnsureUnlocked();
 
-        using var reader = new StreamReader(backupStream, Encoding.UTF8, leaveOpen: true);
-        var json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-        var backup = JsonSerializer.Deserialize<Models.AuthenticatorBackupDto>(json, _jsonOptions)
-                     ?? throw new InvalidOperationException("Ungültiges Backup-Format.");
-
-        if (backup.Entries is null)
-        {
-            return;
-        }
-
-        var entries = backup.Entries.Select(dto => dto.ToModel()).ToList();
-
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            _syncLock.Release();
-        }
-
-        EntriesChanged?.Invoke(this, EventArgs.Empty);
-    }
 
     public async Task RestoreBackupWithMergeAsync(Stream backupStream, CancellationToken cancellationToken = default)
     {
