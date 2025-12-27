@@ -122,6 +122,28 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
                 UpdateCodes();
             });
         }
+        catch (InvalidDataException ex)
+        {
+            // Show error to user
+             _dispatcher.Dispatch(async () => 
+             {
+                 if (Application.Current?.MainPage is Page page)
+                 {
+                     await page.DisplayAlert("Fehler", $"Die Authenticator-Daten konnten nicht geladen werden: {ex.Message}", "OK");
+                 }
+             });
+        }
+        catch (Exception ex)
+        {
+             _dispatcher.Dispatch(async () => 
+             {
+                 if (Application.Current?.MainPage is Page page)
+                 {
+                     await page.DisplayAlert("Fehler", "Ein unerwarteter Fehler ist beim Laden der Authenticator-Daten aufgetreten.", "OK");
+                 }
+             });
+             Debug.WriteLine(ex);
+        }
         finally
         {
             IsBusy = false;

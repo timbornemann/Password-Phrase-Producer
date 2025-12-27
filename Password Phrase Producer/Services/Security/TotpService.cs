@@ -304,15 +304,15 @@ public class TotpService
                 var snapshot = JsonSerializer.Deserialize<TotpSnapshotDto>(json, _jsonOptions);
                 return snapshot?.Entries.Select(e => e.ToModel()).ToList() ?? new List<TotpEntry>();
             }
-            catch
+            catch (Exception ex)
             {
-                 return new List<TotpEntry>();
+                 throw new InvalidDataException("Die Authenticator-Datei ist beschädigt.", ex);
             }
         }
-        catch
+        catch (Exception ex) when (ex is not InvalidDataException)
         {
-            // Decryption failed
-            return new List<TotpEntry>();
+            // Decryption failed (or File read error handled above)
+            throw new InvalidDataException("Fehler beim Entschlüsseln oder Lesen der Authenticator-Daten.", ex);
         }
         finally
         {

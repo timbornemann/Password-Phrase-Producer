@@ -506,6 +506,10 @@ public class PasswordVaultService
             UpdateStoredEntryCount(entries.Count);
             return entries;
         }
+        catch (Exception ex) when (ex is JsonException || ex is NotSupportedException)
+        {
+             throw new InvalidDataException("Die Tresor-Datei ist beschädigt oder hat ein ungültiges Format.", ex);
+        }
         finally
         {
             // Sensible Daten aus dem Speicher löschen

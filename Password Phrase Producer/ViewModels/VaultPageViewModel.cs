@@ -252,6 +252,17 @@ public class VaultPageViewModel : INotifyPropertyChanged
             var entries = await _vaultService.GetEntriesAsync(cancellationToken);
             UpdateEntries(entries);
         }
+        catch (InvalidDataException ex)
+        {
+            UnlockError = $"Fehler: {ex.Message}";
+            // Keep vault locked if data is invalid/unreadable
+            IsUnlocked = false; 
+        }
+        catch (Exception ex)
+        {
+            UnlockError = "Ein unerwarteter Fehler ist aufgetreten.";
+            Debug.WriteLine(ex);
+        }
         finally
         {
             IsBusy = false;
