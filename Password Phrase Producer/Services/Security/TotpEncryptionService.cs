@@ -246,7 +246,7 @@ public class TotpEncryptionService
         {
             throw new InvalidOperationException("Der Authenticator ist gesperrt.");
         }
-        return _unlockedKey;
+        return _unlockedKey.ToArray();
     }
 
     /// <summary>

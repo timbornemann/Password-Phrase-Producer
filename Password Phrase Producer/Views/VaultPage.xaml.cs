@@ -315,12 +315,14 @@ public partial class VaultPage : ContentPage
             }
         }
 
+#if DEBUG
         if (!string.IsNullOrWhiteSpace(exception.StackTrace))
         {
             builder.AppendLine()
                 .AppendLine("Stacktrace:")
                 .AppendLine(TrimStackTrace(exception.StackTrace));
         }
+#endif
 
         return builder.ToString();
     }

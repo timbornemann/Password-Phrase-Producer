@@ -765,7 +765,7 @@ public class DataVaultService
             throw new InvalidOperationException("Der Datentresor ist gesperrt.");
         }
 
-        return _encryptionKey;
+        return _encryptionKey.ToArray();
     }
 
     private void EnsureUnlocked()

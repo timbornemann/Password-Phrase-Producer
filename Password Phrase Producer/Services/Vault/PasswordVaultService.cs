@@ -769,7 +769,7 @@ public class PasswordVaultService
             throw new InvalidOperationException("Der Passwort Tresor ist gesperrt.");
         }
 
-        return _encryptionKey;
+        return _encryptionKey.ToArray();
     }
 
     private void EnsureUnlocked()
