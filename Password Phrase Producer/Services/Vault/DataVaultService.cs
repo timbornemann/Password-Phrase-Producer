@@ -11,6 +11,7 @@ using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
 using Password_Phrase_Producer.Models;
 using Password_Phrase_Producer.Services.Security;
+using Password_Phrase_Producer.Services.Storage;
 
 namespace Password_Phrase_Producer.Services.Vault;
 
@@ -42,12 +43,14 @@ public class DataVaultService
     };
 
     private readonly IBiometricAuthenticationService _biometricService;
+    private readonly ISecureFileService _secureFileService;
     private readonly string _vaultFilePath;
     private byte[]? _encryptionKey;
 
-    public DataVaultService(IBiometricAuthenticationService biometricService)
+    public DataVaultService(IBiometricAuthenticationService biometricService, ISecureFileService secureFileService)
     {
         _biometricService = biometricService;
+        _secureFileService = secureFileService;
         _vaultFilePath = Path.Combine(FileSystem.AppDataDirectory, VaultFileName);
     }
 
@@ -66,8 +69,6 @@ public class DataVaultService
         {
             return true;
         }
-
-
 
         return false;
     }
@@ -168,7 +169,7 @@ public class DataVaultService
 
             if (enableBiometrics)
             {
-                 await SetBiometricUnlockAsync(true, cancellationToken).ConfigureAwait(false);
+                await SetBiometricUnlockAsync(true, cancellationToken).ConfigureAwait(false);
             }
             else
             {
@@ -221,7 +222,6 @@ public class DataVaultService
         }
         catch (Exception)
         {
-             // Decryption failed or cancelled
              return false;
         }
     }
@@ -242,8 +242,6 @@ public class DataVaultService
             }
             catch (Exception)
             {
-                 // Encrypt failed (user cancelled or error)
-                 // Cleanup and do not crash
                  SecureStorage.Default.Remove(BiometricKeyStorageKey);
             }
         }
@@ -340,7 +338,6 @@ public class DataVaultService
         await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            // 1. Klardaten auslesen
             var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
             var ordered = entries
                 .OrderBy(e => e.DisplayCategory, StringComparer.CurrentCultureIgnoreCase)
@@ -359,7 +356,6 @@ public class DataVaultService
 
             try
             {
-                // 2. Mit Datei-Passwort verschlüsseln (neue Salt/Key für Export)
                 var salt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
                 var key = DeriveKey(filePassword, salt, Pbkdf2Iterations);
                 try
@@ -367,7 +363,6 @@ public class DataVaultService
                     var encrypted = EncryptWithKey(plainBytes, key);
                     var verifier = CreateVerifier(key);
 
-                    // 3. Format: { salt, verifier, iterations, cipherText }
                     var exportDto = new PortableBackupDto
                     {
                         Salt = Convert.ToBase64String(salt),
@@ -386,7 +381,6 @@ public class DataVaultService
             }
             finally
             {
-                // Plain-Text Daten aus dem Speicher löschen
                 Array.Clear(plainBytes);
             }
         }
@@ -402,17 +396,14 @@ public class DataVaultService
         ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);
         EnsureUnlocked();
 
-        // 1. Datei lesen und parsen
         using var reader = new StreamReader(stream, Encoding.UTF8, leaveOpen: true);
         var json = await reader.ReadToEndAsync().ConfigureAwait(false);
         var dto = JsonSerializer.Deserialize<PortableBackupDto>(json, _jsonOptions)
                   ?? throw new InvalidOperationException("Ungültiges Export-Format.");
 
-        // 2. Mit Datei-Passwort entschlüsseln
         var salt = Convert.FromBase64String(dto.Salt);
         var key = DeriveKey(filePassword, salt, dto.Iterations);
 
-        // Verifier prüfen
         var expectedVerifier = Convert.FromBase64String(dto.Verifier);
         var actualVerifier = CreateVerifier(key);
         if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
@@ -427,7 +418,6 @@ public class DataVaultService
 
         try
         {
-            // 3. Klardaten in Tresor einfügen
             var snapshot = JsonSerializer.Deserialize<PasswordVaultSnapshotDto>(plainBytes, _jsonOptions)
                           ?? throw new InvalidOperationException("Ungültiges Snapshot-Format.");
             
@@ -448,13 +438,11 @@ public class DataVaultService
                 _syncLock.Release();
             }
 
-            // 4. Tresor sperren
             Lock();
             MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
         }
         finally
         {
-            // Plain-Text Daten aus dem Speicher löschen
             Array.Clear(plainBytes);
         }
     }
@@ -499,7 +487,6 @@ public class DataVaultService
         }
         finally
         {
-            // Sensible Daten aus dem Speicher löschen
             Array.Clear(decryptedBytes);
         }
     }
@@ -530,7 +517,6 @@ public class DataVaultService
         }
         finally
         {
-            // Plain-Text JSON-Bytes aus dem Speicher löschen
             Array.Clear(plainBytes);
         }
     }
@@ -577,12 +563,12 @@ public class DataVaultService
 
     private async Task<VaultFileContent> ReadVaultFileAsync(CancellationToken cancellationToken)
     {
-        if (!File.Exists(_vaultFilePath))
+        if (!await _secureFileService.ExistsAsync(_vaultFilePath))
         {
             return VaultFileContent.Empty;
         }
 
-        var rawContent = await File.ReadAllBytesAsync(_vaultFilePath, cancellationToken).ConfigureAwait(false);
+        var rawContent = await _secureFileService.ReadAllBytesAsync(_vaultFilePath, cancellationToken).ConfigureAwait(false);
         return ParseVaultFile(rawContent);
     }
 
@@ -610,15 +596,12 @@ public class DataVaultService
         }
         catch (DecoderFallbackException)
         {
-            // Nicht im JSON-Format gespeichert.
         }
         catch (JsonException)
         {
-            // Nicht im JSON-Format gespeichert.
         }
         catch (FormatException)
         {
-            // Ungültiges Cipher-Format.
         }
 
         return new VaultFileContent(rawContent, null, null, null, rawContent);
@@ -648,7 +631,7 @@ public class DataVaultService
     private async Task WriteVaultFileInternalAsync(byte[] rawContent, CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_vaultFilePath)!);
-        await File.WriteAllBytesAsync(_vaultFilePath, rawContent, cancellationToken).ConfigureAwait(false);
+        await _secureFileService.WriteAllBytesAsync(_vaultFilePath, rawContent, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<int?> TryGetEntryCountAsync(VaultFileContent content, CancellationToken cancellationToken)
@@ -690,7 +673,6 @@ public class DataVaultService
         {
             if (decrypted is not null)
             {
-                // Sensible Daten aus dem Speicher löschen
                 Array.Clear(decrypted);
             }
         }
@@ -919,9 +901,9 @@ public class DataVaultService
             Lock();
 
             // Delete vault file
-            if (File.Exists(_vaultFilePath))
+            if (await _secureFileService.ExistsAsync(_vaultFilePath))
             {
-                File.Delete(_vaultFilePath);
+                _secureFileService.Delete(_vaultFilePath);
             }
 
             // Clear SecureStorage entries

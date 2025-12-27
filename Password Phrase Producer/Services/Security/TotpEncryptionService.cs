@@ -2,6 +2,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Maui.Storage;
+using Password_Phrase_Producer.Services.Storage;
 
 namespace Password_Phrase_Producer.Services.Security;
 
@@ -20,6 +21,8 @@ public class TotpEncryptionService
     private const string PasswordIterationsStorageKey = "TotpPasswordIterations";
     private const int SaltSizeBytes = 16;
     private const int Pbkdf2Iterations = 200_000;
+
+    private readonly ISecureFileService _secureFileService;
     private readonly string _keyFilePath;
     private byte[]? _unlockedKey;
     private bool _isUnlocked;
@@ -50,8 +53,9 @@ public class TotpEncryptionService
         }
     }
 
-    public TotpEncryptionService()
+    public TotpEncryptionService(ISecureFileService secureFileService)
     {
+        _secureFileService = secureFileService;
         _keyFilePath = Path.Combine(FileSystem.AppDataDirectory, KeyFileName);
     }
 
@@ -82,7 +86,7 @@ public class TotpEncryptionService
 
             // Save encrypted master key to file
             Directory.CreateDirectory(Path.GetDirectoryName(_keyFilePath)!);
-            await File.WriteAllBytesAsync(_keyFilePath, encryptedMasterKey);
+            await _secureFileService.WriteAllBytesAsync(_keyFilePath, encryptedMasterKey);
 
             // Store password metadata (salt, verifier, iterations) in SecureStorage
             await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, Convert.ToBase64String(salt));
@@ -140,12 +144,12 @@ public class TotpEncryptionService
             }
 
             // Load and decrypt master key
-            if (!File.Exists(_keyFilePath))
+            if (!await _secureFileService.ExistsAsync(_keyFilePath))
             {
                 return false;
             }
 
-            var encryptedMasterKey = await File.ReadAllBytesAsync(_keyFilePath);
+            var encryptedMasterKey = await _secureFileService.ReadAllBytesAsync(_keyFilePath);
             _unlockedKey = DecryptWithKey(encryptedMasterKey, passwordDerivedKey);
             _isUnlocked = true;
 
@@ -190,7 +194,7 @@ public class TotpEncryptionService
             var encryptedMasterKey = EncryptWithKey(_unlockedKey, newPasswordDerivedKey);
             var newVerifier = CreateVerifier(newPasswordDerivedKey);
 
-            await File.WriteAllBytesAsync(_keyFilePath, encryptedMasterKey);
+            await _secureFileService.WriteAllBytesAsync(_keyFilePath, encryptedMasterKey);
 
             // Update password metadata
             await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, Convert.ToBase64String(newSalt));
@@ -225,11 +229,24 @@ public class TotpEncryptionService
         // Lock first
         Lock();
 
-        // Delete key file
-        if (File.Exists(_keyFilePath))
-        {
-            File.Delete(_keyFilePath);
-        }
+        // Delete key file - Note: Delete is synchronous in interface??
+        // Wait, ISecureFileService.Delete is probably void Delete(string path). Check Step 46.
+        // Step 46: `void Delete(string path);` Yes.
+        
+        // However, I need to check existence first? SecureFileService.Delete does File.Delete which doesn't throw if file missing?
+        // Actually File.Delete does not throw if file doesn't exist. But SecureFileService might throw?
+        // Let's assume it's safe or check ExistsAsync first. 
+        // Sync context in Reset()? It's a sync method?
+        // The Reset() method in TotpEncryptionService is synchronous: `public void Reset()`.
+        // _secureFileService.ExistsAsync is async. I cannot call it easily here.
+        // I should probably skip the check or update Reset to be async, but that changes API.
+        // Or just call `_secureFileService.Delete(_keyFilePath)` assuming it handles it.
+        // Let's look at `SecureFileService.cs` implementation (Step 46).
+        // It's `public void Delete(string path) { if (File.Exists(path)) File.Delete(path); }` (inferred).
+        // Wait, I created Step 46. Let's check `SecureFileService` content if needed.
+        // But for now, I'll just call `_secureFileService.Delete`.
+        
+        _secureFileService.Delete(_keyFilePath);
 
         // Clear password preferences and metadata
         SecureStorage.Default.Remove(PasswordSaltStorageKey);

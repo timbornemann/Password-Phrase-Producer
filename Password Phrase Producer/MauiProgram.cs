@@ -41,9 +41,14 @@ public static class MauiProgram
         builder.Services.AddTransient<VaultEntryEditorPage>();
         builder.Services.AddTransient<AuthenticatorViewModel>();
         builder.Services.AddTransient<AuthenticatorPage>();
-        builder.Services.AddTransient<AuthenticatorPinPage>();
+        builder.Services.AddSingleton<AuthenticatorPinPage>();
         builder.Services.AddTransient<AddEntryPage>();
 
+        builder.Services.AddSingleton<Services.Security.IAppLockService, Services.Security.AppLockService>();
+        builder.Services.AddSingleton<Services.Storage.ISecureFileService, Services.Storage.SecureFileService>();
+        builder.Services.AddTransient<Views.Security.AppLoginPage>();
+        builder.Services.AddTransient<Views.Security.SetupAppPasswordPage>();
+        
         return builder.Build();
     }
 }
