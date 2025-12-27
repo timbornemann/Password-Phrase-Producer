@@ -58,14 +58,28 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
         }
 
         var iv = cipher.GetIV();
-        var encrypted = cipher.DoFinal(data);
+        byte[] encrypted;
+        try 
+        {
+             encrypted = cipher.DoFinal(data);
+        }
+        catch (Java.Lang.Exception ex)
+        {
+             throw new UnauthorizedAccessException("Encryption failed at DoFinal.", ex);
+        }
 
         // Combine IV and encrypted data
-        var result = new byte[iv.Length + encrypted.Length];
-        Buffer.BlockCopy(iv, 0, result, 0, iv.Length);
-        Buffer.BlockCopy(encrypted, 0, result, iv.Length, encrypted.Length);
-        
-        return result;
+        try 
+        {
+            var result = new byte[iv.Length + encrypted.Length];
+            Buffer.BlockCopy(iv, 0, result, 0, iv.Length);
+            Buffer.BlockCopy(encrypted, 0, result, iv.Length, encrypted.Length);
+            return result;
+        }
+        catch (Exception ex)
+        {
+             throw new InvalidOperationException("Encryption processing failed.", ex);
+        }
     }
 
     public async Task<byte[]> DecryptAsync(byte[] data, CancellationToken cancellationToken = default)
@@ -99,7 +113,16 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
              throw new UnauthorizedAccessException("Biometric authentication failed or cancelled.");
         }
 
-        return cipher.DoFinal(cipherText);
+        try 
+        {
+            return cipher.DoFinal(cipherText);
+        }
+        catch (Java.Lang.Exception ex)
+        {
+            // Catch Java Cryptographic exceptions (BadPadding, etc.)
+            // Treat as Unauthorized/Invalid Key
+            throw new UnauthorizedAccessException("Decryption failed.", ex);
+        }
     }
 
     private async Task<bool> AuthenticateInternalAsync(string reason, Javax.Crypto.Cipher? cipher, CancellationToken cancellationToken)
@@ -123,31 +146,39 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
         var callback = new AndroidBiometricAuthCallback();
         await Microsoft.Maui.ApplicationModel.MainThread.InvokeOnMainThreadAsync(() =>
         {
-            var executor = AndroidX.Core.Content.ContextCompat.GetMainExecutor(fragmentActivity);
-            var prompt = new AndroidX.Biometric.BiometricPrompt(fragmentActivity, executor, callback);
-            callback.SetPrompt(prompt);
-
-            var promptInfoBuilder = new AndroidX.Biometric.BiometricPrompt.PromptInfo.Builder()
-                .SetTitle("Passwort Tresor")
-                .SetSubtitle(reason)
-                .SetNegativeButtonText("Abbrechen")
-                .SetConfirmationRequired(false); // Can be true for higher security
-
-            if (OperatingSystem.IsAndroidVersionAtLeast(30))
+            try 
             {
-                promptInfoBuilder.SetAllowedAuthenticators((int)(AndroidX.Biometric.BiometricManager.Authenticators.BiometricStrong));
+                var executor = AndroidX.Core.Content.ContextCompat.GetMainExecutor(fragmentActivity);
+                var prompt = new AndroidX.Biometric.BiometricPrompt(fragmentActivity, executor, callback);
+                callback.SetPrompt(prompt);
+
+                var promptInfoBuilder = new AndroidX.Biometric.BiometricPrompt.PromptInfo.Builder()
+                    .SetTitle("Passwort Tresor")
+                    .SetSubtitle(reason)
+                    .SetNegativeButtonText("Abbrechen")
+                    .SetConfirmationRequired(false);
+
+                if (OperatingSystem.IsAndroidVersionAtLeast(30))
+                {
+                    promptInfoBuilder.SetAllowedAuthenticators((int)(AndroidX.Biometric.BiometricManager.Authenticators.BiometricStrong));
+                }
+
+                var promptInfo = promptInfoBuilder.Build();
+
+                if (cipher != null)
+                {
+                     var cryptoObject = new AndroidX.Biometric.BiometricPrompt.CryptoObject(cipher);
+                     prompt.Authenticate(promptInfo, cryptoObject);
+                }
+                else
+                {
+                    prompt.Authenticate(promptInfo);
+                }
             }
-
-            var promptInfo = promptInfoBuilder.Build();
-
-            if (cipher != null)
+            catch (Exception)
             {
-                 var cryptoObject = new AndroidX.Biometric.BiometricPrompt.CryptoObject(cipher);
-                 prompt.Authenticate(promptInfo, cryptoObject);
-            }
-            else
-            {
-                prompt.Authenticate(promptInfo);
+                // Catch any binding/cast errors on the UI thread to prevent crash
+                callback.Cancel(); // Ensure task is cancelled
             }
         });
 
@@ -158,6 +189,10 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
             return await callback.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
+        {
+            return false;
+        }
+        catch (Exception)
         {
             return false;
         }
@@ -177,7 +212,7 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
             GenerateKey();
         }
 
-        var key = (Javax.Crypto.ISecretKey)keyStore.GetKey(KeyAlias, null);
+        var key = keyStore.GetKey(KeyAlias, null);
         var cipher = Javax.Crypto.Cipher.GetInstance("AES/CBC/PKCS7Padding");
 
         if (mode == Javax.Crypto.CipherMode.EncryptMode)
