@@ -39,10 +39,22 @@ public partial class AuthenticatorPage : ContentPage
         // Check if authenticator needs to be unlocked
         if (!_encryptionService.IsUnlocked)
         {
-            var pinPage = Application.Current?.MainPage?.Handler?.MauiContext?.Services.GetService<AuthenticatorPinPage>();
-            if (pinPage != null)
+            // Delay to ensure page is fully loaded and has MauiContext
+            await Task.Delay(100);
+            
+            // Check if we still have a valid navigation context
+            if (Navigation is null || Handler?.MauiContext is null)
             {
-                await Navigation.PushModalAsync(pinPage);
+                // If navigation is not ready, try again after a short delay
+                Dispatcher.Dispatch(async () =>
+                {
+                    await Task.Delay(200);
+                    await ShowPinPageIfNeededAsync();
+                });
+            }
+            else
+            {
+                await ShowPinPageIfNeededAsync();
             }
         }
         
@@ -50,6 +62,62 @@ public partial class AuthenticatorPage : ContentPage
         if (_encryptionService.IsUnlocked)
         {
             _viewModel.Activate();
+        }
+    }
+
+    private async Task ShowPinPageIfNeededAsync()
+    {
+        // Double-check that we're still on this page and not unlocked
+        if (_encryptionService.IsUnlocked || Navigation is null)
+        {
+            return;
+        }
+
+        try
+        {
+            // Use the MauiContext from this page, not MainPage
+            var mauiContext = Handler?.MauiContext;
+            if (mauiContext is null)
+            {
+                // Fallback to MainPage if this page doesn't have context yet
+                mauiContext = Application.Current?.MainPage?.Handler?.MauiContext;
+            }
+
+            if (mauiContext?.Services is not null)
+            {
+                var pinPage = mauiContext.Services.GetService<AuthenticatorPinPage>();
+                if (pinPage != null && Navigation is not null)
+                {
+                    await Navigation.PushModalAsync(pinPage);
+                }
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            // MauiContext issue - log and try again after delay
+            System.Diagnostics.Debug.WriteLine($"[AuthenticatorPage] MauiContext error: {ex.Message}");
+            
+            await Task.Delay(300);
+            if (Navigation is not null && !_encryptionService.IsUnlocked)
+            {
+                try
+                {
+                    var mauiContext = Handler?.MauiContext ?? Application.Current?.MainPage?.Handler?.MauiContext;
+                    if (mauiContext?.Services is not null)
+                    {
+                        var pinPage = mauiContext.Services.GetService<AuthenticatorPinPage>();
+                        if (pinPage != null)
+                        {
+                            await Navigation.PushModalAsync(pinPage);
+                        }
+                    }
+                }
+                catch (Exception ex2)
+                {
+                    // Log but don't crash
+                    System.Diagnostics.Debug.WriteLine($"[AuthenticatorPage] Failed to show pin page: {ex2.Message}");
+                }
+            }
         }
     }
 
