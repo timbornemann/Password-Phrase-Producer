@@ -32,6 +32,15 @@ public static class ToastPopup
             return;
         }
 
+        // Ensure overlay grid has proper row structure for bottom positioning
+        if (overlayGrid.RowDefinitions.Count == 1)
+        {
+            // Update to have two rows: one for content space, one for toast at bottom
+            overlayGrid.RowDefinitions.Clear();
+            overlayGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Star });
+            overlayGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        }
+
         // Create toast border
         var label = new Label
         {
@@ -51,7 +60,7 @@ public static class ToastPopup
             StrokeShape = new RoundRectangle { CornerRadius = 12 },
             Content = label,
             HorizontalOptions = LayoutOptions.Center,
-            VerticalOptions = LayoutOptions.End,
+            VerticalOptions = LayoutOptions.Start,
             Margin = new Thickness(20, 0, 20, 40),
             Opacity = 0,
             TranslationY = 20,
@@ -64,7 +73,8 @@ public static class ToastPopup
             InputTransparent = true // Don't block touches
         };
 
-        // Add to overlay grid
+        // Add to overlay grid in the bottom row
+        Grid.SetRow(border, overlayGrid.RowDefinitions.Count - 1);
         overlayGrid.Children.Add(border);
 
         // Animate in
@@ -103,15 +113,31 @@ public static class ToastPopup
             {
                 if (child is Grid existingOverlay && existingOverlay.ClassId == "ToastOverlay")
                 {
+                    // Ensure it has the proper row structure for bottom positioning
+                    if (existingOverlay.RowDefinitions.Count == 1)
+                    {
+                        existingOverlay.RowDefinitions.Clear();
+                        existingOverlay.RowDefinitions.Add(new RowDefinition { Height = GridLength.Star });
+                        existingOverlay.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                    }
+                    // Ensure overlay spans all rows of the root grid
+                    Grid.SetRow(existingOverlay, 0);
+                    Grid.SetRowSpan(existingOverlay, rootGrid.RowDefinitions.Count);
+                    Grid.SetColumn(existingOverlay, 0);
+                    Grid.SetColumnSpan(existingOverlay, rootGrid.ColumnDefinitions.Count);
                     return existingOverlay;
                 }
             }
 
-            // Create overlay grid
+            // Create overlay grid with two rows: content space and bottom row for toast
             var newOverlay = new Grid
             {
                 ClassId = "ToastOverlay",
-                RowDefinitions = { new RowDefinition { Height = GridLength.Star } },
+                RowDefinitions = 
+                { 
+                    new RowDefinition { Height = GridLength.Star },
+                    new RowDefinition { Height = GridLength.Auto }
+                },
                 ColumnDefinitions = { new ColumnDefinition { Width = GridLength.Star } },
                 HorizontalOptions = LayoutOptions.Fill,
                 VerticalOptions = LayoutOptions.Fill,
@@ -119,6 +145,12 @@ public static class ToastPopup
                 InputTransparent = true, // Don't block touches
                 ZIndex = 1000 // Ensure it's on top
             };
+
+            // Ensure overlay spans all rows of the root grid
+            Grid.SetRow(newOverlay, 0);
+            Grid.SetRowSpan(newOverlay, rootGrid.RowDefinitions.Count);
+            Grid.SetColumn(newOverlay, 0);
+            Grid.SetColumnSpan(newOverlay, rootGrid.ColumnDefinitions.Count);
 
             rootGrid.Children.Add(newOverlay);
             return newOverlay;
@@ -138,7 +170,11 @@ public static class ToastPopup
             var newOverlay = new Grid
             {
                 ClassId = "ToastOverlay",
-                RowDefinitions = { new RowDefinition { Height = GridLength.Star } },
+                RowDefinitions = 
+                { 
+                    new RowDefinition { Height = GridLength.Star },
+                    new RowDefinition { Height = GridLength.Auto }
+                },
                 ColumnDefinitions = { new ColumnDefinition { Width = GridLength.Star } },
                 HorizontalOptions = LayoutOptions.Fill,
                 VerticalOptions = LayoutOptions.Fill,
