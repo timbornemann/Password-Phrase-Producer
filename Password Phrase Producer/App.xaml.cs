@@ -32,14 +32,31 @@ namespace Password_Phrase_Producer
         protected override void OnSleep()
         {
             base.OnSleep();
-            _appLockService.Lock();
-            // Secure the view to prevent snapshots of sensitive data
-            MainPage = CreateSplashPage();
+            // Notify service of backgrounding to start timer
+            _appLockService.OnAppBackgrounded();
+            
+            // NOTE: We do NOT lock immediately anymore to allow for a grace period.
+            // We also do NOT replace the MainPage with a splash screen, so the app 
+            // state is preserved in the task switcher.
         }
 
         protected override async void OnResume()
         {
             base.OnResume();
+            
+            // Check if the background grace period has expired
+            if (_appLockService.CheckLockTimeout())
+            {
+                _appLockService.Lock();
+                
+                // Force navigation to login page if locked
+                MainThread.BeginInvokeOnMainThread(() => 
+                {
+                    var appLoginPage = _serviceProvider.GetRequiredService<AppLoginPage>();
+                    MainPage = appLoginPage;
+                });
+            }
+
             await InitializeNavigationAsync();
         }
 
@@ -53,7 +70,8 @@ namespace Password_Phrase_Producer
                  {
                      if (isConfigured)
                      {
-                         if (MainPage is not AppLoginPage)
+                         // Only navigate to login if NOT unlocked and NOT already on login page
+                         if (!_appLockService.IsUnlocked && MainPage is not AppLoginPage)
                          {
                              MainPage = _serviceProvider.GetRequiredService<AppLoginPage>();
                          }

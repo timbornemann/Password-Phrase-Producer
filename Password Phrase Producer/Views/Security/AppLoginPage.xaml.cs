@@ -27,8 +27,8 @@ public partial class AppLoginPage : ContentPage
         if (await _appLockService.IsBiometricConfiguredAsync())
         {
             BiometricButton.IsVisible = true;
-            // Optional: Auto-trigger biometric prompt? 
-            // await UnlockWithBiometricsAsync();
+            // Auto-trigger biometric prompt
+            await UnlockWithBiometricsAsync();
         }
         else
         {

@@ -5,15 +5,16 @@
              x:Class="Password_Phrase_Producer.Views.AuthenticatorPage"
              Title="Authenticator"
              Padding="0"
-             Shell.NavBarIsVisible="False">
+             Shell.NavBarIsVisible="False"
+             Background="{StaticResource PageBackground}">
 
-    <ContentPage.Background>
-        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+    <ContentPage.Resources>
+        <LinearGradientBrush x:Key="PageBackground" StartPoint="0,0" EndPoint="1,1">
             <GradientStop Color="#101018" Offset="0" />
             <GradientStop Color="#141426" Offset="0.6" />
             <GradientStop Color="#0F111A" Offset="1" />
         </LinearGradientBrush>
-    </ContentPage.Background>
+    </ContentPage.Resources>
 
     <Grid RowDefinitions="Auto, *">
         <!-- Header Area (Tresor Style) -->

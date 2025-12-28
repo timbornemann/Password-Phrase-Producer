@@ -16,6 +16,8 @@ public interface IAppLockService
     byte[] GetMasterKey(); // Throws if locked
     Task EnableBiometricsAsync(bool enable);
     Task<bool> IsBiometricConfiguredAsync();
+    void OnAppBackgrounded();
+    bool CheckLockTimeout();
 }
 
 public class AppLockService : IAppLockService
@@ -28,6 +30,8 @@ public class AppLockService : IAppLockService
     private readonly IBiometricAuthenticationService _biometricService;
     private byte[]? _masterKey;
     private AppLockMetadata? _cachedMetadata;
+    private DateTime? _lastBackgroundTime;
+    private readonly TimeSpan _lockTimeout = TimeSpan.FromMinutes(5);
 
     public bool IsUnlocked => _masterKey != null;
     
@@ -211,6 +215,29 @@ public class AppLockService : IAppLockService
     {
         await LoadMetadataIfNeededAsync().ConfigureAwait(false);
         return !string.IsNullOrEmpty(_cachedMetadata?.BiometricEncryptedMasterKey);
+    }
+
+    public void OnAppBackgrounded()
+    {
+        if (IsUnlocked) // Only track if currently unlocked
+        {
+            _lastBackgroundTime = DateTime.UtcNow;
+        }
+    }
+
+    public bool CheckLockTimeout()
+    {
+        if (_lastBackgroundTime == null) return false;
+
+        var elapsed = DateTime.UtcNow - _lastBackgroundTime.Value;
+        if (elapsed > _lockTimeout)
+        {
+            _lastBackgroundTime = null; // Reset
+            return true; // Should lock
+        }
+        
+        _lastBackgroundTime = null; // Reset on successful check (activity resumed)
+        return false;
     }
 
     public void Lock()
