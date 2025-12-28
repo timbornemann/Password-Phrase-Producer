@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Password_Phrase_Producer.Views.Dialogs.LoadingPage"
+             BackgroundColor="#80000000">
+    <ContentPage.Content>
+        <Grid>
+            <Border
+                StrokeThickness="0"
+                BackgroundColor="#1B2036"
+                StrokeShape="RoundRectangle 12"
+                Padding="24"
+                HorizontalOptions="Center"
+                VerticalOptions="Center">
+                <VerticalStackLayout Spacing="16">
+                    <ActivityIndicator
+                        IsRunning="True"
+                        Color="#4A5CFF"
+                        WidthRequest="48"
+                        HeightRequest="48"
+                        HorizontalOptions="Center" />
+                    <Label
+                        x:Name="MessageLabel"
+                        Text="Bitte warten..."
+                        TextColor="White"
+                        FontSize="14"
+                        HorizontalOptions="Center"
+                        HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+    </ContentPage.Content>
+</ContentPage>

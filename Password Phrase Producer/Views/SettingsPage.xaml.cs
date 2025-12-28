@@ -15,6 +15,7 @@ namespace Password_Phrase_Producer.Views;
 public partial class SettingsPage : ContentPage
 {
     private readonly VaultSettingsViewModel _viewModel;
+    private LoadingPage? _loadingPage;
 
     public SettingsPage(VaultSettingsViewModel viewModel)
     {
@@ -196,66 +197,96 @@ public partial class SettingsPage : ContentPage
     }
 
     private async void OnExportFullBackupClicked(object? sender, EventArgs e)
-        => await ExecuteSettingsActionAsync(async () =>
+    {
+        await ShowLoadingPageAsync("Exportiere Daten...");
+
+        try
         {
-            // Unlock all components that have passwords configured
-            if (!await EnsureVaultUnlockedAsync())
+            await ExecuteSettingsActionAsync(async () =>
             {
-                return;
-            }
+                // Unlock all components that have passwords configured
+                if (!await EnsureVaultUnlockedAsync())
+                {
+                    return;
+                }
 
-            if (!await EnsureDataVaultUnlockedAsync())
-            {
-                return;
-            }
+                if (!await EnsureDataVaultUnlockedAsync())
+                {
+                    return;
+                }
 
-            if (!await EnsureAuthenticatorUnlockedAsync())
-            {
-                return;
-            }
+                if (!await EnsureAuthenticatorUnlockedAsync())
+                {
+                    return;
+                }
 
-            try
-            {
-                await ExportFullBackupAsync();
-            }
-            finally
-            {
-                // Lock all vaults after export
-                _viewModel.LockAllVaults();
-            }
-        });
+                try
+                {
+                    await ExportFullBackupAsync();
+                }
+                finally
+                {
+                    // Lock all vaults after export
+                    _viewModel.LockAllVaults();
+                }
+            });
+        }
+        finally
+        {
+            await HideLoadingPageAsync();
+        }
+    }
 
     private async void OnImportFullBackupClicked(object? sender, EventArgs e)
-        => await ExecuteSettingsActionAsync(async () =>
+    {
+        await ShowLoadingPageAsync("Importiere Daten...");
+        bool success = false;
+
+        try
         {
-            // Unlock all components that have passwords configured
-            if (!await EnsureVaultUnlockedAsync())
+            await ExecuteSettingsActionAsync(async () =>
             {
-                return;
-            }
+                // Unlock all components that have passwords configured
+                if (!await EnsureVaultUnlockedAsync())
+                {
+                    return;
+                }
 
-            if (!await EnsureDataVaultUnlockedAsync())
-            {
-                return;
-            }
+                if (!await EnsureDataVaultUnlockedAsync())
+                {
+                    return;
+                }
 
-            if (!await EnsureAuthenticatorUnlockedAsync())
-            {
-                return;
-            }
+                if (!await EnsureAuthenticatorUnlockedAsync())
+                {
+                    return;
+                }
 
-            try
-            {
-                await ImportFullBackupAsync();
-                await _viewModel.RefreshVaultStateAsync();
-                await _viewModel.RefreshDataVaultStateAsync();
-            }
-            finally
-            {
-                // Lock all vaults after import
-                _viewModel.LockAllVaults();
-            }
-        });
+                try
+                {
+                    await ImportFullBackupAsync();
+                    await _viewModel.RefreshVaultStateAsync();
+                    await _viewModel.RefreshDataVaultStateAsync();
+                    success = true;
+                }
+                finally
+                {
+                    // Lock all vaults after import
+                    _viewModel.LockAllVaults();
+                }
+            });
+        }
+        finally
+        {
+            await HideLoadingPageAsync();
+        }
+
+        if (success)
+        {
+            var successPopup = new SuccessPopup("Erfolg", "Das Gesamtbackup wurde erfolgreich importiert.", "OK");
+            await this.ShowPopupAsync(successPopup);
+        }
+    }
 
 
     private async Task ExportBackupAsync()
@@ -305,9 +336,6 @@ public partial class SettingsPage : ContentPage
 
         await using var stream = await file.OpenReadAsync();
         await _viewModel.ImportWithFilePasswordAsync(stream, filePassword);
-
-        var successPopup = new SuccessPopup("Erfolg", "Der Import wurde erfolgreich abgeschlossen.", "OK");
-        await this.ShowPopupAsync(successPopup);
     }
 
     private async Task ExportDataVaultBackupAsync()
@@ -357,9 +385,6 @@ public partial class SettingsPage : ContentPage
 
         await using var stream = await file.OpenReadAsync();
         await _viewModel.ImportDataVaultWithFilePasswordAsync(stream, filePassword);
-
-        var successPopup = new SuccessPopup("Erfolg", "Der Datentresor-Import wurde erfolgreich abgeschlossen.", "OK");
-        await this.ShowPopupAsync(successPopup);
     }
 
     private async Task ExportEncryptedAsync()
@@ -409,9 +434,6 @@ public partial class SettingsPage : ContentPage
 
         await using var stream = await file.OpenReadAsync();
         await _viewModel.ImportWithFilePasswordAsync(stream, filePassword);
-
-        var successPopup = new SuccessPopup("Erfolg", "Der Import wurde erfolgreich abgeschlossen.", "OK");
-        await this.ShowPopupAsync(successPopup);
     }
 
     private async Task ExportDataVaultEncryptedAsync()
@@ -486,9 +508,6 @@ public partial class SettingsPage : ContentPage
 
         await using var stream = await file.OpenReadAsync();
         await _viewModel.RestoreFullBackupAsync(stream, filePassword);
-        
-        var successPopup = new SuccessPopup("Erfolg", "Das Gesamtbackup wurde erfolgreich importiert.", "OK");
-        await this.ShowPopupAsync(successPopup);
     }
 
     private async Task ImportDataVaultEncryptedAsync()
@@ -516,9 +535,6 @@ public partial class SettingsPage : ContentPage
 
         await using var stream = await file.OpenReadAsync();
         await _viewModel.ImportDataVaultWithFilePasswordAsync(stream, filePassword);
-
-        var successPopup = new SuccessPopup("Erfolg", "Der Datentresor-Import wurde erfolgreich abgeschlossen.", "OK");
-        await this.ShowPopupAsync(successPopup);
     }
 
     private async Task ExecuteSettingsActionAsync(Func<Task> action)
@@ -563,6 +579,39 @@ public partial class SettingsPage : ContentPage
             }
             throw;
         }
+    }
+
+    private async Task ShowLoadingPageAsync(string message)
+    {
+        if (_loadingPage != null)
+        {
+            return;
+        }
+
+        var navigation = Navigation ?? Microsoft.Maui.Controls.Application.Current?.MainPage?.Navigation;
+        if (navigation is null) 
+        {
+            return;
+        }
+
+        _loadingPage = new LoadingPage(message);
+        await navigation.PushModalAsync(_loadingPage);
+    }
+
+    private async Task HideLoadingPageAsync()
+    {
+        if (_loadingPage == null)
+        {
+            return;
+        }
+
+         var navigation = Navigation ?? Microsoft.Maui.Controls.Application.Current?.MainPage?.Navigation;
+        if (navigation != null && navigation.ModalStack.Contains(_loadingPage))
+        {
+            await navigation.PopModalAsync();
+        }
+        
+        _loadingPage = null;
     }
 
     private async void OnResetPasswordVaultClicked(object? sender, EventArgs e)
