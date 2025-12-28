@@ -23,12 +23,15 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     private readonly IBiometricAuthenticationService _biometricAuthenticationService;
     private readonly TotpEncryptionService _totpEncryptionService;
     private readonly TotpService _totpService;
+    private readonly IAppLockService _appLockService;
     private readonly Command _changePasswordCommand;
     private readonly Command _changeDataVaultPasswordCommand;
     private readonly Command _changeAuthenticatorPasswordCommand;
+    private readonly Command _changeAppPasswordCommand;
     private bool _isListening;
     private bool _hasVaultMasterPassword;
     private bool _hasDataVaultMasterPassword;
+    private bool _hasAppPassword;
 
     private bool _isVaultUnlocked;
     private bool _canUseBiometric;
@@ -60,18 +63,31 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     private string? _changeAuthenticatorPasswordSuccess;
     private bool _isAuthenticatorPasswordChangeBusy;
 
+    private bool _isAppUnlocked;
+    private bool _canUseAppBiometric;
+    private bool _isAppBiometricConfigured;
+    private bool _enableAppBiometric;
+    private string _currentAppPassword = string.Empty;
+    private string _newAppPassword = string.Empty;
+    private string _confirmAppPassword = string.Empty;
+    private string? _changeAppPasswordError;
+    private string? _changeAppPasswordSuccess;
+    private bool _isAppPasswordChangeBusy;
+
     public VaultSettingsViewModel(
         PasswordVaultService vaultService,
         DataVaultService dataVaultService,
         IBiometricAuthenticationService biometricAuthenticationService,
         TotpEncryptionService totpEncryptionService,
-        TotpService totpService)
+        TotpService totpService,
+        IAppLockService appLockService)
     {
         _vaultService = vaultService;
         _dataVaultService = dataVaultService;
         _biometricAuthenticationService = biometricAuthenticationService;
         _totpEncryptionService = totpEncryptionService;
         _totpService = totpService;
+        _appLockService = appLockService;
 
         _changePasswordCommand = new Command(async () => await ChangeMasterPasswordAsync(), () => !IsPasswordChangeBusy);
         ChangePasswordCommand = _changePasswordCommand;
@@ -81,6 +97,9 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
 
         _changeAuthenticatorPasswordCommand = new Command(async () => await ChangeAuthenticatorPasswordAsync(), () => !IsAuthenticatorPasswordChangeBusy);
         ChangeAuthenticatorPasswordCommand = _changeAuthenticatorPasswordCommand;
+
+        _changeAppPasswordCommand = new Command(async () => await ChangeAppPasswordAsync(), () => !IsAppPasswordChangeBusy);
+        ChangeAppPasswordCommand = _changeAppPasswordCommand;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -88,6 +107,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     public ICommand ChangePasswordCommand { get; }
     public ICommand ChangeDataVaultPasswordCommand { get; }
     public ICommand ChangeAuthenticatorPasswordCommand { get; }
+    public ICommand ChangeAppPasswordCommand { get; }
 
     public bool IsVaultUnlocked
     {
@@ -374,6 +394,123 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool HasAppPassword
+    {
+        get => _hasAppPassword;
+        private set
+        {
+            if (SetProperty(ref _hasAppPassword, value))
+            {
+                UpdateAppPasswordCommandState();
+            }
+        }
+    }
+
+    public bool IsAppUnlocked
+    {
+        get => _isAppUnlocked;
+        private set
+        {
+            if (SetProperty(ref _isAppUnlocked, value))
+            {
+                UpdateAppPasswordCommandState();
+            }
+        }
+    }
+
+    public bool CanUseAppBiometric
+    {
+        get => _canUseAppBiometric;
+        private set
+        {
+            if (SetProperty(ref _canUseAppBiometric, value))
+            {
+                UpdateAppPasswordCommandState();
+            }
+        }
+    }
+
+    public bool IsAppBiometricConfigured
+    {
+        get => _isAppBiometricConfigured;
+        private set => SetProperty(ref _isAppBiometricConfigured, value);
+    }
+
+    public bool EnableAppBiometric
+    {
+        get => _enableAppBiometric;
+        set
+        {
+            if (SetProperty(ref _enableAppBiometric, value))
+            {
+                UpdateAppPasswordCommandState();
+            }
+        }
+    }
+
+    public string CurrentAppPassword
+    {
+        get => _currentAppPassword;
+        set
+        {
+            if (SetProperty(ref _currentAppPassword, value))
+            {
+                ClearAppPasswordFeedback();
+                UpdateAppPasswordCommandState();
+            }
+        }
+    }
+
+    public string NewAppPassword
+    {
+        get => _newAppPassword;
+        set
+        {
+            if (SetProperty(ref _newAppPassword, value))
+            {
+                ClearAppPasswordFeedback();
+                UpdateAppPasswordCommandState();
+            }
+        }
+    }
+
+    public string ConfirmAppPassword
+    {
+        get => _confirmAppPassword;
+        set
+        {
+            if (SetProperty(ref _confirmAppPassword, value))
+            {
+                ClearAppPasswordFeedback();
+                UpdateAppPasswordCommandState();
+            }
+        }
+    }
+
+    public string? ChangeAppPasswordError
+    {
+        get => _changeAppPasswordError;
+        private set => SetProperty(ref _changeAppPasswordError, value);
+    }
+
+    public string? ChangeAppPasswordSuccess
+    {
+        get => _changeAppPasswordSuccess;
+        private set => SetProperty(ref _changeAppPasswordSuccess, value);
+    }
+
+    public bool IsAppPasswordChangeBusy
+    {
+        get => _isAppPasswordChangeBusy;
+        private set
+        {
+            if (SetProperty(ref _isAppPasswordChangeBusy, value))
+            {
+                UpdateAppPasswordCommandState();
+            }
+        }
+    }
+
     public void Activate()
     {
         if (_isListening)
@@ -404,6 +541,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         await RefreshVaultStateAsync(cancellationToken).ConfigureAwait(false);
         await RefreshDataVaultStateAsync(cancellationToken).ConfigureAwait(false);
         await RefreshAuthenticatorStateAsync(cancellationToken).ConfigureAwait(false);
+        await RefreshAppLockStateAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task RefreshVaultStateAsync(CancellationToken cancellationToken = default)
@@ -487,6 +625,31 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             NewAuthenticatorPassword = string.Empty;
             ConfirmAuthenticatorPassword = string.Empty;
             ClearAuthenticatorPasswordFeedback();
+        }).ConfigureAwait(false);
+    }
+
+    public async Task RefreshAppLockStateAsync(CancellationToken cancellationToken = default)
+    {
+        var isConfigured = await _appLockService.IsConfiguredAsync().ConfigureAwait(false);
+        var isUnlocked = _appLockService.IsUnlocked;
+        var canUseBiometric = await _biometricAuthenticationService.IsAvailableAsync(cancellationToken).ConfigureAwait(false);
+        var isBiometricConfigured = isConfigured && await _appLockService.IsBiometricConfiguredAsync().ConfigureAwait(false);
+
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            HasAppPassword = isConfigured;
+            IsAppUnlocked = isUnlocked;
+            CanUseAppBiometric = canUseBiometric;
+            IsAppBiometricConfigured = isBiometricConfigured;
+            EnableAppBiometric = isBiometricConfigured;
+
+            if (!isUnlocked)
+            {
+                NewAppPassword = string.Empty;
+                ConfirmAppPassword = string.Empty;
+            }
+
+            ClearAppPasswordFeedback();
         }).ConfigureAwait(false);
     }
 
@@ -795,6 +958,88 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         }
     }
 
+    private async Task ChangeAppPasswordAsync()
+    {
+        if (IsAppPasswordChangeBusy)
+        {
+            return;
+        }
+
+        try
+        {
+            IsAppPasswordChangeBusy = true;
+            ClearAppPasswordFeedback();
+
+            var isConfigured = await _appLockService.IsConfiguredAsync().ConfigureAwait(false);
+            if (isConfigured && !IsAppUnlocked)
+            {
+                if (string.IsNullOrWhiteSpace(CurrentAppPassword))
+                {
+                    ChangeAppPasswordError = "Bitte gib dein aktuelles App-Passwort ein.";
+                    return;
+                }
+
+                var unlocked = await _appLockService.UnlockAsync(CurrentAppPassword).ConfigureAwait(false);
+                if (!unlocked)
+                {
+                    ChangeAppPasswordError = "Das aktuelle Passwort ist falsch.";
+                    return;
+                }
+
+                await MainThread.InvokeOnMainThreadAsync(() => IsAppUnlocked = true).ConfigureAwait(false);
+            }
+
+            if (string.IsNullOrWhiteSpace(NewAppPassword))
+            {
+                ChangeAppPasswordError = "Bitte gib ein neues App-Passwort ein.";
+                return;
+            }
+
+            if (!string.Equals(NewAppPassword, ConfirmAppPassword, StringComparison.Ordinal))
+            {
+                ChangeAppPasswordError = "Die Passwörter stimmen nicht überein.";
+                return;
+            }
+
+            if (!isConfigured)
+            {
+                await _appLockService.SetupAsync(NewAppPassword, EnableAppBiometric && CanUseAppBiometric).ConfigureAwait(false);
+            }
+            else
+            {
+                await _appLockService.ChangePasswordAsync(CurrentAppPassword, NewAppPassword).ConfigureAwait(false);
+            }
+
+            if (CanUseAppBiometric)
+            {
+                await _appLockService.EnableBiometricsAsync(EnableAppBiometric).ConfigureAwait(false);
+            }
+
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                HasAppPassword = await _appLockService.IsConfiguredAsync().ConfigureAwait(false);
+                IsAppBiometricConfigured = await _appLockService.IsBiometricConfiguredAsync().ConfigureAwait(false);
+                IsAppUnlocked = _appLockService.IsUnlocked;
+                CurrentAppPassword = string.Empty;
+                NewAppPassword = string.Empty;
+                ConfirmAppPassword = string.Empty;
+                ChangeAppPasswordSuccess = isConfigured ? "App-Passwort wurde aktualisiert." : "App-Passwort wurde eingerichtet.";
+            }).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                ChangeAppPasswordError = ex.Message;
+                ChangeAppPasswordSuccess = null;
+            }).ConfigureAwait(false);
+        }
+        finally
+        {
+            await MainThread.InvokeOnMainThreadAsync(() => IsAppPasswordChangeBusy = false).ConfigureAwait(false);
+        }
+    }
+
     private async Task ChangeDataVaultPasswordAsync()
     {
         if (IsDataVaultPasswordChangeBusy)
@@ -891,6 +1136,14 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         }
     }
 
+    private void UpdateAppPasswordCommandState()
+    {
+        if (_changeAppPasswordCommand is not null)
+        {
+            MainThread.BeginInvokeOnMainThread(_changeAppPasswordCommand.ChangeCanExecute);
+        }
+    }
+
     private void ClearPasswordFeedback()
     {
         ChangePasswordError = null;
@@ -907,6 +1160,12 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     {
         ChangeDataVaultPasswordError = null;
         ChangeDataVaultPasswordSuccess = null;
+    }
+
+    private void ClearAppPasswordFeedback()
+    {
+        ChangeAppPasswordError = null;
+        ChangeAppPasswordSuccess = null;
     }
 
     private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
