@@ -305,6 +305,9 @@ public partial class SettingsPage : ContentPage
 
         await using var stream = await file.OpenReadAsync();
         await _viewModel.ImportWithFilePasswordAsync(stream, filePassword);
+
+        var successPopup = new SuccessPopup("Erfolg", "Der Import wurde erfolgreich abgeschlossen.", "OK");
+        await this.ShowPopupAsync(successPopup);
     }
 
     private async Task ExportDataVaultBackupAsync()
@@ -354,6 +357,9 @@ public partial class SettingsPage : ContentPage
 
         await using var stream = await file.OpenReadAsync();
         await _viewModel.ImportDataVaultWithFilePasswordAsync(stream, filePassword);
+
+        var successPopup = new SuccessPopup("Erfolg", "Der Datentresor-Import wurde erfolgreich abgeschlossen.", "OK");
+        await this.ShowPopupAsync(successPopup);
     }
 
     private async Task ExportEncryptedAsync()
@@ -403,6 +409,9 @@ public partial class SettingsPage : ContentPage
 
         await using var stream = await file.OpenReadAsync();
         await _viewModel.ImportWithFilePasswordAsync(stream, filePassword);
+
+        var successPopup = new SuccessPopup("Erfolg", "Der Import wurde erfolgreich abgeschlossen.", "OK");
+        await this.ShowPopupAsync(successPopup);
     }
 
     private async Task ExportDataVaultEncryptedAsync()
@@ -477,6 +486,9 @@ public partial class SettingsPage : ContentPage
 
         await using var stream = await file.OpenReadAsync();
         await _viewModel.RestoreFullBackupAsync(stream, filePassword);
+        
+        var successPopup = new SuccessPopup("Erfolg", "Das Gesamtbackup wurde erfolgreich importiert.", "OK");
+        await this.ShowPopupAsync(successPopup);
     }
 
     private async Task ImportDataVaultEncryptedAsync()
@@ -504,6 +516,9 @@ public partial class SettingsPage : ContentPage
 
         await using var stream = await file.OpenReadAsync();
         await _viewModel.ImportDataVaultWithFilePasswordAsync(stream, filePassword);
+
+        var successPopup = new SuccessPopup("Erfolg", "Der Datentresor-Import wurde erfolgreich abgeschlossen.", "OK");
+        await this.ShowPopupAsync(successPopup);
     }
 
     private async Task ExecuteSettingsActionAsync(Func<Task> action)
