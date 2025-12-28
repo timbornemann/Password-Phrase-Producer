@@ -14,6 +14,7 @@ public class TotpService
     private const string TotpFileName = "totp_data.json.enc";
     private readonly string _totpFilePath;
     private readonly TotpEncryptionService _encryptionService;
+    private readonly Services.Vault.VaultMergeService _vaultMergeService;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
     private readonly SemaphoreSlim _syncLock = new(1, 1);
 
@@ -23,9 +24,10 @@ public class TotpService
     public bool HasPassword => _encryptionService.HasPassword;
 
 
-    public TotpService(TotpEncryptionService encryptionService)
+    public TotpService(TotpEncryptionService encryptionService, Services.Vault.VaultMergeService vaultMergeService)
     {
         _encryptionService = encryptionService;
+        _vaultMergeService = vaultMergeService;
         _totpFilePath = Path.Combine(FileSystem.AppDataDirectory, TotpFileName);
     }
 
@@ -475,7 +477,9 @@ public class TotpService
             await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+                var existingEntries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                var result = _vaultMergeService.MergeEntries(existingEntries, entries);
+                await SaveEntriesInternalAsync(result.MergedEntries, cancellationToken).ConfigureAwait(false);
             }
             finally
             {
@@ -562,8 +566,7 @@ public class TotpService
         try
         {
             var existingEntries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-            var mergeService = new Services.Vault.VaultMergeService();
-            var result = mergeService.MergeEntries(existingEntries, incomingEntries);
+            var result = _vaultMergeService.MergeEntries(existingEntries, incomingEntries);
 
             await SaveEntriesInternalAsync(result.MergedEntries, cancellationToken).ConfigureAwait(false);
             return result;

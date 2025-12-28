@@ -27,6 +27,7 @@ public static class MauiProgram
         builder.Logging.AddDebug();
 #endif
 
+        builder.Services.AddSingleton<VaultMergeService>();
         builder.Services.AddSingleton<PasswordVaultService>();
         builder.Services.AddSingleton<DataVaultService>();
         builder.Services.AddSingleton<TotpEncryptionService>();

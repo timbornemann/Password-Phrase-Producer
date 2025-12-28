@@ -43,13 +43,15 @@ public class PasswordVaultService
 
     private readonly IBiometricAuthenticationService _biometricService;
     private readonly Services.Storage.ISecureFileService _secureFileService;
+    private readonly VaultMergeService _vaultMergeService;
     private readonly string _vaultFilePath;
     private byte[]? _encryptionKey;
 
-    public PasswordVaultService(IBiometricAuthenticationService biometricService, Services.Storage.ISecureFileService secureFileService)
+    public PasswordVaultService(IBiometricAuthenticationService biometricService, Services.Storage.ISecureFileService secureFileService, VaultMergeService vaultMergeService)
     {
         _biometricService = biometricService;
         _secureFileService = secureFileService;
+        _vaultMergeService = vaultMergeService;
         _vaultFilePath = Path.Combine(FileSystem.AppDataDirectory, VaultFileName);
     }
 
@@ -428,7 +430,9 @@ public class PasswordVaultService
             await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+                var existingEntries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                var result = _vaultMergeService.MergeEntries(existingEntries, entries);
+                await SaveEntriesInternalAsync(result.MergedEntries, cancellationToken).ConfigureAwait(false);
             }
             finally
             {
