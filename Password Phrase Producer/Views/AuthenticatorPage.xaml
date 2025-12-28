@@ -124,7 +124,6 @@
             <CollectionView
                 ItemsSource="{Binding Entries}"
                 SelectionMode="None"
-                Margin="16,0,16,16"
                 ItemSizingStrategy="MeasureAllItems"
                 VerticalOptions="FillAndExpand"
                 VerticalScrollBarVisibility="Never">
@@ -288,24 +287,37 @@
                                     FontFamily="OpenSansSemibold" />
 
                                 <!-- Progress/Timer -->
-                                <StackLayout
+                                <Grid
                                     Grid.Row="1"
                                     Grid.Column="1"
                                     VerticalOptions="Center"
-                                    Spacing="4"
-                                    WidthRequest="44">
+                                    WidthRequest="44"
+                                    RowDefinitions="Auto,*">
                                     <Label
+                                        Grid.Row="0"
                                         Text="{Binding RemainingSeconds}"
                                         HorizontalOptions="Center"
                                         TextColor="#5A6080"
-                                        FontSize="12" />
-                                    <ProgressBar
-                                        Progress="{Binding Progress}"
-                                        ProgressColor="#4A5CFF"
-                                        ScaleY="4"
+                                        FontSize="12"
+                                        ZIndex="10"
+                                        Margin="0,0,0,2" />
+                                    <Border
+                                        Grid.Row="1"
+                                        VerticalOptions="Center"
+                                        HeightRequest="4"
                                         WidthRequest="44"
-                                        BackgroundColor="#2A2F4A" />
-                                </StackLayout>
+                                        BackgroundColor="Transparent"
+                                        Padding="0">
+                                        <ProgressBar
+                                            Progress="{Binding Progress}"
+                                            ProgressColor="#4A5CFF"
+                                            ScaleY="4"
+                                            WidthRequest="44"
+                                            BackgroundColor="#2A2F4A"
+                                            VerticalOptions="Center"
+                                            HorizontalOptions="Center" />
+                                    </Border>
+                                </Grid>
                             </Grid>
                         </Border>
                     </DataTemplate>
