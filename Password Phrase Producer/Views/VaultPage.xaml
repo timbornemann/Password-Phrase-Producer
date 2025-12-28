@@ -211,7 +211,10 @@
                 VerticalScrollBarVisibility="Never"
                 IsGrouped="True">
             <CollectionView.ItemsLayout>
-                <LinearItemsLayout Orientation="Vertical" ItemSpacing="12" />
+                <LinearItemsLayout
+                    Orientation="Vertical"
+                    ItemSpacing="12"
+                    SnapPointsType="None" />
             </CollectionView.ItemsLayout>
             <CollectionView.GroupHeaderTemplate>
                 <DataTemplate x:DataType="viewmodels:VaultEntryGroup">
