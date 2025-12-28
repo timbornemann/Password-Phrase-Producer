@@ -46,48 +46,8 @@
             Grid.Row="0"
             VerticalOptions="Start">
             
-            <!-- Back Button -->
-            <Border
-                WidthRequest="34"
-                HeightRequest="34"
-                BackgroundColor="#1F2338"
-                StrokeThickness="0"
-                VerticalOptions="Center">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="10" />
-                </Border.StrokeShape>
-                <Border.Shadow>
-                    <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
-                </Border.Shadow>
-                <Border.GestureRecognizers>
-                    <TapGestureRecognizer Tapped="OnCloseTapped" />
-                </Border.GestureRecognizers>
-                <Image
-                    Source="chevronright.png"
-                    WidthRequest="18"
-                    HeightRequest="18"
-                    HorizontalOptions="Center"
-                    VerticalOptions="Center"
-                    Rotation="180" />
-            </Border>
-            
-            <VerticalStackLayout Grid.Column="1" Spacing="2" Margin="12,0,0,0" VerticalOptions="Center">
-                <Label
-                    Text="{Binding Label}"
-                    FontSize="18"
-                    FontAttributes="Bold"
-                    TextColor="White"
-                    LineBreakMode="TailTruncation" />
-                <Label
-                    Text="{Binding Category}"
-                    FontSize="11"
-                    TextColor="#9EA3C4"
-                    IsVisible="{Binding Category, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}" />
-            </VerticalStackLayout>
-
             <!-- Edit Button -->
             <Border
-                Grid.Column="2"
                 WidthRequest="34"
                 HeightRequest="34"
                 BackgroundColor="#1F2338"
@@ -108,6 +68,49 @@
                     HeightRequest="16"
                     HorizontalOptions="Center"
                     VerticalOptions="Center" />
+            </Border>
+            
+            <VerticalStackLayout Grid.Column="1" Spacing="2" Margin="12,0,12,0" VerticalOptions="Center">
+                <Label
+                    Text="{Binding Label}"
+                    FontSize="18"
+                    FontAttributes="Bold"
+                    TextColor="White"
+                    HorizontalTextAlignment="Center"
+                    LineBreakMode="TailTruncation" />
+                <Label
+                    Text="{Binding Category}"
+                    FontSize="11"
+                    TextColor="#9EA3C4"
+                    HorizontalTextAlignment="Center"
+                    IsVisible="{Binding Category, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}" />
+            </VerticalStackLayout>
+
+            <!-- Back Button -->
+            <Border
+                Grid.Column="2"
+                WidthRequest="34"
+                HeightRequest="34"
+                BackgroundColor="#1F2338"
+                StrokeThickness="0"
+                HorizontalOptions="End"
+                VerticalOptions="Center">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="10" />
+                </Border.StrokeShape>
+                <Border.Shadow>
+                    <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
+                </Border.Shadow>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnCloseTapped" />
+                </Border.GestureRecognizers>
+                <Image
+                    Source="chevronright.png"
+                    WidthRequest="18"
+                    HeightRequest="18"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"
+                    Rotation="180" />
             </Border>
         </Grid>
 
