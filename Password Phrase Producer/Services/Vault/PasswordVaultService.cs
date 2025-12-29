@@ -44,14 +44,20 @@ public class PasswordVaultService
     private readonly IBiometricAuthenticationService _biometricService;
     private readonly Services.Storage.ISecureFileService _secureFileService;
     private readonly VaultMergeService _vaultMergeService;
+    private readonly Services.Synchronization.ISynchronizationService _syncService;
     private readonly string _vaultFilePath;
     private byte[]? _encryptionKey;
 
-    public PasswordVaultService(IBiometricAuthenticationService biometricService, Services.Storage.ISecureFileService secureFileService, VaultMergeService vaultMergeService)
+    public PasswordVaultService(
+        IBiometricAuthenticationService biometricService, 
+        Services.Storage.ISecureFileService secureFileService, 
+        VaultMergeService vaultMergeService,
+        Services.Synchronization.ISynchronizationService syncService)
     {
         _biometricService = biometricService;
         _secureFileService = secureFileService;
         _vaultMergeService = vaultMergeService;
+        _syncService = syncService;
         _vaultFilePath = Path.Combine(FileSystem.AppDataDirectory, VaultFileName);
     }
 
@@ -132,6 +138,29 @@ public class PasswordVaultService
         }
 
         _encryptionKey = key;
+
+        if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+        {
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                await _syncService.SyncPasswordVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false); // Save merged changes
+            }
+            catch (Exception)
+            {
+                // Sync failed (e.g. network issue), but we should still allow unlock with local data
+                // Ideally log this or show toast? For now, we swallow to not block access.
+                // Could call MessagingCenter to warn user.
+            }
+            finally
+            {
+                _syncLock.Release();
+            }
+            MessagingCenter.Send(this, VaultMessages.EntriesChanged);
+        }
+
         return true;
     }
 
@@ -213,6 +242,28 @@ public class PasswordVaultService
             }
 
             _encryptionKey = key;
+            
+            if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+            {
+                await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                    await _syncService.SyncPasswordVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                    await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false); 
+                }
+                catch (Exception ex)
+                {
+                    // Log sync error but don't fail unlock
+                    System.Diagnostics.Debug.WriteLine($"Sync failed on unlock: {ex}");
+                }
+                finally
+                {
+                    _syncLock.Release();
+                }
+                MessagingCenter.Send(this, VaultMessages.EntriesChanged);
+            }
+
             return true;
         }
         catch (UnauthorizedAccessException)
@@ -296,6 +347,18 @@ public class PasswordVaultService
                 entries.Add(entry.Clone());
             }
 
+            if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+            {
+                try
+                {
+                    await _syncService.SyncPasswordVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // Sync failed, just save local
+                }
+            }
+
             await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
         }
         finally
@@ -318,6 +381,17 @@ public class PasswordVaultService
 
             if (removed > 0)
             {
+                if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+                {
+                    try
+                    {
+                        await _syncService.SyncPasswordVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        // Sync failed
+                    }
+                }
                 await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
             }
         }

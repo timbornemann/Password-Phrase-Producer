@@ -13,6 +13,10 @@ using Password_Phrase_Producer.Models;
 using Password_Phrase_Producer.Services.Security;
 using Password_Phrase_Producer.Services.Vault;
 using Password_Phrase_Producer.Services;
+using Password_Phrase_Producer.Services.Synchronization;
+using Microsoft.Maui.Storage;
+using Microsoft.Maui.Graphics;
+using CommunityToolkit.Maui.Storage;
 
 namespace Password_Phrase_Producer.ViewModels;
 
@@ -24,14 +28,25 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     private readonly TotpEncryptionService _totpEncryptionService;
     private readonly TotpService _totpService;
     private readonly IAppLockService _appLockService;
+    private readonly ISynchronizationService _syncService;
     private readonly Command _changePasswordCommand;
     private readonly Command _changeDataVaultPasswordCommand;
     private readonly Command _changeAuthenticatorPasswordCommand;
     private readonly Command _changeAppPasswordCommand;
+    private readonly Command _configureSyncCommand;
+    private readonly Command _pickSyncFileCommand;
     private bool _isListening;
     private bool _hasVaultMasterPassword;
     private bool _hasDataVaultMasterPassword;
     private bool _hasAppPassword;
+    
+    // Sync Fields
+    private bool _isSyncConfigured;
+    private string _syncPath = string.Empty;
+    private string _syncPassword = string.Empty;
+    private string _syncStatusMessage = string.Empty;
+    private Color _syncStatusColor = Colors.White;
+    private bool _isSyncBusy;
 
     private bool _isVaultUnlocked;
     private bool _canUseBiometric;
@@ -80,7 +95,8 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         IBiometricAuthenticationService biometricAuthenticationService,
         TotpEncryptionService totpEncryptionService,
         TotpService totpService,
-        IAppLockService appLockService)
+        IAppLockService appLockService,
+        ISynchronizationService syncService)
     {
         _vaultService = vaultService;
         _dataVaultService = dataVaultService;
@@ -88,6 +104,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         _totpEncryptionService = totpEncryptionService;
         _totpService = totpService;
         _appLockService = appLockService;
+        _syncService = syncService;
 
         _changePasswordCommand = new Command(async () => await ChangeMasterPasswordAsync(), () => !IsPasswordChangeBusy);
         ChangePasswordCommand = _changePasswordCommand;
@@ -100,6 +117,14 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
 
         _changeAppPasswordCommand = new Command(async () => await ChangeAppPasswordAsync(), () => !IsAppPasswordChangeBusy);
         ChangeAppPasswordCommand = _changeAppPasswordCommand;
+        
+        _configureSyncCommand = new Command(async () => await ConfigureSyncAsync(), () => !IsSyncBusy);
+        ConfigureSyncCommand = _configureSyncCommand;
+        
+        _pickSyncFileCommand = new Command(async () => await PickSyncFileAsync(), () => !IsSyncBusy);
+        PickSyncFileCommand = _pickSyncFileCommand;
+        
+        CreateSyncFileCommand = new Command(async () => await CreateSyncFileAsync(), () => !IsSyncBusy);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -108,6 +133,52 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     public ICommand ChangeDataVaultPasswordCommand { get; }
     public ICommand ChangeAuthenticatorPasswordCommand { get; }
     public ICommand ChangeAppPasswordCommand { get; }
+    public ICommand ConfigureSyncCommand { get; }
+    public ICommand PickSyncFileCommand { get; }
+    public ICommand CreateSyncFileCommand { get; }
+
+    public bool IsSyncConfigured
+    {
+        get => _isSyncConfigured;
+        private set => SetProperty(ref _isSyncConfigured, value);
+    }
+    
+    public string SyncPath
+    {
+        get => _syncPath;
+        set => SetProperty(ref _syncPath, value);
+    }
+    
+    public string SyncPassword
+    {
+        get => _syncPassword;
+        set => SetProperty(ref _syncPassword, value);
+    }
+    
+    public string SyncStatusMessage
+    {
+        get => _syncStatusMessage;
+        private set => SetProperty(ref _syncStatusMessage, value);
+    }
+    
+    public Color SyncStatusColor
+    {
+        get => _syncStatusColor;
+        private set => SetProperty(ref _syncStatusColor, value);
+    }
+    
+    public bool IsSyncBusy
+    {
+        get => _isSyncBusy;
+        private set
+        {
+            if (SetProperty(ref _isSyncBusy, value))
+            {
+                _configureSyncCommand.ChangeCanExecute();
+                _pickSyncFileCommand.ChangeCanExecute();
+            }
+        }
+    }
 
     public bool IsVaultUnlocked
     {
@@ -542,6 +613,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         await RefreshDataVaultStateAsync(cancellationToken).ConfigureAwait(false);
         await RefreshAuthenticatorStateAsync(cancellationToken).ConfigureAwait(false);
         await RefreshAppLockStateAsync(cancellationToken).ConfigureAwait(false);
+        await RefreshSyncStateAsync();
     }
 
     public async Task RefreshVaultStateAsync(CancellationToken cancellationToken = default)
@@ -1142,6 +1214,115 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         {
             MainThread.BeginInvokeOnMainThread(_changeAppPasswordCommand.ChangeCanExecute);
         }
+    }
+
+    private async Task CreateSyncFileAsync()
+    {
+        try
+        {
+            using var stream = new MemoryStream();
+            var result = await FileSaver.Default.SaveAsync("sync.vault", stream, CancellationToken.None);
+            if (result.IsSuccessful)
+            {
+                SyncPath = result.FilePath;
+                SyncStatusMessage = "Datei erstellt. Bitte Passwort festlegen.";
+                SyncStatusColor = Colors.Orange;
+            }
+            else
+            {
+                 // Cancelled
+            }
+        }
+        catch (Exception ex)
+        {
+            SyncStatusMessage = $"Fehler beim Erstellen: {ex.Message}";
+            SyncStatusColor = Colors.Red;
+        }
+    }
+
+    private async Task PickSyncFileAsync()
+    {
+        try
+        {
+            // Pick a file or save?
+            // User can pick a file (existing) OR we might want to let them choose a folder.
+            // FilePicker works for existing. For new, we need path manually or a "Save As" logic?
+            // Usually "Pick File" implies existing. If they want to create new, they might type path or we need "Create New".
+            // Since we use external drive, FilePicker might return a content uri on Android which is not a direct path.
+            // On Windows it returns path.
+            // For now, let's assume they pick a file. If they want to create new, they might need to use a "Create" button or just type path.
+            // SyncService expects a string path.
+            
+            var result = await FilePicker.Default.PickAsync();
+            if (result != null)
+            {
+                SyncPath = result.FullPath;
+            }
+        }
+        catch (Exception ex)
+        {
+            SyncStatusMessage = $"Fehler bei Dateiauswahl: {ex.Message}";
+            SyncStatusColor = Colors.Red;
+        }
+    }
+
+    private async Task ConfigureSyncAsync()
+    {
+        if (IsSyncBusy) return;
+        IsSyncBusy = true;
+        SyncStatusMessage = "";
+        
+        try
+        {
+            if (string.IsNullOrWhiteSpace(SyncPath))
+            {
+                throw new InvalidOperationException("Bitte wähle einen Dateipfad.");
+            }
+            if (string.IsNullOrWhiteSpace(SyncPassword))
+            {
+                 throw new InvalidOperationException("Bitte gib ein Passwort ein.");
+            }
+
+            await _syncService.ConfigureAsync(SyncPath, SyncPassword);
+            
+            SyncStatusMessage = "Synchronisation erfolgreich eingerichtet.";
+            SyncStatusColor = Colors.Green;
+            SyncPassword = ""; // Clear password after success
+            
+            await RefreshSyncStateAsync();
+        }
+        catch (Exception ex)
+        {
+            SyncStatusMessage = $"Fehler: {ex.Message}";
+            SyncStatusColor = Colors.Red;
+        }
+        finally
+        {
+            IsSyncBusy = false;
+        }
+    }
+
+    private async Task RefreshSyncStateAsync()
+    {
+        var configured = await _syncService.IsConfiguredAsync();
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+             IsSyncConfigured = configured;
+             if (!configured && string.IsNullOrEmpty(SyncStatusMessage))
+             {
+                 SyncStatusMessage = "Nicht konfiguriert";
+                 SyncStatusColor = Colors.Gray;
+             }
+             if (configured && string.IsNullOrEmpty(SyncStatusMessage)) // Keep success message if just configured
+             {
+                 SyncStatusMessage = "Aktiv";
+                 SyncStatusColor = Colors.Green;
+                 
+                 // Pre-fill path if configured (read propery from SyncService? It stores in Preferences)
+                 // We don't have direct access here easily without exposing, but we can read preferences.
+                 SyncPath = Preferences.Get("SyncFilePath", "");
+             }
+        });
     }
 
     private void ClearPasswordFeedback()

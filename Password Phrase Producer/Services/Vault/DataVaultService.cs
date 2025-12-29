@@ -45,14 +45,20 @@ public class DataVaultService
     private readonly IBiometricAuthenticationService _biometricService;
     private readonly ISecureFileService _secureFileService;
     private readonly VaultMergeService _vaultMergeService;
+    private readonly Services.Synchronization.ISynchronizationService _syncService;
     private readonly string _vaultFilePath;
     private byte[]? _encryptionKey;
 
-    public DataVaultService(IBiometricAuthenticationService biometricService, ISecureFileService secureFileService, VaultMergeService vaultMergeService)
+    public DataVaultService(
+        IBiometricAuthenticationService biometricService, 
+        ISecureFileService secureFileService, 
+        VaultMergeService vaultMergeService,
+        Services.Synchronization.ISynchronizationService syncService)
     {
         _biometricService = biometricService;
         _secureFileService = secureFileService;
         _vaultMergeService = vaultMergeService;
+        _syncService = syncService;
         _vaultFilePath = Path.Combine(FileSystem.AppDataDirectory, VaultFileName);
     }
 
@@ -134,6 +140,27 @@ public class DataVaultService
         }
 
         _encryptionKey = key;
+        
+        if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+        {
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                // Sync fail ignored
+            }
+            finally
+            {
+                _syncLock.Release();
+            }
+            MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
+        }
+
         return true;
     }
 
@@ -216,6 +243,27 @@ public class DataVaultService
             }
 
             _encryptionKey = key;
+            
+            if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+            {
+                await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                    await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                    await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // Sync fail ignored
+                }
+                finally
+                {
+                    _syncLock.Release();
+                }
+                MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
+            }
+
             return true;
         }
         catch (UnauthorizedAccessException)
@@ -299,6 +347,17 @@ public class DataVaultService
                 entries.Add(entry.Clone());
             }
 
+            if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+            {
+                try
+                {
+                    await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                }
+                catch
+                {
+                }
+            }
+
             await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
         }
         finally
@@ -321,6 +380,16 @@ public class DataVaultService
 
             if (removed > 0)
             {
+                if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+                {
+                    try
+                    {
+                        await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                    }
+                }
                 await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
             }
         }

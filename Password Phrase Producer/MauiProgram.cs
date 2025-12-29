@@ -2,6 +2,7 @@ using Camera.MAUI;
 using CommunityToolkit.Maui;
 using Microsoft.Extensions.Logging;
 using Password_Phrase_Producer.Services.Security;
+using Password_Phrase_Producer.Services.Synchronization;
 using Password_Phrase_Producer.Services.Vault;
 using Password_Phrase_Producer.ViewModels;
 using Password_Phrase_Producer.Views;
@@ -47,6 +48,7 @@ public static class MauiProgram
 
         builder.Services.AddSingleton<Services.Security.IAppLockService, Services.Security.AppLockService>();
         builder.Services.AddSingleton<Services.Storage.ISecureFileService, Services.Storage.SecureFileService>();
+        builder.Services.AddSingleton<ISynchronizationService, SynchronizationService>();
         builder.Services.AddTransient<Views.Security.AppLoginPage>();
         builder.Services.AddTransient<Views.Security.SetupAppPasswordPage>();
         

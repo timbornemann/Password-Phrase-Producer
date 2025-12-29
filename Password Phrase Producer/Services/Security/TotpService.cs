@@ -6,6 +6,7 @@ using Google.Protobuf;
 using OtpNet;
 using Password_Phrase_Producer.Models;
 using Password_Phrase_Producer.Services.Security.Protobuf;
+using Password_Phrase_Producer.Services.Synchronization;
 
 namespace Password_Phrase_Producer.Services.Security;
 
@@ -15,6 +16,7 @@ public class TotpService
     private readonly string _totpFilePath;
     private readonly TotpEncryptionService _encryptionService;
     private readonly Services.Vault.VaultMergeService _vaultMergeService;
+    private readonly ISynchronizationService _syncService;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
     private readonly SemaphoreSlim _syncLock = new(1, 1);
 
@@ -24,10 +26,14 @@ public class TotpService
     public bool HasPassword => _encryptionService.HasPassword;
 
 
-    public TotpService(TotpEncryptionService encryptionService, Services.Vault.VaultMergeService vaultMergeService)
+    public TotpService(
+        TotpEncryptionService encryptionService, 
+        Services.Vault.VaultMergeService vaultMergeService,
+        ISynchronizationService syncService)
     {
         _encryptionService = encryptionService;
         _vaultMergeService = vaultMergeService;
+        _syncService = syncService;
         _totpFilePath = Path.Combine(FileSystem.AppDataDirectory, TotpFileName);
     }
 
@@ -79,6 +85,15 @@ public class TotpService
                 entries.Add(entry);
             }
 
+            if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+            {
+                try 
+                {
+                    await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
+                }
+                catch {}
+            }
+
             await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
         }
         finally
@@ -101,6 +116,14 @@ public class TotpService
 
             if (removed > 0)
             {
+                if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+                {
+                    try 
+                    {
+                        await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch {}
+                }
                 await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
             }
         }
@@ -594,6 +617,30 @@ public class TotpService
 
         EntriesChanged?.Invoke(this, EventArgs.Empty);
     }
+
+    public async Task SyncAfterUnlockAsync(CancellationToken cancellationToken = default)
+    {
+        if (!await _syncService.IsConfiguredAsync().ConfigureAwait(false)) return;
+        
+        EnsureUnlocked();
+        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+            await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
+            await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Sync failed
+        }
+        finally
+        {
+            _syncLock.Release();
+        }
+        EntriesChanged?.Invoke(this, EventArgs.Empty);
+    }
+
 
     public async Task ResetVaultAsync(CancellationToken cancellationToken = default)
     {

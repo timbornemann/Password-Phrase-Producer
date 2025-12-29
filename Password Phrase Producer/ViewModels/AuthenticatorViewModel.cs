@@ -55,7 +55,12 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
         _isActive = true;
         
         StartTimer();
-        Task.Run(() => LoadEntriesAsync());
+        StartTimer();
+        Task.Run(async () => 
+        {
+            await _totpService.SyncAfterUnlockAsync();
+            await LoadEntriesAsync();
+        });
     }
 
     public void Deactivate()

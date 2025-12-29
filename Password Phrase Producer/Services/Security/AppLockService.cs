@@ -18,6 +18,8 @@ public interface IAppLockService
     Task<bool> IsBiometricConfiguredAsync();
     void OnAppBackgrounded();
     bool CheckLockTimeout();
+    byte[] EncryptWithMasterKey(byte[] data);
+    byte[] DecryptWithMasterKey(byte[] data);
 }
 
 public class AppLockService : IAppLockService
@@ -322,6 +324,18 @@ public class AppLockService : IAppLockService
         return plaintext;
     }
 
+    public byte[] EncryptWithMasterKey(byte[] data)
+    {
+        if (_masterKey == null) throw new InvalidOperationException("App is locked.");
+        return EncryptAesGcm(data, _masterKey);
+    }
+
+    public byte[] DecryptWithMasterKey(byte[] data)
+    {
+        if (_masterKey == null) throw new InvalidOperationException("App is locked.");
+        return DecryptAesGcm(data, _masterKey);
+    }
+    
     private class AppLockMetadata
     {
         public string Salt { get; set; } = ""; // Base64

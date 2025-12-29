@@ -132,6 +132,107 @@
                     </VerticalStackLayout>
                 </Border>
 
+                <!-- Synchronization Section -->
+                <Border
+                    BackgroundColor="#1B2036"
+                    Padding="14"
+                    StrokeThickness="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="16" />
+                    </Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow Brush="#25000000" Radius="12" Offset="0,6" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="10">
+                        <Label
+                            Text="Synchronisation"
+                            FontSize="16"
+                            FontAttributes="Bold"
+                            TextColor="White" />
+                        <Label
+                            Text="Synchronisiere deine Tresore über eine externe verschlüsselte Datei."
+                            FontSize="12"
+                            TextColor="#9EA3C4" />
+
+                        <Label
+                            Text="Status"
+                            FontSize="12"
+                            TextColor="#9EA3C4" />
+                        <Label
+                            Text="{Binding SyncStatusMessage}"
+                            FontSize="13"
+                            FontAttributes="Bold"
+                            TextColor="{Binding SyncStatusColor}" />
+
+                        <Label
+                            Text="Dateipfad"
+                            FontSize="12"
+                            TextColor="#9EA3C4"
+                            Margin="0,8,0,0" />
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <Entry
+                                Text="{Binding SyncPath}"
+                                Placeholder="Pfad zur Sync-Datei"
+                                PlaceholderColor="#7F85B2"
+                                TextColor="White"
+                                BackgroundColor="#1F2338"
+                                FontSize="13"
+                                HeightRequest="38" />
+                            <HorizontalStackLayout Grid.Column="1" Spacing="4">
+                                <Button
+                                    Text="Neu"
+                                    Command="{Binding CreateSyncFileCommand}"
+                                    BackgroundColor="#2D324A"
+                                    TextColor="White"
+                                    FontSize="11"
+                                    Padding="8,0"
+                                    HeightRequest="38"
+                                    CornerRadius="8" />
+                                <Button
+                                    Text="..."
+                                    Command="{Binding PickSyncFileCommand}"
+                                    BackgroundColor="#2D324A"
+                                    TextColor="White"
+                                    WidthRequest="40"
+                                    HeightRequest="38"
+                                    Padding="0"
+                                    CornerRadius="8" />
+                            </HorizontalStackLayout>
+                        </Grid>
+
+                        <Label
+                            Text="Sync-Passwort"
+                            FontSize="12"
+                            TextColor="#9EA3C4" />
+                        <Entry
+                            Text="{Binding SyncPassword}"
+                            Placeholder="Passwort festlegen"
+                            PlaceholderColor="#7F85B2"
+                            TextColor="White"
+                            BackgroundColor="#1F2338"
+                            IsPassword="True"
+                            FontSize="13"
+                            HeightRequest="38" />
+
+                        <Button
+                            Text="Synchronisation einrichten"
+                            Command="{Binding ConfigureSyncCommand}"
+                            BackgroundColor="#4A5CFF"
+                            TextColor="White"
+                            FontSize="13"
+                            Padding="12,8"
+                            CornerRadius="12"
+                            Margin="0,8,0,0">
+                            <Button.Triggers>
+                                <DataTrigger TargetType="Button" Binding="{Binding IsSyncBusy}" Value="True">
+                                    <Setter Property="IsEnabled" Value="False" />
+                                    <Setter Property="Text" Value="Wird eingerichtet..." />
+                                </DataTrigger>
+                            </Button.Triggers>
+                        </Button>
+                    </VerticalStackLayout>
+                </Border>
+
                 <Border
                     BackgroundColor="#1B2036"
                     Padding="14"
