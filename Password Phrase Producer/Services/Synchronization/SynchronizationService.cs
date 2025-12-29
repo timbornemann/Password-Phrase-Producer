@@ -36,19 +36,13 @@ public class SynchronizationService : ISynchronizationService
     private const int SaltSize = 16;
     private const int Iterations = 200_000;
 
-    private readonly IAppLockService _appLockService;
-    private readonly VaultMergeService _vaultMergeService;
-    private readonly SemaphoreSlim _fileLock = new(1, 1);
-    private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, WriteIndented = false };
+    private readonly ISyncFileService _syncFileService;
 
-    private byte[]? _cachedCommonKey;
-
-    public async Task<bool> IsConfiguredAsync() => Preferences.ContainsKey(SyncPathKey) && await SecureStorage.Default.GetAsync(SyncKeyStorageKey).ConfigureAwait(false) != null;
-
-    public SynchronizationService(IAppLockService appLockService, VaultMergeService vaultMergeService)
+    public SynchronizationService(IAppLockService appLockService, VaultMergeService vaultMergeService, ISyncFileService syncFileService)
     {
         _appLockService = appLockService;
         _vaultMergeService = vaultMergeService;
+        _syncFileService = syncFileService;
     }
 
     public async Task ConfigureAsync(string path, string password)
@@ -68,45 +62,47 @@ public class SynchronizationService : ISynchronizationService
             Iterations = Iterations
         };
 
-        // If file exists, try to validate instead of overwrite? 
-        // User flow usually explicitly sets up sync. If file exists, we should probably check if password matches.
-        if (File.Exists(path) && new FileInfo(path).Length > 0)
+        if (await _syncFileService.ExistsAsync(path)) // Abstracted check
         {
-            try 
+            // We need to check if it has content (length > 0). ISyncFileService abstraction doesn't have Length?
+            // Open stream to check.
+            using var stream = await _syncFileService.OpenReadAsync(path);
+            if (stream.Length > 0)
             {
-                var existingHeader = await ReadHeaderAsync(path);
-                if (existingHeader != null)
-                {
-                    // Validate
-                    var existingSalt = Convert.FromBase64String(existingHeader.Salt);
-                    var existingKey = await Task.Run(() => DeriveKey(password, existingSalt, existingHeader.Iterations)).ConfigureAwait(false);
-                    var expectedVerifier = Convert.FromBase64String(existingHeader.Verifier);
-                    var actualVerifier = CreateVerifier(existingKey);
-                    
-                    if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
+                 // Close and reopen properly in ReadHeaderAsync logic below
+                 stream.Close();
+
+                 try 
+                 {
+                    var existingHeader = await ReadHeaderAsync(path);
+                    if (existingHeader != null)
                     {
-                         throw new InvalidOperationException("Das angegebene Passwort stimmt nicht mit der existierenden Sync-Datei überein.");
+                        var existingSalt = Convert.FromBase64String(existingHeader.Salt);
+                        var existingKey = await Task.Run(() => DeriveKey(password, existingSalt, existingHeader.Iterations)).ConfigureAwait(false);
+                        var expectedVerifier = Convert.FromBase64String(existingHeader.Verifier);
+                        var actualVerifier = CreateVerifier(existingKey);
+                        
+                        if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
+                        {
+                             throw new InvalidOperationException("Das angegebene Passwort stimmt nicht mit der existierenden Sync-Datei überein.");
+                        }
+                        
+                        key = existingKey; 
+                        header = existingHeader; 
                     }
-                    
-                    key = existingKey; // Use the one derived from file's salt
-                    header = existingHeader; // Keep existing header
-                }
-            }
-            catch (Exception ex) when (ex is not InvalidOperationException)
-            {
-                // File might be corrupt or not a vault file, overwrite?
-                // For safety, let's backup? No, just throw for now.
-                throw new InvalidOperationException("Die Datei existiert bereits, ist aber keine gültige oder lesbare Sync-Datei.", ex);
+                 }
+                 catch (Exception ex) when (ex is not InvalidOperationException)
+                 {
+                    throw new InvalidOperationException("Die Datei existiert bereits, ist aber keine gültige oder lesbare Sync-Datei.", ex);
+                 }
             }
         }
         else
         {
-            // Create new empty file
             var content = new ExternalVaultContent();
             await WriteVaultFileAsync(path, header, content, key);
         }
 
-        // Store configuration
         Preferences.Set(SyncPathKey, path);
         if (_appLockService.IsUnlocked)
         {
@@ -123,7 +119,8 @@ public class SynchronizationService : ISynchronizationService
     public async Task<bool> ValidatePasswordAsync(string password)
     {
         var path = Preferences.Get(SyncPathKey, string.Empty);
-        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return false;
+        if (string.IsNullOrEmpty(path)) return false; 
+        if (!await _syncFileService.ExistsAsync(path)) return false;
 
         try
         {
@@ -163,35 +160,21 @@ public class SynchronizationService : ISynchronizationService
 
     public async Task SyncPasswordVaultAsync(IList<PasswordVaultEntry> localEntries, CancellationToken cancellationToken = default)
     {
+        // Use GetMergedPasswordVaultAsync which handles reading, merging, and WRITING back to the file.
         var result = await GetMergedPasswordVaultAsync(localEntries, cancellationToken);
-        // "GetMerged" already does the read-merge logic. Now we update local entries list in place if needed?
-        // Actually, the caller passed the list. Use VaultMergeService result.
         
-        // Update local list
+        // Critical: Update the local list instance so the UI sees the changes!
         localEntries.Clear();
         foreach (var entry in result.MergedEntries)
         {
             localEntries.Add(entry);
         }
-        
-        // Write happens inside GetMerged... -> Wait, GetMerged should probably just return the result.
-        // Actually, for "Sync", we want to SAVE the result to the file as well.
-        // Let's refactor: GetMerged loads, merges. Caller updates local. But saving to external file?
-        
-        // Re-design:
-        // 1. Read External
-        // 2. Merge with Local
-        // 3. Update External (Write)
-        // 4. Return Merged List to Local Service to save locally.
-        
-        // Implementation below does this.
     }
 
     public async Task SyncDataVaultAsync(IList<PasswordVaultEntry> localEntries, CancellationToken cancellationToken = default)
     {
-        // Similar to PasswordVault but targeting DataVault section
         var path = GetPath();
-        if (!File.Exists(path)) return; // Should configure first
+        if (!await _syncFileService.ExistsAsync(path)) return; 
 
         var key = await GetKeyAsync();
         
@@ -203,7 +186,6 @@ public class SynchronizationService : ISynchronizationService
             var remoteEntries = content.DataVault.Select(d => d.ToModel()).ToList();
             var result = _vaultMergeService.MergeEntries(localEntries, remoteEntries);
             
-            // Update content
             content.DataVault = result.MergedEntries
                 .Select(PasswordVaultEntryDto.FromModel)
                 .ToList();
@@ -211,7 +193,6 @@ public class SynchronizationService : ISynchronizationService
 
             await WriteVaultFileAsync(path, header, content, key);
             
-            // Update local ref
             localEntries.Clear();
             foreach(var e in result.MergedEntries) localEntries.Add(e);
         }
@@ -224,7 +205,7 @@ public class SynchronizationService : ISynchronizationService
     public async Task SyncAuthenticatorAsync(IList<TotpEntry> localEntries, CancellationToken cancellationToken = default)
     {
          var path = GetPath();
-        if (!File.Exists(path)) return;
+        if (!await _syncFileService.ExistsAsync(path)) return;
 
         var key = await GetKeyAsync();
         
@@ -252,11 +233,10 @@ public class SynchronizationService : ISynchronizationService
         }
     }
 
-    // Combined implementations to avoid code duplication
     public async Task<Services.Vault.MergeResult<PasswordVaultEntry>> GetMergedPasswordVaultAsync(IList<PasswordVaultEntry> localEntries, CancellationToken cancellationToken = default)
     {
          var path = GetPath();
-        if (!File.Exists(path)) return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
+        if (!await _syncFileService.ExistsAsync(path)) return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
 
         var key = await GetKeyAsync();
         
@@ -268,7 +248,6 @@ public class SynchronizationService : ISynchronizationService
             var remoteEntries = content.PasswordVault.Select(d => d.ToModel()).ToList();
             var result = _vaultMergeService.MergeEntries(localEntries, remoteEntries);
             
-            // Write back merged result to external file to ensure it's up to date
             content.PasswordVault = result.MergedEntries
                 .Select(PasswordVaultEntryDto.FromModel)
                 .ToList();
@@ -286,9 +265,8 @@ public class SynchronizationService : ISynchronizationService
 
     public async Task<Services.Vault.MergeResult<PasswordVaultEntry>> GetMergedDataVaultAsync(IList<PasswordVaultEntry> localEntries, CancellationToken cancellationToken = default)
     {
-        // Implementing logic here for consistency
          var path = GetPath();
-        if (!File.Exists(path)) return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
+        if (!await _syncFileService.ExistsAsync(path)) return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
 
         var key = await GetKeyAsync();
         
@@ -318,7 +296,7 @@ public class SynchronizationService : ISynchronizationService
     public async Task<Services.Vault.MergeResult<TotpEntry>> GetMergedAuthenticatorAsync(IList<TotpEntry> localEntries, CancellationToken cancellationToken = default)
     {
          var path = GetPath();
-        if (!File.Exists(path)) return new MergeResult<TotpEntry> { MergedEntries = localEntries.ToList() };
+        if (!await _syncFileService.ExistsAsync(path)) return new MergeResult<TotpEntry> { MergedEntries = localEntries.ToList() };
 
         var key = await GetKeyAsync();
         
@@ -345,11 +323,10 @@ public class SynchronizationService : ISynchronizationService
         }
     }
 
-    // Helper methods
-
     private async Task<ExternalVaultHeader> ReadHeaderAsync(string path)
     {
-        using var stream = File.OpenRead(path);
+        // Use Abstracted OpenRead
+        using var stream = await _syncFileService.OpenReadAsync(path);
         using var reader = new StreamReader(stream);
         var json = await reader.ReadToEndAsync();
         var file = JsonSerializer.Deserialize<ExternalVaultFile>(json, _jsonOptions);
@@ -359,7 +336,8 @@ public class SynchronizationService : ISynchronizationService
     private async Task<(ExternalVaultHeader Header, ExternalVaultContent Content)> ReadVaultFileAsync(string path, byte[] key)
     {
         string json;
-        using (var stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+        // Use Abstracted OpenRead
+        using (var stream = await _syncFileService.OpenReadAsync(path))
         using (var reader = new StreamReader(stream))
         {
             json = await reader.ReadToEndAsync();
@@ -392,8 +370,8 @@ public class SynchronizationService : ISynchronizationService
 
         var json = JsonSerializer.Serialize(file, _jsonOptions);
         
-        // Write atomically if possible, but for simple file sharing we just overwrite
-        using var stream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.ReadWrite);
+        // Use Abstracted OpenWrite (overwrite)
+        using var stream = await _syncFileService.OpenWriteAsync(path);
         using var writer = new StreamWriter(stream);
         await writer.WriteAsync(json);
     }

@@ -49,8 +49,15 @@ public static class MauiProgram
         builder.Services.AddSingleton<Services.Security.IAppLockService, Services.Security.AppLockService>();
         builder.Services.AddSingleton<Services.Storage.ISecureFileService, Services.Storage.SecureFileService>();
         builder.Services.AddSingleton<ISynchronizationService, SynchronizationService>();
+        
         builder.Services.AddTransient<Views.Security.AppLoginPage>();
         builder.Services.AddTransient<Views.Security.SetupAppPasswordPage>();
+
+#if WINDOWS
+        builder.Services.AddSingleton<Password_Phrase_Producer.Services.Storage.ISyncFileService, Password_Phrase_Producer.Platforms.Windows.Services.WindowsSyncFileService>();
+#elif ANDROID
+        builder.Services.AddSingleton<Password_Phrase_Producer.Services.Storage.ISyncFileService, Password_Phrase_Producer.Platforms.Android.Services.AndroidSyncFileService>();
+#endif
         
         return builder.Build();
     }

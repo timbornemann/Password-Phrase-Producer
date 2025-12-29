@@ -29,6 +29,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     private readonly TotpService _totpService;
     private readonly IAppLockService _appLockService;
     private readonly ISynchronizationService _syncService;
+    private readonly Services.Storage.ISyncFileService _syncFileService;
     private readonly Command _changePasswordCommand;
     private readonly Command _changeDataVaultPasswordCommand;
     private readonly Command _changeAuthenticatorPasswordCommand;
@@ -40,54 +41,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     private bool _hasDataVaultMasterPassword;
     private bool _hasAppPassword;
     
-    // Sync Fields
-    private bool _isSyncConfigured;
-    private string _syncPath = string.Empty;
-    private string _syncPassword = string.Empty;
-    private string _syncStatusMessage = string.Empty;
-    private Color _syncStatusColor = Colors.White;
-    private bool _isSyncBusy;
-
-    private bool _isVaultUnlocked;
-    private bool _canUseBiometric;
-    private bool _isBiometricConfigured;
-    private bool _enableBiometric;
-    private string _currentMasterPassword = string.Empty;
-    private string _newMasterPassword = string.Empty;
-    private string _confirmMasterPassword = string.Empty;
-    private string? _changePasswordError;
-    private string? _changePasswordSuccess;
-    private bool _isPasswordChangeBusy;
-
-    private bool _isDataVaultUnlocked;
-    private bool _canUseDataVaultBiometric;
-    private bool _isDataVaultBiometricConfigured;
-    private bool _enableDataVaultBiometric;
-    private string _currentDataVaultMasterPassword = string.Empty;
-    private string _newDataVaultMasterPassword = string.Empty;
-    private string _confirmDataVaultMasterPassword = string.Empty;
-    private string? _changeDataVaultPasswordError;
-    private string? _changeDataVaultPasswordSuccess;
-    private bool _isDataVaultPasswordChangeBusy;
-
-    private bool _hasAuthenticatorPassword;
-    private string _currentAuthenticatorPassword = string.Empty;
-    private string _newAuthenticatorPassword = string.Empty;
-    private string _confirmAuthenticatorPassword = string.Empty;
-    private string? _changeAuthenticatorPasswordError;
-    private string? _changeAuthenticatorPasswordSuccess;
-    private bool _isAuthenticatorPasswordChangeBusy;
-
-    private bool _isAppUnlocked;
-    private bool _canUseAppBiometric;
-    private bool _isAppBiometricConfigured;
-    private bool _enableAppBiometric;
-    private string _currentAppPassword = string.Empty;
-    private string _newAppPassword = string.Empty;
-    private string _confirmAppPassword = string.Empty;
-    private string? _changeAppPasswordError;
-    private string? _changeAppPasswordSuccess;
-    private bool _isAppPasswordChangeBusy;
+    // ...
 
     public VaultSettingsViewModel(
         PasswordVaultService vaultService,
@@ -96,7 +50,8 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         TotpEncryptionService totpEncryptionService,
         TotpService totpService,
         IAppLockService appLockService,
-        ISynchronizationService syncService)
+        ISynchronizationService syncService,
+        Services.Storage.ISyncFileService syncFileService)
     {
         _vaultService = vaultService;
         _dataVaultService = dataVaultService;
@@ -105,6 +60,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         _totpService = totpService;
         _appLockService = appLockService;
         _syncService = syncService;
+        _syncFileService = syncFileService;
 
         _changePasswordCommand = new Command(async () => await ChangeMasterPasswordAsync(), () => !IsPasswordChangeBusy);
         ChangePasswordCommand = _changePasswordCommand;
@@ -1222,12 +1178,12 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     {
         try
         {
-            using var stream = new MemoryStream();
-            var result = await FileSaver.Default.SaveAsync("sync.vault", stream, CancellationToken.None);
-            if (result.IsSuccessful)
+            var path = await _syncFileService.CreateAndPersistFileAsync("sync.vault");
+            if (!string.IsNullOrEmpty(path))
             {
-                SyncPath = result.FilePath;
-                SyncStatusMessage = "Datei erstellt. Bitte Passwort festlegen.";
+                SyncPath = path;
+                var name = _syncFileService.GetDisplayName(path);
+                SyncStatusMessage = $"Datei erstellt: {name}. Bitte Passwort festlegen.";
                 SyncStatusColor = Colors.Orange;
             }
             else
@@ -1246,19 +1202,14 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     {
         try
         {
-            // Pick a file or save?
-            // User can pick a file (existing) OR we might want to let them choose a folder.
-            // FilePicker works for existing. For new, we need path manually or a "Save As" logic?
-            // Usually "Pick File" implies existing. If they want to create new, they might type path or we need "Create New".
-            // Since we use external drive, FilePicker might return a content uri on Android which is not a direct path.
-            // On Windows it returns path.
-            // For now, let's assume they pick a file. If they want to create new, they might need to use a "Create" button or just type path.
-            // SyncService expects a string path.
-            
-            var result = await FilePicker.Default.PickAsync();
-            if (result != null)
+            var path = await _syncFileService.PickAndPersistFileAsync();
+            if (!string.IsNullOrEmpty(path))
             {
-                SyncPath = result.FullPath;
+                SyncPath = path;
+                // Optional: Update status to show "Picked: Filename"
+                var name = _syncFileService.GetDisplayName(path);
+                SyncStatusMessage = $"Ausgewählt: {name}";
+                SyncStatusColor = Colors.Green;
             }
         }
         catch (Exception ex)
