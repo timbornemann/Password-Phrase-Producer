@@ -137,6 +137,23 @@ public class SynchronizationService : ISynchronizationService
         }
     }
 
+    public async Task<bool> IsConfiguredAsync()
+    {
+        var path = Preferences.Get(SyncPathKey, string.Empty);
+        if (string.IsNullOrEmpty(path)) return false;
+
+        try
+        {
+            return await _syncFileService.ExistsAsync(path);
+        }
+        catch
+        {
+            // If checking existence fails (e.g. network error), assume not configured/offline
+            // to prevent blocking local usage.
+            return false;
+        }
+    }
+
     private async Task<byte[]> GetKeyAsync()
     {
         if (_cachedCommonKey != null) return _cachedCommonKey;
