@@ -11,6 +11,7 @@ using Microsoft.Maui.Storage;
 using Password_Phrase_Producer.Models;
 using Password_Phrase_Producer.Services.Security;
 using Password_Phrase_Producer.Services.Vault;
+using Password_Phrase_Producer.Services.Storage;
 using static Password_Phrase_Producer.Models.SyncModels;
 
 namespace Password_Phrase_Producer.Services.Synchronization;
@@ -37,6 +38,11 @@ public class SynchronizationService : ISynchronizationService
     private const int Iterations = 200_000;
 
     private readonly ISyncFileService _syncFileService;
+    private readonly IAppLockService _appLockService;
+    private readonly VaultMergeService _vaultMergeService;
+    private readonly SemaphoreSlim _fileLock = new(1, 1);
+    private byte[]? _cachedCommonKey;
+    private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
     public SynchronizationService(IAppLockService appLockService, VaultMergeService vaultMergeService, ISyncFileService syncFileService)
     {

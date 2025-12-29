@@ -352,6 +352,7 @@ public class DataVaultService
                 try
                 {
                     await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                    Preferences.Set("DataVaultLastSync", DateTime.Now);
                 }
                 catch
                 {
@@ -385,6 +386,7 @@ public class DataVaultService
                     try
                     {
                         await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                        Preferences.Set("DataVaultLastSync", DateTime.Now);
                     }
                     catch
                     {

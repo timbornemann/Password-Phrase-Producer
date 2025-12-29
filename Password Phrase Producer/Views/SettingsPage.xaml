@@ -246,6 +246,13 @@
                                 </DataTrigger>
                             </Button.Triggers>
                         </Button>
+
+                        <VerticalStackLayout Spacing="4" Margin="0,8,0,0">
+                             <Label Text="Letzte Synchronisation:" FontSize="12" TextColor="#9EA3C4" FontAttributes="Bold"/>
+                             <Label Text="{Binding PasswordVaultSyncTime, StringFormat='Passwörter: {0:g}'}" FontSize="11" TextColor="#7F85B2"/>
+                             <Label Text="{Binding DataVaultSyncTime, StringFormat='Datentresor: {0:g}'}" FontSize="11" TextColor="#7F85B2"/>
+                             <Label Text="{Binding AuthenticatorSyncTime, StringFormat='Authenticator: {0:g}'}" FontSize="11" TextColor="#7F85B2"/>
+                        </VerticalStackLayout>
                     </VerticalStackLayout>
                 </Border>
 

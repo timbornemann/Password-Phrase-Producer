@@ -41,7 +41,53 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     private bool _hasDataVaultMasterPassword;
     private bool _hasAppPassword;
     
-    // ...
+    private bool _isSyncConfigured;
+    private string _syncPath = string.Empty;
+    private string _syncPassword = string.Empty;
+    private string _syncStatusMessage = string.Empty;
+    private Color _syncStatusColor = Colors.Gray;
+    private bool _isSyncBusy;
+
+    private bool _isVaultUnlocked;
+    private bool _canUseBiometric;
+    private bool _isBiometricConfigured;
+    private bool _enableBiometric;
+    private string _currentMasterPassword = string.Empty;
+    private string _newMasterPassword = string.Empty;
+    private string _confirmMasterPassword = string.Empty;
+    private string? _changePasswordError;
+    private string? _changePasswordSuccess;
+    private bool _isPasswordChangeBusy;
+
+    private bool _isDataVaultUnlocked;
+    private bool _canUseDataVaultBiometric;
+    private bool _isDataVaultBiometricConfigured;
+    private bool _enableDataVaultBiometric;
+    private string _currentDataVaultMasterPassword = string.Empty;
+    private string _newDataVaultMasterPassword = string.Empty;
+    private string _confirmDataVaultMasterPassword = string.Empty;
+    private string? _changeDataVaultPasswordError;
+    private string? _changeDataVaultPasswordSuccess;
+    private bool _isDataVaultPasswordChangeBusy;
+
+    private bool _hasAuthenticatorPassword;
+    private string _currentAuthenticatorPassword = string.Empty;
+    private string _newAuthenticatorPassword = string.Empty;
+    private string _confirmAuthenticatorPassword = string.Empty;
+    private string? _changeAuthenticatorPasswordError;
+    private string? _changeAuthenticatorPasswordSuccess;
+    private bool _isAuthenticatorPasswordChangeBusy;
+
+    private bool _isAppUnlocked;
+    private bool _canUseAppBiometric;
+    private bool _isAppBiometricConfigured;
+    private bool _enableAppBiometric;
+    private string _currentAppPassword = string.Empty;
+    private string _newAppPassword = string.Empty;
+    private string _confirmAppPassword = string.Empty;
+    private string? _changeAppPasswordError;
+    private string? _changeAppPasswordSuccess;
+    private bool _isAppPasswordChangeBusy;
 
     public VaultSettingsViewModel(
         PasswordVaultService vaultService,
@@ -1311,7 +1357,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
              }
              if (configured && string.IsNullOrEmpty(SyncStatusMessage)) // Keep success message if just configured
              {
-                 SyncStatusMessage = "Aktiv";
+                 SyncStatusMessage = "Sync bereit";
                  SyncStatusColor = Colors.Green;
                  
                  // Pre-fill path if configured (read propery from SyncService? It stores in Preferences)
@@ -1319,6 +1365,9 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
                  SyncPath = Preferences.Get("SyncFilePath", "");
              }
         });
+        
+        // Notify timestamps
+        MainThread.BeginInvokeOnMainThread(NotifySyncTimestampsChanged);
     }
 
     private void ClearPasswordFeedback()
@@ -1381,5 +1430,23 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         await _totpService.ResetVaultAsync(cancellationToken).ConfigureAwait(false);
         LockAuthenticator();
         await RefreshAuthenticatorStateAsync(cancellationToken).ConfigureAwait(false);
+    }
+    
+    public string PasswordVaultSyncTime => GetFormattedSyncTime("PasswordVaultLastSync");
+    public string DataVaultSyncTime => GetFormattedSyncTime("DataVaultLastSync");
+    public string AuthenticatorSyncTime => GetFormattedSyncTime("AuthenticatorLastSync");
+
+    private string GetFormattedSyncTime(string key)
+    {
+        var time = Preferences.Get(key, DateTime.MinValue);
+        if (time == DateTime.MinValue) return "Nie";
+        return time.ToLocalTime().ToString("g"); // Short date, short time
+    }
+
+    private void NotifySyncTimestampsChanged()
+    {
+        OnPropertyChanged(nameof(PasswordVaultSyncTime));
+        OnPropertyChanged(nameof(DataVaultSyncTime));
+        OnPropertyChanged(nameof(AuthenticatorSyncTime));
     }
 }

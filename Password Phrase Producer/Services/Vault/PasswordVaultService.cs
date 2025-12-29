@@ -146,6 +146,7 @@ public class PasswordVaultService
             {
                 var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
                 await _syncService.SyncPasswordVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                Preferences.Set("PasswordVaultLastSync", DateTime.Now);
                 await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false); // Save merged changes
             }
             catch (Exception)
@@ -352,6 +353,7 @@ public class PasswordVaultService
                 try
                 {
                     await _syncService.SyncPasswordVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                    Preferences.Set("PasswordVaultLastSync", DateTime.Now);
                 }
                 catch
                 {
@@ -386,6 +388,7 @@ public class PasswordVaultService
                     try
                     {
                         await _syncService.SyncPasswordVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                        Preferences.Set("PasswordVaultLastSync", DateTime.Now);
                     }
                     catch
                     {
@@ -414,6 +417,7 @@ public class PasswordVaultService
             if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
             {
                 await _syncService.SyncPasswordVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                Preferences.Set("PasswordVaultLastSync", DateTime.Now);
                 await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
             }
         }

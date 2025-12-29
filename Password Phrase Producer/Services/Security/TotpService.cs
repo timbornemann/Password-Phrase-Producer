@@ -90,6 +90,7 @@ public class TotpService
                 try 
                 {
                     await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
+                    Preferences.Set("AuthenticatorLastSync", DateTime.Now);
                 }
                 catch {}
             }
@@ -121,6 +122,7 @@ public class TotpService
                     try 
                     {
                         await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
+                        Preferences.Set("AuthenticatorLastSync", DateTime.Now);
                     }
                     catch {}
                 }
@@ -628,6 +630,7 @@ public class TotpService
         {
             var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
             await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
+            Preferences.Set("AuthenticatorLastSync", DateTime.Now);
             await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
         }
         catch
