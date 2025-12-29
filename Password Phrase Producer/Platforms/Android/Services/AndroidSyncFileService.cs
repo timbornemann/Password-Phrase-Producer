@@ -90,10 +90,8 @@ public class AndroidSyncFileService : ISyncFileService
     {
         var uri = AndroidUri.Parse(path);
         // "w" for write, "wt" for write + truncate
-        var pfd = Application.Context.ContentResolver?.OpenFileDescriptor(uri, "wt");
-        if (pfd == null) throw new FileNotFoundException("Could not open file descriptor for URI", path);
-        
-        var stream = new System.IO.FileStream(pfd.FileDescriptor, FileAccess.Write);
+        var stream = Application.Context.ContentResolver?.OpenOutputStream(uri, "wt");
+        if (stream == null) throw new FileNotFoundException("Could not open stream for URI", path);
         return Task.FromResult<Stream>(stream);
     }
 
