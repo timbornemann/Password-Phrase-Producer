@@ -1301,6 +1301,49 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             IsSyncBusy = false;
         }
     }
+    
+    public async Task SyncAllVaultsAsync()
+    {
+        try 
+        {
+            IsSyncBusy = true;
+            SyncStatusMessage = "Synchronisiere...";
+            SyncStatusColor = Colors.Orange;
+
+            // Sync Password Vault
+            if (_vaultService.IsUnlocked)
+            {
+                await _vaultService.SyncNowAsync();
+            }
+
+            // Sync Data Vault
+            if (_dataVaultService.IsUnlocked)
+            {
+                await _dataVaultService.SyncNowAsync();
+            }
+
+            // Sync Authenticator
+            if (_totpEncryptionService.IsUnlocked)
+            {
+                // TotpService doesn't have SyncNowAsync, but SyncAfterUnlockAsync does the same thing
+                await _totpService.SyncAfterUnlockAsync();
+            }
+            
+            SyncStatusMessage = "Manuelle Synchronisation erfolgreich.";
+            SyncStatusColor = Colors.Green;
+        }
+        catch (Exception ex)
+        {
+            var message = ex.InnerException != null ? $"{ex.Message} -> {ex.InnerException.Message}" : ex.Message;
+            SyncStatusMessage = $"Fehler beim Sync: {message}";
+            SyncStatusColor = Colors.Red;
+            throw; // Re-throw to let UI handle it too
+        }
+        finally
+        {
+            IsSyncBusy = false;
+        }
+    }
 
     private async Task RefreshSyncStateAsync()
     {

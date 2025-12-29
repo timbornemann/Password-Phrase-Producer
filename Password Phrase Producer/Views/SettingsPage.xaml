@@ -230,6 +230,22 @@
                                 </DataTrigger>
                             </Button.Triggers>
                         </Button>
+                        
+                        <Button
+                            Text="Jetzt synchronisieren"
+                            Clicked="OnManualSyncClicked"
+                            BackgroundColor="#1F2338"
+                            TextColor="White"
+                            FontSize="13"
+                            Padding="12,8"
+                            CornerRadius="12"
+                            Margin="0,0,0,0">
+                            <Button.Triggers>
+                                <DataTrigger TargetType="Button" Binding="{Binding IsSyncBusy}" Value="True">
+                                    <Setter Property="IsEnabled" Value="False" />
+                                </DataTrigger>
+                            </Button.Triggers>
+                        </Button>
                     </VerticalStackLayout>
                 </Border>
 

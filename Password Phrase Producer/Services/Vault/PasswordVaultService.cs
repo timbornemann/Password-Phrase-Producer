@@ -403,6 +403,26 @@ public class PasswordVaultService
         MessagingCenter.Send(this, VaultMessages.EntriesChanged);
     }
 
+    public async Task SyncNowAsync(CancellationToken cancellationToken = default)
+    {
+        if (!IsUnlocked) return;
+        
+        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+            if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+            {
+                await _syncService.SyncPasswordVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _syncLock.Release();
+        }
+    }
+
     public async Task<byte[]> ExportWithFilePasswordAsync(string filePassword, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);

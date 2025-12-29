@@ -682,4 +682,39 @@ public partial class SettingsPage : ContentPage
             await this.ShowPopupAsync(successPopup);
         });
     }
+    private async void OnManualSyncClicked(object sender, EventArgs e)
+    {
+        if (!_viewModel.IsSyncConfigured)
+        {
+             await DisplayAlert("Info", "Bitte richte die Synchronisation zuerst ein.", "OK");
+             return;
+        }
+
+        bool vaultUnlocked = await EnsureVaultUnlockedAsync();
+        if (!vaultUnlocked) return; 
+
+        bool dataVaultUnlocked = await EnsureDataVaultUnlockedAsync();
+        if (!dataVaultUnlocked) return;
+
+        bool authenticatorUnlocked = await EnsureAuthenticatorUnlockedAsync();
+        if (!authenticatorUnlocked) return;
+
+        // All unlocked, show loading and sync
+        await ShowLoadingPageAsync("Synchronisiere Tresore...");
+        try 
+        {
+            await _viewModel.SyncAllVaultsAsync();
+        }
+        catch (Exception ex)
+        {
+             var fullError = ex.InnerException?.ToString() ?? ex.ToString();
+             // Truncate if too long for display alert
+             if (fullError.Length > 800) fullError = fullError.Substring(0, 800) + "...";
+             await DisplayAlert("Fehler Details", fullError, "OK");
+        }
+        finally
+        {
+            await HideLoadingPageAsync();
+        }
+    }
 }
