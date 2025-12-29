@@ -316,7 +316,8 @@
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer
                                                 Tapped="OnShowDetailTapped"
-                                                CommandParameter="{Binding .}" />
+                                                CommandParameter="{Binding .}"
+                                                NumberOfTapsRequired="1" />
                                         </Border.GestureRecognizers>
                                         <Image
                                             Source="maximize.png"
@@ -337,7 +338,8 @@
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer
                                                 Tapped="OnEditEntryTapped"
-                                                CommandParameter="{Binding .}" />
+                                                CommandParameter="{Binding .}"
+                                                NumberOfTapsRequired="1" />
                                         </Border.GestureRecognizers>
                                         <Image
                                             Source="pencil.png"
@@ -358,7 +360,8 @@
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer
                                                 Tapped="OnDeleteEntryTapped"
-                                                CommandParameter="{Binding .}" />
+                                                CommandParameter="{Binding .}"
+                                                NumberOfTapsRequired="1" />
                                         </Border.GestureRecognizers>
                                         <Image
                                             Source="trash.png"
@@ -402,7 +405,8 @@
                                     <Border.GestureRecognizers>
                                         <TapGestureRecognizer
                                             Tapped="OnCopyUsernameTapped"
-                                            CommandParameter="{Binding .}" />
+                                            CommandParameter="{Binding .}"
+                                            NumberOfTapsRequired="1" />
                                     </Border.GestureRecognizers>
                                     <Image
                                         Source="copy.png"
@@ -453,7 +457,8 @@
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer
                                                 Tapped="OnTogglePasswordVisibilityTapped"
-                                                CommandParameter="{Binding .}" />
+                                                CommandParameter="{Binding .}"
+                                                NumberOfTapsRequired="1" />
                                         </Border.GestureRecognizers>
                                         <Image
                                             Source="eyeoff.png"
@@ -481,7 +486,8 @@
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer
                                                 Tapped="OnCopyPasswordTapped"
-                                                CommandParameter="{Binding .}" />
+                                                CommandParameter="{Binding .}"
+                                                NumberOfTapsRequired="1" />
                                         </Border.GestureRecognizers>
                                         <Image
                                             Source="copy.png"
@@ -514,7 +520,8 @@
                                     <Label.GestureRecognizers>
                                         <TapGestureRecognizer
                                             CommandParameter="{Binding Url}"
-                                            Tapped="OnOpenUrl" />
+                                            Tapped="OnOpenUrl"
+                                            NumberOfTapsRequired="1" />
                                     </Label.GestureRecognizers>
                                 </Label>
                             </Grid>
