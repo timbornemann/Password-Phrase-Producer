@@ -465,6 +465,8 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool IsAuthenticatorUnlocked => _totpEncryptionService.IsUnlocked;
+
     public bool HasAppPassword
     {
         get => _hasAppPassword;
@@ -767,7 +769,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         return await _totpEncryptionService.UnlockWithPasswordAsync(password).ConfigureAwait(false);
     }
 
-    public bool IsAuthenticatorUnlocked => _totpEncryptionService.IsUnlocked;
+
 
     public bool IsPasswordVaultConfigured => _vaultService.IsUnlocked || _hasVaultMasterPassword;
     public bool IsDataVaultConfigured => _dataVaultService.IsUnlocked || _hasDataVaultMasterPassword;

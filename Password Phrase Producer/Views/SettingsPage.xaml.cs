@@ -690,31 +690,54 @@ public partial class SettingsPage : ContentPage
              return;
         }
 
-        bool vaultUnlocked = await EnsureVaultUnlockedAsync();
-        if (!vaultUnlocked) return; 
+        // Capture initial states
+        bool wasVaultLocked = !_viewModel.IsVaultUnlocked;
+        bool wasDataVaultLocked = !_viewModel.IsDataVaultUnlocked;
+        bool wasAuthenticatorLocked = !_viewModel.IsAuthenticatorUnlocked && _viewModel.HasAuthenticatorPassword;
 
-        bool dataVaultUnlocked = await EnsureDataVaultUnlockedAsync();
-        if (!dataVaultUnlocked) return;
-
-        bool authenticatorUnlocked = await EnsureAuthenticatorUnlockedAsync();
-        if (!authenticatorUnlocked) return;
-
-        // All unlocked, show loading and sync
-        await ShowLoadingPageAsync("Synchronisiere Tresore...");
-        try 
+        try
         {
-            await _viewModel.SyncAllVaultsAsync();
-        }
-        catch (Exception ex)
-        {
-             var fullError = ex.InnerException?.ToString() ?? ex.ToString();
-             // Truncate if too long for display alert
-             if (fullError.Length > 800) fullError = fullError.Substring(0, 800) + "...";
-             await DisplayAlert("Fehler Details", fullError, "OK");
+            if (wasVaultLocked)
+            {
+                 bool unlocked = await EnsureVaultUnlockedAsync();
+                 if (!unlocked) return;
+            }
+
+            if (wasDataVaultLocked)
+            {
+                 bool unlocked = await EnsureDataVaultUnlockedAsync();
+                 if (!unlocked) return;
+            }
+
+            if (wasAuthenticatorLocked)
+            {
+                 bool unlocked = await EnsureAuthenticatorUnlockedAsync();
+                 if (!unlocked) return;
+            }
+
+            // All ensured unlocked, proceed to sync
+            await ShowLoadingPageAsync("Synchronisiere Tresore...");
+            try 
+            {
+                await _viewModel.SyncAllVaultsAsync();
+            }
+            catch (Exception ex)
+            {
+                 var fullError = ex.InnerException?.ToString() ?? ex.ToString();
+                 if (fullError.Length > 800) fullError = fullError.Substring(0, 800) + "...";
+                 await DisplayAlert("Fehler Details", fullError, "OK");
+            }
+            finally
+            {
+                await HideLoadingPageAsync();
+            }
         }
         finally
         {
-            await HideLoadingPageAsync();
+            // Always restore lock state, even if user cancelled locally
+            if (wasVaultLocked && _viewModel.IsVaultUnlocked) _viewModel.LockVault();
+            if (wasDataVaultLocked && _viewModel.IsDataVaultUnlocked) _viewModel.LockDataVault();
+            if (wasAuthenticatorLocked && _viewModel.IsAuthenticatorUnlocked) _viewModel.LockAuthenticator();
         }
     }
 }
