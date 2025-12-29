@@ -47,7 +47,34 @@ public class VaultMergeService
         where T : IIdentifiable, ITimestamped
     {
         var result = new MergeResult<T>();
-        var existingDict = existing.ToDictionary(e => e.Id);
+        
+        // Handle null or empty inputs defensively
+        if (existing is null || existing.Count == 0)
+        {
+            // No existing entries - just add all incoming entries
+            result.MergedEntries.AddRange(incoming ?? new List<T>());
+            result.AddedCount = incoming?.Count ?? 0;
+            return result;
+        }
+        
+        if (incoming is null || incoming.Count == 0)
+        {
+            // No incoming entries - keep all existing entries
+            result.MergedEntries.AddRange(existing);
+            result.UnchangedCount = existing.Count;
+            return result;
+        }
+        
+        // Build dictionary of existing entries, handling potential duplicates by keeping the first occurrence
+        var existingDict = new Dictionary<Guid, T>();
+        foreach (var entry in existing)
+        {
+            if (!existingDict.ContainsKey(entry.Id))
+            {
+                existingDict[entry.Id] = entry;
+            }
+        }
+        
         var processedIds = new HashSet<Guid>();
 
         // Process incoming entries
@@ -102,7 +129,35 @@ public class VaultMergeService
         Func<T, DateTimeOffset> timestampSelector)
     {
         var result = new MergeResult<T>();
-        var existingDict = existing.ToDictionary(idSelector);
+        
+        // Handle null or empty inputs defensively
+        if (existing is null || existing.Count == 0)
+        {
+            // No existing entries - just add all incoming entries
+            result.MergedEntries.AddRange(incoming ?? new List<T>());
+            result.AddedCount = incoming?.Count ?? 0;
+            return result;
+        }
+        
+        if (incoming is null || incoming.Count == 0)
+        {
+            // No incoming entries - keep all existing entries
+            result.MergedEntries.AddRange(existing);
+            result.UnchangedCount = existing.Count;
+            return result;
+        }
+        
+        // Build dictionary of existing entries, handling potential duplicates by keeping the first occurrence
+        var existingDict = new Dictionary<Guid, T>();
+        foreach (var entry in existing)
+        {
+            var id = idSelector(entry);
+            if (!existingDict.ContainsKey(id))
+            {
+                existingDict[id] = entry;
+            }
+        }
+        
         var processedIds = new HashSet<Guid>();
 
         foreach (var incomingEntry in incoming)
