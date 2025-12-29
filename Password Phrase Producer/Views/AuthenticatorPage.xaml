@@ -122,208 +122,202 @@
             Command="{Binding RefreshCommand}"
             IsRefreshing="{Binding IsBusy}"
             RefreshColor="#4A5CFF">
-            <CollectionView
-                ItemsSource="{Binding Entries}"
-                SelectionMode="None"
-                ItemSizingStrategy="MeasureAllItems"
-                VerticalOptions="FillAndExpand"
-                VerticalScrollBarVisibility="Never">
-                <CollectionView.ItemsLayout>
-                    <LinearItemsLayout Orientation="Vertical" ItemSpacing="12" />
-                </CollectionView.ItemsLayout>
-
-                <CollectionView.EmptyView>
-                    <VerticalStackLayout
-                        Padding="0,0,10,0"
-                        Spacing="10"
-                        HorizontalOptions="Center"
-                        VerticalOptions="Center">
-                        <Border
-                            WidthRequest="52"
-                            HeightRequest="52"
-                            BackgroundColor="#1F2338"
-                            StrokeThickness="0">
-                            <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="16" />
-                            </Border.StrokeShape>
-                            <Label
-                                Text="A"
-                                FontSize="22"
-                                FontAttributes="Bold"
-                                TextColor="#CFD3FF"
-                                HorizontalOptions="Center"
-                                VerticalOptions="Center" />
-                        </Border>
-                        <Label
-                            Text="Keine Einträge"
-                            FontSize="14"
-                            FontAttributes="Bold"
-                            HorizontalTextAlignment="Center"
-                            TextColor="#E8EBFF" />
-                        <Label
-                            Text="Füge deinen ersten 2FA-Eintrag hinzu."
-                            FontSize="12"
-                            HorizontalTextAlignment="Center"
-                            TextColor="#9EA3C4" />
-                        <Button
-                            Text="Eintrag hinzufügen"
-                            Command="{Binding AddEntryCommand}"
-                            BackgroundColor="#1F2338"
-                            TextColor="#E8EBFF"
-                            BorderColor="#4A5CFF"
-                            BorderWidth="1"
-                            CornerRadius="10"
-                            HeightRequest="40"
-                            Padding="14,6"
-                            FontSize="12"
-                            Margin="0,6,0,0" />
-                    </VerticalStackLayout>
-                </CollectionView.EmptyView>
-
-                <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="viewmodels:TotpViewModelItem">
-                        <Border
-                            Padding="12"
-                            StrokeThickness="0"
-                            BackgroundColor="#1B2036">
-                            <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="14" />
-                            </Border.StrokeShape>
-                            <Border.Shadow>
-                                <Shadow Brush="#25000000" Radius="10" Offset="0,4" />
-                            </Border.Shadow>
-                            <Border.Triggers>
-                                <DataTrigger TargetType="Border" Binding="{Binding IsCopyFeedbackActive}" Value="True">
-                                    <Setter Property="BackgroundColor" Value="#1F2338" />
-                                    <Setter Property="StrokeThickness" Value="1" />
-                                    <Setter Property="Stroke" Value="#4A5CFF" />
-                                </DataTrigger>
-                            </Border.Triggers>
-
-                            <Grid RowDefinitions="Auto,Auto" RowSpacing="10" ColumnDefinitions="*,Auto">
-                                <Grid.GestureRecognizers>
-                                    <TapGestureRecognizer
-                                        Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:AuthenticatorViewModel}}, Path=CopyCodeCommand}"
-                                        CommandParameter="{Binding .}" />
-                                </Grid.GestureRecognizers>
-
-                                <!-- Details -->
-                                <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="3">
-                                    <Label
-                                        Text="{Binding Issuer}"
-                                        FontSize="14"
-                                        FontAttributes="Bold"
-                                        TextColor="White" />
-                                    <Label
-                                        Text="{Binding AccountName}"
-                                        FontSize="12"
-                                        TextColor="#9EA3C4"
-                                        LineBreakMode="TailTruncation" />
-                                </VerticalStackLayout>
-
-                                <!-- Action Buttons -->
-                                <HorizontalStackLayout
-                                    Grid.Row="0"
-                                    Grid.Column="1"
-                                    Spacing="6"
-                                    VerticalOptions="Start"
-                                    HorizontalOptions="End">
-                                    <Border
-                                        WidthRequest="30"
-                                        HeightRequest="30"
-                                        BackgroundColor="#2A2F4A"
-                                        StrokeThickness="0"
-                                        VerticalOptions="Center">
-                                        <Border.StrokeShape>
-                                            <RoundRectangle CornerRadius="8" />
-                                        </Border.StrokeShape>
-                                        <Border.Triggers>
-                                            <DataTrigger TargetType="Border" Binding="{Binding IsCopyFeedbackActive}" Value="True">
-                                                <Setter Property="BackgroundColor" Value="#4A5CFF" />
-                                            </DataTrigger>
-                                        </Border.Triggers>
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer
-                                                Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:AuthenticatorViewModel}}, Path=CopyCodeCommand}"
-                                                CommandParameter="{Binding .}" />
-                                        </Border.GestureRecognizers>
-                                        <Image
-                                            Source="copy.png"
-                                            WidthRequest="14"
-                                            HeightRequest="14"
-                                            HorizontalOptions="Center"
-                                            VerticalOptions="Center" />
-                                    </Border>
-                                    <Border
-                                        WidthRequest="30"
-                                        HeightRequest="30"
-                                        BackgroundColor="#3B2232"
-                                        StrokeThickness="0"
-                                        VerticalOptions="Center">
-                                        <Border.StrokeShape>
-                                            <RoundRectangle CornerRadius="8" />
-                                        </Border.StrokeShape>
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer
-                                                Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:AuthenticatorViewModel}}, Path=DeleteEntryCommand}"
-                                                CommandParameter="{Binding .}" />
-                                        </Border.GestureRecognizers>
-                                        <Image
-                                            Source="trash.png"
-                                            WidthRequest="14"
-                                            HeightRequest="14"
-                                            HorizontalOptions="Center"
-                                            VerticalOptions="Center" />
-                                    </Border>
-                                </HorizontalStackLayout>
-
-                                <!-- Code -->
+            <ScrollView VerticalScrollBarVisibility="Never">
+                <VerticalStackLayout Spacing="12" BindableLayout.ItemsSource="{Binding Entries}">
+                    <BindableLayout.EmptyView>
+                        <VerticalStackLayout
+                            Padding="0,0,10,0"
+                            Spacing="10"
+                            HorizontalOptions="Center"
+                            VerticalOptions="Center">
+                            <Border
+                                WidthRequest="52"
+                                HeightRequest="52"
+                                BackgroundColor="#1F2338"
+                                StrokeThickness="0">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="16" />
+                                </Border.StrokeShape>
                                 <Label
-                                    Grid.Row="1"
-                                    Grid.Column="0"
-                                    Text="{Binding Code}"
-                                    FontSize="32"
+                                    Text="A"
+                                    FontSize="22"
                                     FontAttributes="Bold"
-                                    TextColor="White"
-                                    FontFamily="OpenSansSemibold" />
-
-                                <!-- Progress/Timer -->
-                                <Grid
-                                    Grid.Row="1"
-                                    Grid.Column="1"
-                                    VerticalOptions="Center"
-                                    WidthRequest="44"
-                                    RowDefinitions="Auto,*">
-                                    <Label
+                                    TextColor="#CFD3FF"
+                                    HorizontalOptions="Center"
+                                    VerticalOptions="Center" />
+                            </Border>
+                            <Label
+                                Text="Keine Einträge"
+                                FontSize="14"
+                                FontAttributes="Bold"
+                                HorizontalTextAlignment="Center"
+                                TextColor="#E8EBFF" />
+                            <Label
+                                Text="Füge deinen ersten 2FA-Eintrag hinzu."
+                                FontSize="12"
+                                HorizontalTextAlignment="Center"
+                                TextColor="#9EA3C4" />
+                            <Button
+                                Text="Eintrag hinzufügen"
+                                Command="{Binding AddEntryCommand}"
+                                BackgroundColor="#1F2338"
+                                TextColor="#E8EBFF"
+                                BorderColor="#4A5CFF"
+                                BorderWidth="1"
+                                CornerRadius="10"
+                                HeightRequest="40"
+                                Padding="14,6"
+                                FontSize="12"
+                                Margin="0,6,0,0" />
+                        </VerticalStackLayout>
+                    </BindableLayout.EmptyView>
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="viewmodels:TotpViewModelItem">
+                            <Grid>
+                            <Border
+                                Padding="12"
+                                StrokeThickness="0"
+                                BackgroundColor="#1B2036">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="14" />
+                                </Border.StrokeShape>
+                                <Border.Shadow>
+                                    <Shadow Brush="#25000000" Radius="10" Offset="0,4" />
+                                </Border.Shadow>
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding IsCopyFeedbackActive}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="#1F2338" />
+                                        <Setter Property="StrokeThickness" Value="1" />
+                                        <Setter Property="Stroke" Value="#4A5CFF" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+    
+                                <Grid RowDefinitions="Auto,Auto" RowSpacing="10" ColumnDefinitions="*,Auto">
+                                    <Grid.GestureRecognizers>
+                                        <TapGestureRecognizer
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:AuthenticatorViewModel}}, Path=CopyCodeCommand}"
+                                            CommandParameter="{Binding .}" />
+                                    </Grid.GestureRecognizers>
+    
+                                    <!-- Details -->
+                                    <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="3">
+                                        <Label
+                                            Text="{Binding Issuer}"
+                                            FontSize="14"
+                                            FontAttributes="Bold"
+                                            TextColor="White" />
+                                        <Label
+                                            Text="{Binding AccountName}"
+                                            FontSize="12"
+                                            TextColor="#9EA3C4"
+                                            LineBreakMode="TailTruncation" />
+                                    </VerticalStackLayout>
+    
+                                    <!-- Action Buttons -->
+                                    <HorizontalStackLayout
                                         Grid.Row="0"
-                                        Text="{Binding RemainingSeconds}"
-                                        HorizontalOptions="Center"
-                                        TextColor="#5A6080"
-                                        FontSize="12"
-                                        ZIndex="10"
-                                        Margin="0,0,0,2" />
-                                    <Border
-                                        Grid.Row="1"
-                                        VerticalOptions="Center"
-                                        HeightRequest="4"
-                                        WidthRequest="44"
-                                        BackgroundColor="Transparent"
-                                        Padding="0">
-                                        <ProgressBar
-                                            Progress="{Binding Progress}"
-                                            ProgressColor="#4A5CFF"
-                                            ScaleY="4"
-                                            WidthRequest="44"
+                                        Grid.Column="1"
+                                        Spacing="6"
+                                        VerticalOptions="Start"
+                                        HorizontalOptions="End">
+                                        <Border
+                                            WidthRequest="30"
+                                            HeightRequest="30"
                                             BackgroundColor="#2A2F4A"
+                                            StrokeThickness="0"
+                                            VerticalOptions="Center">
+                                            <Border.StrokeShape>
+                                                <RoundRectangle CornerRadius="8" />
+                                            </Border.StrokeShape>
+                                            <Border.Triggers>
+                                                <DataTrigger TargetType="Border" Binding="{Binding IsCopyFeedbackActive}" Value="True">
+                                                    <Setter Property="BackgroundColor" Value="#4A5CFF" />
+                                                </DataTrigger>
+                                            </Border.Triggers>
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer
+                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:AuthenticatorViewModel}}, Path=CopyCodeCommand}"
+                                                    CommandParameter="{Binding .}" />
+                                            </Border.GestureRecognizers>
+                                            <Image
+                                                Source="copy.png"
+                                                WidthRequest="14"
+                                                HeightRequest="14"
+                                                HorizontalOptions="Center"
+                                                VerticalOptions="Center" />
+                                        </Border>
+                                        <Border
+                                            WidthRequest="30"
+                                            HeightRequest="30"
+                                            BackgroundColor="#3B2232"
+                                            StrokeThickness="0"
+                                            VerticalOptions="Center">
+                                            <Border.StrokeShape>
+                                                <RoundRectangle CornerRadius="8" />
+                                            </Border.StrokeShape>
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer
+                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:AuthenticatorViewModel}}, Path=DeleteEntryCommand}"
+                                                    CommandParameter="{Binding .}" />
+                                            </Border.GestureRecognizers>
+                                            <Image
+                                                Source="trash.png"
+                                                WidthRequest="14"
+                                                HeightRequest="14"
+                                                HorizontalOptions="Center"
+                                                VerticalOptions="Center" />
+                                        </Border>
+                                    </HorizontalStackLayout>
+    
+                                    <!-- Code -->
+                                    <Label
+                                        Grid.Row="1"
+                                        Grid.Column="0"
+                                        Text="{Binding Code}"
+                                        FontSize="32"
+                                        FontAttributes="Bold"
+                                        TextColor="White"
+                                        FontFamily="OpenSansSemibold" />
+    
+                                    <!-- Progress/Timer -->
+                                    <Grid
+                                        Grid.Row="1"
+                                        Grid.Column="1"
+                                        VerticalOptions="Center"
+                                        WidthRequest="44"
+                                        RowDefinitions="Auto,*">
+                                        <Label
+                                            Grid.Row="0"
+                                            Text="{Binding RemainingSeconds}"
+                                            HorizontalOptions="Center"
+                                            TextColor="#5A6080"
+                                            FontSize="12"
+                                            ZIndex="10"
+                                            Margin="0,0,0,2" />
+                                        <Border
+                                            Grid.Row="1"
                                             VerticalOptions="Center"
-                                            HorizontalOptions="Center" />
-                                    </Border>
+                                            HeightRequest="4"
+                                            WidthRequest="44"
+                                            BackgroundColor="Transparent"
+                                            Padding="0">
+                                            <ProgressBar
+                                                Progress="{Binding Progress}"
+                                                ProgressColor="#4A5CFF"
+                                                ScaleY="4"
+                                                WidthRequest="44"
+                                                BackgroundColor="#2A2F4A"
+                                                VerticalOptions="Center"
+                                                HorizontalOptions="Center" />
+                                        </Border>
+                                    </Grid>
                                 </Grid>
+                            </Border>
                             </Grid>
-                        </Border>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </ScrollView>
         </RefreshView>
     </Grid>
 </ContentPage>

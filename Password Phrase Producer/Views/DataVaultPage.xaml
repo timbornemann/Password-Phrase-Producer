@@ -200,375 +200,398 @@
             </Grid>
 
             <!-- Entries List -->
-            <CollectionView
-                x:Name="VaultCollectionView"
+            <ListView
+                x:Name="VaultListView"
                 Grid.Row="1"
-                Margin="16,0,16,16"
+                Margin="16,0,16,0"
                 ItemsSource="{Binding EntryGroups}"
                 SelectionMode="None"
-                ItemSizingStrategy="MeasureAllItems"
-                VerticalOptions="FillAndExpand"
+                VerticalOptions="Fill"
                 VerticalScrollBarVisibility="Never"
-                IsGrouped="True">
-            <CollectionView.ItemsLayout>
-                <LinearItemsLayout
-                    Orientation="Vertical"
-                    ItemSpacing="12"
-                    SnapPointsType="None" />
-            </CollectionView.ItemsLayout>
-            <CollectionView.GroupHeaderTemplate>
-                <DataTemplate x:DataType="viewmodels:VaultEntryGroup">
-                    <Label
-                        Text="{Binding Category}"
-                        FontSize="12"
-                        FontAttributes="Bold"
-                        TextColor="#E8EBFF"
-                        Margin="0,12,0,6" />
-                </DataTemplate>
-            </CollectionView.GroupHeaderTemplate>
-            <CollectionView.EmptyView>
-                <VerticalStackLayout
-                    Padding="20"
-                    Spacing="10"
-                    HorizontalOptions="Center"
-                    VerticalOptions="Center">
-                    <Border
-                        WidthRequest="52"
-                        HeightRequest="52"
-                        BackgroundColor="#1F2338"
-                        StrokeThickness="0">
-                        <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="16" />
-                        </Border.StrokeShape>
-                        <Label
-                            Text="D"
-                            FontSize="22"
-                            FontAttributes="Bold"
-                            TextColor="#CFD3FF"
-                            HorizontalOptions="Center"
-                            VerticalOptions="Center" />
-                    </Border>
-                    <Label
-                        Text="Keine Einträge"
-                        FontSize="14"
-                        FontAttributes="Bold"
-                        HorizontalTextAlignment="Center"
-                        TextColor="#E8EBFF" />
-                    <Label
-                        Text="Füge deinen ersten sicheren Datensatz hinzu."
-                        FontSize="12"
-                        HorizontalTextAlignment="Center"
-                        TextColor="#9EA3C4" />
-                </VerticalStackLayout>
-            </CollectionView.EmptyView>
+                IsGroupingEnabled="True"
+                HasUnevenRows="True"
+                SeparatorVisibility="None"
+                CachingStrategy="RecycleElement">
+                
+                <ListView.GroupHeaderTemplate>
+                    <DataTemplate x:DataType="viewmodels:VaultEntryGroup">
+                        <ViewCell>
+                            <Label
+                                Text="{Binding Category}"
+                                FontSize="12"
+                                FontAttributes="Bold"
+                                TextColor="#E8EBFF"
+                                Margin="0,12,0,6" />
+                        </ViewCell>
+                    </DataTemplate>
+                </ListView.GroupHeaderTemplate>
 
-            <CollectionView.ItemTemplate>
-                <DataTemplate x:DataType="models:PasswordVaultEntry">
-                    <Border
-                        Padding="12"
-                        StrokeThickness="0"
-                        BackgroundColor="#1B2036">
-                        <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="14" />
-                        </Border.StrokeShape>
-                        <Border.Shadow>
-                            <Shadow Brush="#25000000" Radius="10" Offset="0,4" />
-                        </Border.Shadow>
-                        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
-                            <!-- Title Row -->
-                            <Grid ColumnDefinitions="*,Auto" RowSpacing="0">
-                                <VerticalStackLayout Spacing="3">
-                                    <Label
-                                        Text="{Binding Label}"
-                                        FontSize="14"
-                                        FontAttributes="Bold"
-                                        TextColor="White" />
-                                    <Border
-                                        Padding="6,2"
-                                        BackgroundColor="#2A2F4A"
-                                        StrokeThickness="0"
-                                        HorizontalOptions="Start">
-                                        <Border.StrokeShape>
-                                            <RoundRectangle CornerRadius="6" />
-                                        </Border.StrokeShape>
-                                        <Label
-                                            Text="{Binding DisplayCategory}"
-                                            FontSize="10"
-                                            TextColor="#9EA3C4" />
-                                    </Border>
-                                </VerticalStackLayout>
-
-                                <!-- Action Buttons -->
-                                <HorizontalStackLayout
-                                    Grid.Column="1"
-                                    Spacing="6"
-                                    VerticalOptions="Start"
-                                    HorizontalOptions="End">
-                                    <Border
-                                        WidthRequest="30"
-                                        HeightRequest="30"
-                                        BackgroundColor="#2A2F4A"
-                                        StrokeThickness="0"
-                                        VerticalOptions="Center">
-                                        <Border.StrokeShape>
-                                            <RoundRectangle CornerRadius="8" />
-                                        </Border.StrokeShape>
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer
-                                                Tapped="OnShowDetailTapped"
-                                                CommandParameter="{Binding .}"
-                                                NumberOfTapsRequired="1" />
-                                        </Border.GestureRecognizers>
-                                        <Image
-                                            Source="maximize.png"
-                                            WidthRequest="16"
-                                            HeightRequest="16"
-                                            HorizontalOptions="Center"
-                                            VerticalOptions="Center" />
-                                    </Border>
-                                    <Border
-                                        WidthRequest="30"
-                                        HeightRequest="30"
-                                        BackgroundColor="#2A2F4A"
-                                        StrokeThickness="0"
-                                        VerticalOptions="Center">
-                                        <Border.StrokeShape>
-                                            <RoundRectangle CornerRadius="8" />
-                                        </Border.StrokeShape>
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer
-                                                Tapped="OnEditEntryTapped"
-                                                CommandParameter="{Binding .}"
-                                                NumberOfTapsRequired="1" />
-                                        </Border.GestureRecognizers>
-                                        <Image
-                                            Source="pencil.png"
-                                            WidthRequest="14"
-                                            HeightRequest="14"
-                                            HorizontalOptions="Center"
-                                            VerticalOptions="Center" />
-                                    </Border>
-                                    <Border
-                                        WidthRequest="30"
-                                        HeightRequest="30"
-                                        BackgroundColor="#3B2232"
-                                        StrokeThickness="0"
-                                        VerticalOptions="Center">
-                                        <Border.StrokeShape>
-                                            <RoundRectangle CornerRadius="8" />
-                                        </Border.StrokeShape>
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer
-                                                Tapped="OnDeleteEntryTapped"
-                                                CommandParameter="{Binding .}"
-                                                NumberOfTapsRequired="1" />
-                                        </Border.GestureRecognizers>
-                                        <Image
-                                            Source="trash.png"
-                                            WidthRequest="14"
-                                            HeightRequest="14"
-                                            HorizontalOptions="Center"
-                                            VerticalOptions="Center" />
-                                    </Border>
-                                </HorizontalStackLayout>
-                            </Grid>
-
-                            <!-- Username Row -->
-                            <Grid
-                                Grid.Row="1"
-                                ColumnDefinitions="Auto,*,Auto"
-                                ColumnSpacing="10"
-                                IsVisible="{Binding Username, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}">
-                                <Label
-                                    Text="Benutzer"
-                                    FontSize="11"
-                                    TextColor="#9EA3C4"
-                                    FontAttributes="Bold"
-                                    VerticalOptions="Center" />
-                                <Label
-                                    Grid.Column="1"
-                                    Text="{Binding Username}"
-                                    FontSize="12"
-                                    TextColor="#E8EBFF"
-                                    LineBreakMode="TailTruncation"
-                                    VerticalOptions="Center" />
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="models:PasswordVaultEntry">
+                        <ViewCell>
+                            <Grid Padding="0,0,0,12">
                                 <Border
-                                    Grid.Column="2"
-                                    WidthRequest="30"
-                                    HeightRequest="30"
-                                    BackgroundColor="#2A2F4A"
+                                    Padding="12"
                                     StrokeThickness="0"
-                                    VerticalOptions="Center">
-                                    <Border.StrokeShape>
-                                        <RoundRectangle CornerRadius="8" />
-                                    </Border.StrokeShape>
-                                    <Border.GestureRecognizers>
-                                        <TapGestureRecognizer
-                                            Tapped="OnCopyUsernameTapped"
-                                            CommandParameter="{Binding .}"
-                                            NumberOfTapsRequired="1" />
-                                    </Border.GestureRecognizers>
-                                    <Image
-                                        Source="copy.png"
-                                        WidthRequest="14"
-                                        HeightRequest="14"
-                                        HorizontalOptions="Center"
-                                        VerticalOptions="Center" />
+                                    BackgroundColor="#1B2036">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="14" />
+                                </Border.StrokeShape>
+                                <Border.Shadow>
+                                    <Shadow Brush="#25000000" Radius="10" Offset="0,4" />
+                                </Border.Shadow>
+                                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
+                                    <!-- Title Row -->
+                                    <Grid ColumnDefinitions="*,Auto" RowSpacing="0">
+                                        <VerticalStackLayout Spacing="3">
+                                            <Label
+                                                Text="{Binding Label}"
+                                                FontSize="14"
+                                                FontAttributes="Bold"
+                                                TextColor="White" />
+                                            <Border
+                                                Padding="6,2"
+                                                BackgroundColor="#2A2F4A"
+                                                StrokeThickness="0"
+                                                HorizontalOptions="Start">
+                                                <Border.StrokeShape>
+                                                    <RoundRectangle CornerRadius="6" />
+                                                </Border.StrokeShape>
+                                                <Label
+                                                    Text="{Binding DisplayCategory}"
+                                                    FontSize="10"
+                                                    TextColor="#9EA3C4" />
+                                            </Border>
+                                        </VerticalStackLayout>
+
+                                        <!-- Action Buttons -->
+                                        <HorizontalStackLayout
+                                            Grid.Column="1"
+                                            Spacing="6"
+                                            VerticalOptions="Start"
+                                            HorizontalOptions="End">
+                                            <Border
+                                                WidthRequest="30"
+                                                HeightRequest="30"
+                                                BackgroundColor="#2A2F4A"
+                                                StrokeThickness="0"
+                                                VerticalOptions="Center">
+                                                <Border.StrokeShape>
+                                                    <RoundRectangle CornerRadius="8" />
+                                                </Border.StrokeShape>
+                                                <Border.GestureRecognizers>
+                                                    <TapGestureRecognizer
+                                                        Tapped="OnShowDetailTapped"
+                                                        CommandParameter="{Binding .}"
+                                                        NumberOfTapsRequired="1" />
+                                                </Border.GestureRecognizers>
+                                                <Image
+                                                    Source="maximize.png"
+                                                    WidthRequest="16"
+                                                    HeightRequest="16"
+                                                    HorizontalOptions="Center"
+                                                    VerticalOptions="Center" />
+                                            </Border>
+                                            <Border
+                                                WidthRequest="30"
+                                                HeightRequest="30"
+                                                BackgroundColor="#2A2F4A"
+                                                StrokeThickness="0"
+                                                VerticalOptions="Center">
+                                                <Border.StrokeShape>
+                                                    <RoundRectangle CornerRadius="8" />
+                                                </Border.StrokeShape>
+                                                <Border.GestureRecognizers>
+                                                    <TapGestureRecognizer
+                                                        Tapped="OnEditEntryTapped"
+                                                        CommandParameter="{Binding .}"
+                                                        NumberOfTapsRequired="1" />
+                                                </Border.GestureRecognizers>
+                                                <Image
+                                                    Source="pencil.png"
+                                                    WidthRequest="14"
+                                                    HeightRequest="14"
+                                                    HorizontalOptions="Center"
+                                                    VerticalOptions="Center" />
+                                            </Border>
+                                            <Border
+                                                WidthRequest="30"
+                                                HeightRequest="30"
+                                                BackgroundColor="#3B2232"
+                                                StrokeThickness="0"
+                                                VerticalOptions="Center">
+                                                <Border.StrokeShape>
+                                                    <RoundRectangle CornerRadius="8" />
+                                                </Border.StrokeShape>
+                                                <Border.GestureRecognizers>
+                                                    <TapGestureRecognizer
+                                                        Tapped="OnDeleteEntryTapped"
+                                                        CommandParameter="{Binding .}"
+                                                        NumberOfTapsRequired="1" />
+                                                </Border.GestureRecognizers>
+                                                <Image
+                                                    Source="trash.png"
+                                                    WidthRequest="14"
+                                                    HeightRequest="14"
+                                                    HorizontalOptions="Center"
+                                                    VerticalOptions="Center" />
+                                            </Border>
+                                        </HorizontalStackLayout>
+                                    </Grid>
+
+                                    <!-- Username Row -->
+                                    <Grid
+                                        Grid.Row="1"
+                                        ColumnDefinitions="Auto,*,Auto"
+                                        ColumnSpacing="10"
+                                        IsVisible="{Binding Username, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}">
+                                        <Label
+                                            Text="Benutzer"
+                                            FontSize="11"
+                                            TextColor="#9EA3C4"
+                                            FontAttributes="Bold"
+                                            VerticalOptions="Center" />
+                                        <Label
+                                            Grid.Column="1"
+                                            Text="{Binding Username}"
+                                            FontSize="12"
+                                            TextColor="#E8EBFF"
+                                            LineBreakMode="TailTruncation"
+                                            VerticalOptions="Center" />
+                                        <Border
+                                            Grid.Column="2"
+                                            WidthRequest="30"
+                                            HeightRequest="30"
+                                            BackgroundColor="#2A2F4A"
+                                            StrokeThickness="0"
+                                            VerticalOptions="Center">
+                                            <Border.StrokeShape>
+                                                <RoundRectangle CornerRadius="8" />
+                                            </Border.StrokeShape>
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer
+                                                    Tapped="OnCopyUsernameTapped"
+                                                    CommandParameter="{Binding .}"
+                                                    NumberOfTapsRequired="1" />
+                                            </Border.GestureRecognizers>
+                                            <Image
+                                                Source="copy.png"
+                                                WidthRequest="14"
+                                                HeightRequest="14"
+                                                HorizontalOptions="Center"
+                                                VerticalOptions="Center" />
+                                        </Border>
+                                    </Grid>
+
+                                    <!-- Password Row -->
+                                    <Grid
+                                        Grid.Row="2"
+                                        ColumnDefinitions="Auto,*"
+                                        ColumnSpacing="10"
+                                        IsVisible="{Binding Password, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}">
+                                        <Label
+                                            Text="Passwort"
+                                            FontSize="11"
+                                            TextColor="#9EA3C4"
+                                            FontAttributes="Bold"
+                                            VerticalOptions="Center" />
+                                        <Grid Grid.Column="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+                                            <Label
+                                                FontSize="12"
+                                                TextColor="#E8EBFF"
+                                                LineBreakMode="NoWrap"
+                                                VerticalOptions="Center">
+                                                <Label.Triggers>
+                                                    <DataTrigger TargetType="Label" Binding="{Binding IsPasswordVisible}" Value="True">
+                                                        <Setter Property="Text" Value="{Binding Password}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger TargetType="Label" Binding="{Binding IsPasswordVisible}" Value="False">
+                                                        <Setter Property="Text" Value="{Binding Password, Converter={StaticResource PasswordMaskConverter}}" />
+                                                    </DataTrigger>
+                                                </Label.Triggers>
+                                            </Label>
+                                            <Border
+                                                Grid.Column="1"
+                                                WidthRequest="30"
+                                                HeightRequest="30"
+                                                BackgroundColor="#2A2F4A"
+                                                StrokeThickness="0"
+                                                VerticalOptions="Center">
+                                                <Border.StrokeShape>
+                                                    <RoundRectangle CornerRadius="8" />
+                                                </Border.StrokeShape>
+                                                <Border.GestureRecognizers>
+                                                    <TapGestureRecognizer
+                                                        Tapped="OnTogglePasswordVisibilityTapped"
+                                                        CommandParameter="{Binding .}"
+                                                        NumberOfTapsRequired="1" />
+                                                </Border.GestureRecognizers>
+                                                <Image
+                                                    Source="eyeoff.png"
+                                                    WidthRequest="14"
+                                                    HeightRequest="14"
+                                                    HorizontalOptions="Center"
+                                                    VerticalOptions="Center">
+                                                    <Image.Triggers>
+                                                        <DataTrigger TargetType="Image" Binding="{Binding IsPasswordVisible}" Value="True">
+                                                            <Setter Property="Source" Value="eye.png" />
+                                                        </DataTrigger>
+                                                    </Image.Triggers>
+                                                </Image>
+                                            </Border>
+                                            <Border
+                                                Grid.Column="2"
+                                                WidthRequest="30"
+                                                HeightRequest="30"
+                                                BackgroundColor="#2A2F4A"
+                                                StrokeThickness="0"
+                                                VerticalOptions="Center">
+                                                <Border.StrokeShape>
+                                                    <RoundRectangle CornerRadius="8" />
+                                                </Border.StrokeShape>
+                                                <Border.GestureRecognizers>
+                                                    <TapGestureRecognizer
+                                                        Tapped="OnCopyPasswordTapped"
+                                                        CommandParameter="{Binding .}"
+                                                        NumberOfTapsRequired="1" />
+                                                </Border.GestureRecognizers>
+                                                <Image
+                                                    Source="copy.png"
+                                                    WidthRequest="14"
+                                                    HeightRequest="14"
+                                                    HorizontalOptions="Center"
+                                                    VerticalOptions="Center" />
+                                            </Border>
+                                        </Grid>
+                                    </Grid>
+
+                                    <!-- URL Row -->
+                                    <Grid
+                                        Grid.Row="3"
+                                        ColumnDefinitions="Auto,*"
+                                        ColumnSpacing="10"
+                                        IsVisible="{Binding Url, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}">
+                                        <Label
+                                            Text="URL"
+                                            FontSize="11"
+                                            TextColor="#9EA3C4"
+                                            FontAttributes="Bold"
+                                            VerticalOptions="Center" />
+                                        <Label
+                                            Grid.Column="1"
+                                            Text="{Binding Url}"
+                                            FontSize="12"
+                                            TextColor="#58A7FF"
+                                            TextDecorations="Underline">
+                                            <Label.GestureRecognizers>
+                                                <TapGestureRecognizer
+                                                    CommandParameter="{Binding Url}"
+                                                    Tapped="OnOpenUrl"
+                                                    NumberOfTapsRequired="1" />
+                                            </Label.GestureRecognizers>
+                                        </Label>
+                                    </Grid>
+
+                                    <!-- Notes -->
+                                    <VerticalStackLayout Grid.Row="4" Spacing="4">
+                                        <Label
+                                            Text="{Binding Notes}"
+                                            FontSize="11"
+                                            TextColor="#9EA3C4"
+                                            LineBreakMode="WordWrap">
+                                            <Label.Triggers>
+                                                <Trigger TargetType="Label" Property="Text" Value="">
+                                                    <Setter Property="IsVisible" Value="False" />
+                                                </Trigger>
+                                                <Trigger TargetType="Label" Property="Text" Value="{x:Null}">
+                                                    <Setter Property="IsVisible" Value="False" />
+                                                </Trigger>
+                                            </Label.Triggers>
+                                        </Label>
+
+                                        <Label
+                                            Text="{Binding FreeText}"
+                                            FontSize="11"
+                                            TextColor="#9EA3C4"
+                                            LineBreakMode="WordWrap">
+                                            <Label.Triggers>
+                                                <Trigger TargetType="Label" Property="Text" Value="">
+                                                    <Setter Property="IsVisible" Value="False" />
+                                                </Trigger>
+                                                <Trigger TargetType="Label" Property="Text" Value="{x:Null}">
+                                                    <Setter Property="IsVisible" Value="False" />
+                                                </Trigger>
+                                            </Label.Triggers>
+                                        </Label>
+
+                                        <Label
+                                            Text="{Binding LocalModifiedAt, StringFormat='Aktualisiert: {0:d}'}"
+                                            FontSize="9"
+                                            TextColor="#5A6080"
+                                            HorizontalOptions="End" />
+                                    </VerticalStackLayout>
+                                </Grid>
                                 </Border>
                             </Grid>
+                        </ViewCell>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
 
-                            <!-- Password Row -->
-                            <Grid
-                                Grid.Row="2"
-                                ColumnDefinitions="Auto,*"
-                                ColumnSpacing="10"
-                                IsVisible="{Binding Password, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}">
-                                <Label
-                                    Text="Passwort"
-                                    FontSize="11"
-                                    TextColor="#9EA3C4"
-                                    FontAttributes="Bold"
-                                    VerticalOptions="Center" />
-                                <Grid Grid.Column="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
-                                    <Label
-                                        FontSize="12"
-                                        TextColor="#E8EBFF"
-                                        LineBreakMode="NoWrap"
-                                        VerticalOptions="Center">
-                                        <Label.Triggers>
-                                            <DataTrigger TargetType="Label" Binding="{Binding IsPasswordVisible}" Value="True">
-                                                <Setter Property="Text" Value="{Binding Password}" />
-                                            </DataTrigger>
-                                            <DataTrigger TargetType="Label" Binding="{Binding IsPasswordVisible}" Value="False">
-                                                <Setter Property="Text" Value="{Binding Password, Converter={StaticResource PasswordMaskConverter}}" />
-                                            </DataTrigger>
-                                        </Label.Triggers>
-                                    </Label>
-                                    <Border
-                                        Grid.Column="1"
-                                        WidthRequest="30"
-                                        HeightRequest="30"
-                                        BackgroundColor="#2A2F4A"
-                                        StrokeThickness="0"
-                                        VerticalOptions="Center">
-                                        <Border.StrokeShape>
-                                            <RoundRectangle CornerRadius="8" />
-                                        </Border.StrokeShape>
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer
-                                                Tapped="OnTogglePasswordVisibilityTapped"
-                                                CommandParameter="{Binding .}"
-                                                NumberOfTapsRequired="1" />
-                                        </Border.GestureRecognizers>
-                                        <Image
-                                            Source="eyeoff.png"
-                                            WidthRequest="14"
-                                            HeightRequest="14"
-                                            HorizontalOptions="Center"
-                                            VerticalOptions="Center">
-                                            <Image.Triggers>
-                                                <DataTrigger TargetType="Image" Binding="{Binding IsPasswordVisible}" Value="True">
-                                                    <Setter Property="Source" Value="eye.png" />
-                                                </DataTrigger>
-                                            </Image.Triggers>
-                                        </Image>
-                                    </Border>
-                                    <Border
-                                        Grid.Column="2"
-                                        WidthRequest="30"
-                                        HeightRequest="30"
-                                        BackgroundColor="#2A2F4A"
-                                        StrokeThickness="0"
-                                        VerticalOptions="Center">
-                                        <Border.StrokeShape>
-                                            <RoundRectangle CornerRadius="8" />
-                                        </Border.StrokeShape>
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer
-                                                Tapped="OnCopyPasswordTapped"
-                                                CommandParameter="{Binding .}"
-                                                NumberOfTapsRequired="1" />
-                                        </Border.GestureRecognizers>
-                                        <Image
-                                            Source="copy.png"
-                                            WidthRequest="14"
-                                            HeightRequest="14"
-                                            HorizontalOptions="Center"
-                                            VerticalOptions="Center" />
-                                    </Border>
-                                </Grid>
-                            </Grid>
-
-                            <!-- URL Row -->
-                            <Grid
-                                Grid.Row="3"
-                                ColumnDefinitions="Auto,*"
-                                ColumnSpacing="10"
-                                IsVisible="{Binding Url, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}">
-                                <Label
-                                    Text="URL"
-                                    FontSize="11"
-                                    TextColor="#9EA3C4"
-                                    FontAttributes="Bold"
-                                    VerticalOptions="Center" />
-                                <Label
-                                    Grid.Column="1"
-                                    Text="{Binding Url}"
-                                    FontSize="12"
-                                    TextColor="#58A7FF"
-                                    TextDecorations="Underline">
-                                    <Label.GestureRecognizers>
-                                        <TapGestureRecognizer
-                                            CommandParameter="{Binding Url}"
-                                            Tapped="OnOpenUrl"
-                                            NumberOfTapsRequired="1" />
-                                    </Label.GestureRecognizers>
-                                </Label>
-                            </Grid>
-
-                            <!-- Notes -->
-                            <VerticalStackLayout Grid.Row="4" Spacing="4">
-                                <Label
-                                    Text="{Binding Notes}"
-                                    FontSize="11"
-                                    TextColor="#9EA3C4"
-                                    LineBreakMode="WordWrap">
-                                    <Label.Triggers>
-                                        <Trigger TargetType="Label" Property="Text" Value="">
-                                            <Setter Property="IsVisible" Value="False" />
-                                        </Trigger>
-                                        <Trigger TargetType="Label" Property="Text" Value="{x:Null}">
-                                            <Setter Property="IsVisible" Value="False" />
-                                        </Trigger>
-                                    </Label.Triggers>
-                                </Label>
-
-                                <Label
-                                    Text="{Binding FreeText}"
-                                    FontSize="11"
-                                    TextColor="#9EA3C4"
-                                    LineBreakMode="WordWrap">
-                                    <Label.Triggers>
-                                        <Trigger TargetType="Label" Property="Text" Value="">
-                                            <Setter Property="IsVisible" Value="False" />
-                                        </Trigger>
-                                        <Trigger TargetType="Label" Property="Text" Value="{x:Null}">
-                                            <Setter Property="IsVisible" Value="False" />
-                                        </Trigger>
-                                    </Label.Triggers>
-                                </Label>
-
-                                <Label
-                                    Text="{Binding LocalModifiedAt, StringFormat='Aktualisiert: {0:d}'}"
-                                    FontSize="9"
-                                    TextColor="#5A6080"
-                                    HorizontalOptions="End" />
-                            </VerticalStackLayout>
-                        </Grid>
-                    </Border>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-            </CollectionView>
+            <!-- Empty View -->
+            <VerticalStackLayout
+                Grid.Row="1"
+                Padding="0,0,10,0"
+                Spacing="10"
+                HorizontalOptions="Center"
+                VerticalOptions="Center"
+                IsVisible="False"
+                InputTransparent="True">
+                <VerticalStackLayout.Triggers>
+                    <DataTrigger TargetType="VerticalStackLayout" Binding="{Binding EntryGroups.Count}" Value="0">
+                        <Setter Property="IsVisible" Value="True" />
+                        <Setter Property="InputTransparent" Value="False" />
+                    </DataTrigger>
+                </VerticalStackLayout.Triggers>
+                <Border
+                    WidthRequest="52"
+                    HeightRequest="52"
+                    BackgroundColor="#1F2338"
+                    StrokeThickness="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="16" />
+                    </Border.StrokeShape>
+                    <Image
+                        Source="binary.png"
+                        WidthRequest="24"
+                        HeightRequest="24"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center" />
+                </Border>
+                <Label
+                    Text="Keine Dateneinträge"
+                    FontSize="14"
+                    FontAttributes="Bold"
+                    HorizontalTextAlignment="Center"
+                    TextColor="#E8EBFF" />
+                <Label
+                    Text="Füge deine ersten Daten hinzu."
+                    FontSize="12"
+                    HorizontalTextAlignment="Center"
+                    TextColor="#9EA3C4" />
+                <Button
+                    Text="Eintrag hinzufügen"
+                    Clicked="OnAddEntryClicked"
+                    BackgroundColor="#1F2338"
+                    TextColor="#E8EBFF"
+                    BorderColor="#4A5CFF"
+                    BorderWidth="1"
+                    CornerRadius="10"
+                    HeightRequest="40"
+                    Padding="14,6"
+                    FontSize="12"
+                    Margin="0,6,0,0" />
+            </VerticalStackLayout>
         </Grid>
 
         <!-- Lock Screen / Access -->

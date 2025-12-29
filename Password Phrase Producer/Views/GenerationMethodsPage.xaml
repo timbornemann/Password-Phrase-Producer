@@ -80,13 +80,8 @@
                              Spacing="14"
                              Padding="16,0,16,28">
 
-            <CollectionView ItemsSource="{Binding ModeOptions}"
-                            SelectionMode="None"
-                            ItemSizingStrategy="MeasureAllItems">
-                <CollectionView.ItemsLayout>
-                    <LinearItemsLayout Orientation="Vertical" ItemSpacing="10" />
-                </CollectionView.ItemsLayout>
-                <CollectionView.ItemTemplate>
+            <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding ModeOptions}">
+                <BindableLayout.ItemTemplate>
                     <DataTemplate x:DataType="local:PasswordModeOption">
                         <Border Padding="0"
                                 StrokeThickness="0"
@@ -126,8 +121,8 @@
                             </VerticalStackLayout>
                         </Border>
                     </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
         </VerticalStackLayout>
     </ScrollView>
     </Grid>
