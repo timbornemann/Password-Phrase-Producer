@@ -1,10 +1,11 @@
 using Android.App;
 using Android.Content;
+using Android.Content.PM;
 using Android.OS;
 
 namespace Password_Phrase_Producer.Platforms.Android.Services;
 
-[Activity(NoHistory = true, LaunchMode = Android.Content.PM.LaunchMode.SingleTop)]
+[Activity(NoHistory = true, LaunchMode = LaunchMode.SingleTop)]
 public class WebAuthenticatorIntermediateActivity : Activity
 {
     public static Action<string?>? Callback;
