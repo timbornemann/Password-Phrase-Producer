@@ -10,7 +10,7 @@ public enum TotpAlgorithm
     Sha512
 }
 
-public class TotpEntry : IIdentifiable, ITimestamped
+public class TotpEntry : IIdentifiable, ITimestamped, IDeletable
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Issuer { get; set; } = string.Empty;
@@ -20,4 +20,5 @@ public class TotpEntry : IIdentifiable, ITimestamped
     public int Digits { get; set; } = 6;
     public int Period { get; set; } = 30;
     public DateTimeOffset ModifiedAt { get; set; } = DateTimeOffset.UtcNow;
+    public bool IsDeleted { get; set; }
 }

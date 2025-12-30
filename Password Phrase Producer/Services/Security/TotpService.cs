@@ -7,6 +7,7 @@ using OtpNet;
 using Password_Phrase_Producer.Models;
 using Password_Phrase_Producer.Services.Security.Protobuf;
 using Password_Phrase_Producer.Services.Synchronization;
+using Microsoft.Maui.ApplicationModel;
 
 namespace Password_Phrase_Producer.Services.Security;
 
@@ -55,7 +56,8 @@ public class TotpService
         await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            return await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+            return entries.Where(e => !e.IsDeleted).ToList();
         }
         finally
         {
@@ -75,6 +77,7 @@ public class TotpService
             var existingIndex = entries.FindIndex(e => e.Id == entry.Id);
 
             entry.ModifiedAt = DateTimeOffset.UtcNow;
+            entry.IsDeleted = false; // Restore if it was deleted
 
             if (existingIndex >= 0)
             {
@@ -94,7 +97,10 @@ public class TotpService
                 }
                 catch (Exception ex)
                 {
-                     await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Auth): {ex.Message}", "OK");
+                     MainThread.BeginInvokeOnMainThread(async () => 
+                     {
+                         await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Auth): {ex.Message}", "OK");
+                     });
                 }
             }
 
@@ -116,10 +122,14 @@ public class TotpService
         try
         {
             var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-            var removed = entries.RemoveAll(e => e.Id == entryId);
+            var entry = entries.FirstOrDefault(e => e.Id == entryId);
 
-            if (removed > 0)
+            if (entry != null)
             {
+                // Soft delete
+                entry.IsDeleted = true;
+                entry.ModifiedAt = DateTimeOffset.UtcNow;
+
                 if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
                 {
                     try 
@@ -129,7 +139,10 @@ public class TotpService
                     }
                     catch (Exception ex)
                     {
-                         await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Auth): {ex.Message}", "OK");
+                         MainThread.BeginInvokeOnMainThread(async () => 
+                         {
+                             await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Auth): {ex.Message}", "OK");
+                         });
                     }
                 }
                 await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);

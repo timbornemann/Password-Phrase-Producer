@@ -19,6 +19,7 @@ public class PasswordVaultEntryDto
     public string FreeText { get; set; } = string.Empty;
 
     public DateTimeOffset ModifiedAt { get; set; }
+    public bool IsDeleted { get; set; }
 
     public static PasswordVaultEntryDto FromModel(PasswordVaultEntry entry)
     {
@@ -32,7 +33,8 @@ public class PasswordVaultEntryDto
             Url = entry.Url,
             Notes = entry.Notes,
             FreeText = entry.FreeText,
-            ModifiedAt = entry.ModifiedAt
+            ModifiedAt = entry.ModifiedAt,
+            IsDeleted = entry.IsDeleted
         };
     }
 
@@ -48,7 +50,8 @@ public class PasswordVaultEntryDto
             Url = Url,
             Notes = Notes,
             FreeText = FreeText,
-            ModifiedAt = ModifiedAt == default ? DateTimeOffset.UtcNow : ModifiedAt
+            ModifiedAt = ModifiedAt == default ? DateTimeOffset.UtcNow : ModifiedAt,
+            IsDeleted = IsDeleted
         };
     }
 }

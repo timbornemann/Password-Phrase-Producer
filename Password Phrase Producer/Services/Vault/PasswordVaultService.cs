@@ -8,7 +8,9 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
+using Microsoft.Maui.ApplicationModel;
 using Password_Phrase_Producer.Models;
 using Password_Phrase_Producer.Services.Security;
 
@@ -311,6 +313,7 @@ public class PasswordVaultService
         {
             var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
             return entries
+                .Where(e => !e.IsDeleted) // Filter out soft-deleted items
                 .OrderBy(e => e.DisplayCategory, StringComparer.CurrentCultureIgnoreCase)
                 .ThenBy(e => e.Label, StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
@@ -338,6 +341,7 @@ public class PasswordVaultService
             }
 
             entry.ModifiedAt = DateTimeOffset.UtcNow;
+            entry.IsDeleted = false; // Ensure it's not marked as deleted if we update/add it
 
             if (existingIndex >= 0)
             {
@@ -358,7 +362,10 @@ public class PasswordVaultService
                 catch (Exception ex)
                 {
                     // Sync failed, just save local
-                    await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren: {ex.Message}", "OK");
+                    MainThread.BeginInvokeOnMainThread(async () => 
+                    {
+                        await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren: {ex.Message}", "OK");
+                    });
                 }
             }
 
@@ -380,10 +387,14 @@ public class PasswordVaultService
         try
         {
             var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-            var removed = entries.RemoveAll(e => e.Id == entryId);
-
-            if (removed > 0)
+            var entry = entries.FirstOrDefault(e => e.Id == entryId);
+            
+            if (entry != null)
             {
+                // Soft delete
+                entry.IsDeleted = true;
+                entry.ModifiedAt = DateTimeOffset.UtcNow;
+
                 if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
                 {
                     try
@@ -393,7 +404,10 @@ public class PasswordVaultService
                     }
                     catch (Exception ex)
                     {
-                         await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren: {ex.Message}", "OK");
+                        MainThread.BeginInvokeOnMainThread(async () => 
+                        {
+                            await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren: {ex.Message}", "OK");
+                        });
                     }
                 }
                 await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);

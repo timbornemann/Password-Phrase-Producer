@@ -13,6 +13,7 @@ public class TotpEntryDto
     public int Digits { get; set; } = 6;
     public int Period { get; set; } = 30;
     public DateTimeOffset ModifiedAt { get; set; }
+    public bool IsDeleted { get; set; }
 
     public static TotpEntryDto FromModel(TotpEntry model)
     {
@@ -25,7 +26,8 @@ public class TotpEntryDto
             Algorithm = model.Algorithm.ToString(),
             Digits = model.Digits,
             Period = model.Period,
-            ModifiedAt = model.ModifiedAt
+            ModifiedAt = model.ModifiedAt,
+            IsDeleted = model.IsDeleted
         };
     }
 
@@ -40,7 +42,8 @@ public class TotpEntryDto
             Algorithm = Enum.TryParse<TotpAlgorithm>(Algorithm, out var alg) ? alg : TotpAlgorithm.Sha1,
             Digits = Digits,
             Period = Period,
-            ModifiedAt = ModifiedAt
+            ModifiedAt = ModifiedAt,
+            IsDeleted = IsDeleted
         };
     }
 }

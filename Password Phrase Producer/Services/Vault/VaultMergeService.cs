@@ -87,20 +87,20 @@ public class VaultMergeService
                 // Entry exists in both - compare timestamps
                 if (incomingEntry.ModifiedAt > existingEntry.ModifiedAt)
                 {
-                    // Incoming is newer - use incoming
+                    // Incoming is newer
                     result.MergedEntries.Add(incomingEntry);
                     result.UpdatedCount++;
                 }
                 else
                 {
-                    // Existing is same or newer - keep existing
+                    // Existing is same or newer
                     result.MergedEntries.Add(existingEntry);
                     result.UnchangedCount++;
                 }
             }
             else
             {
-                // New entry - add it
+                // New entry from incoming (could be a regular new item OR a deleted item from another device)
                 result.MergedEntries.Add(incomingEntry);
                 result.AddedCount++;
             }
@@ -111,6 +111,12 @@ public class VaultMergeService
         {
             if (!processedIds.Contains(existingEntry.Id))
             {
+                // If it's missing in incoming, it might mean it was deleted on the other side?
+                // BUT: In our new soft-delete model, deletions are explicit.
+                // If the other side deleted it, they would send an IDeletable with IsDeleted=true.
+                // If they just don't have it (e.g. new device), we should send it to them.
+                // So, keeping it (adding to result) is correct.
+                
                 result.MergedEntries.Add(existingEntry);
                 result.UnchangedCount++;
             }

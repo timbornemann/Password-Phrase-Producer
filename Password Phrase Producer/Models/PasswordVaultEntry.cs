@@ -6,7 +6,7 @@ using Password_Phrase_Producer.Services.Vault;
 
 namespace Password_Phrase_Producer.Models;
 
-public class PasswordVaultEntry : INotifyPropertyChanged, IIdentifiable, ITimestamped
+public class PasswordVaultEntry : INotifyPropertyChanged, IIdentifiable, ITimestamped, IDeletable
 {
     private Guid _id = Guid.NewGuid();
     private string _label = string.Empty;
@@ -75,6 +75,8 @@ public class PasswordVaultEntry : INotifyPropertyChanged, IIdentifiable, ITimest
         set => SetProperty(ref _modifiedAt, value);
     }
 
+    public bool IsDeleted { get; set; }
+
     [JsonIgnore]
     public string DisplayCategory => string.IsNullOrWhiteSpace(Category) ? "Allgemein" : Category?.Trim() ?? "Allgemein";
 
@@ -100,7 +102,8 @@ public class PasswordVaultEntry : INotifyPropertyChanged, IIdentifiable, ITimest
             Url = Url,
             Notes = Notes,
             FreeText = FreeText,
-            ModifiedAt = ModifiedAt
+            ModifiedAt = ModifiedAt,
+            IsDeleted = IsDeleted
         };
     }
 
