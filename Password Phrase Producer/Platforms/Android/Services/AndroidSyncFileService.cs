@@ -49,25 +49,11 @@ public class AndroidSyncFileService : ISyncFileService
         {
             if (uri != null)
             {
-                try
-                {
-                    var contentResolver = Application.Context.ContentResolver;
-                    var androidUri = AndroidUri.Parse(uri);
-                    
-                    // Take persistent permission
-                    var takeFlags = ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantWriteUriPermission;
-                    contentResolver?.TakePersistableUriPermission(androidUri, takeFlags);
-                    
-                    _pickingTcs.TrySetResult(uri);
-                }
-                catch (Exception ex)
-                {
-                    _pickingTcs.TrySetException(ex);
-                }
+               _pickingTcs.TrySetResult(uri);
             }
             else
             {
-                _pickingTcs.TrySetResult(null);
+                _pickingTcs.TrySetResult(null); // Cancelled
             }
         };
 
@@ -89,10 +75,73 @@ public class AndroidSyncFileService : ISyncFileService
     public Task<Stream> OpenWriteAsync(string path)
     {
         var uri = AndroidUri.Parse(path);
-        // "w" for write, "wt" for write + truncate
-        var stream = Application.Context.ContentResolver?.OpenOutputStream(uri, "wt");
-        if (stream == null) throw new FileNotFoundException("Could not open stream for URI", path);
-        return Task.FromResult<Stream>(stream);
+        try
+        {
+            var pfd = Application.Context.ContentResolver?.OpenFileDescriptor(uri, "wt");
+            if (pfd == null) throw new FileNotFoundException("Could not open PFD for URI", path);
+            
+            // Detach the FD so we can pass ownership to the FileStream
+            var fd = pfd.DetachFd();
+            
+            // Create a SafeFileHandle that owns the FD (will close it when disposed)
+            var safeHandle = new Microsoft.Win32.SafeHandles.SafeFileHandle((nint)fd, ownsHandle: true);
+            
+            // Use WriteThrough to ensure data hits the disk/storage provider immediately
+            // Must use isAsync: false because the handle from OpenFileDescriptor is synchronous.
+            var fileStream = new FileStream(safeHandle, FileAccess.Write, 4096, false);
+            // FileStream(SafeFileHandle handle, FileAccess access, int bufferSize, bool isAsync)
+            // Need overload with FileOptions to verify WriteThrough.
+            // FileStream(SafeFileHandle handle, FileAccess access) -> doesn't expose options.
+            // We might need to just use Flush(true) on the stream if constructor doesn't allow Options with SafeHandle easily in all .NET versions.
+            // Check .NET 8/9 support. 
+            // FileStream(SafeFileHandle handle, FileAccess access, int bufferSize)
+            // Let's stick to simple constructor but force Flush in a wrapper or return fileStream and hope standard flush is enough? 
+            // Previous user error suggested standard write/dispose sequence might have raced.
+            
+            // Let's configure it simply but perform an explicit Flush(true) before returning? No, we need to flush AFTER writing.
+            
+            // Since we return 'Stream', we can wrap it.
+            var flushingStream = new FlushingStream(fileStream);
+
+            // Explicitly truncate
+            fileStream.SetLength(0);
+            
+            pfd.Dispose(); 
+            
+            return Task.FromResult<Stream>(flushingStream);
+        }
+        catch (Exception ex)
+        {
+             throw new IOException($"Failed to open write stream: {ex.Message}", ex);
+        }
+    }
+
+    // Helper wrapper to force Flush(true) on dispose
+    private class FlushingStream : Stream
+    {
+        private readonly FileStream _inner;
+        public FlushingStream(FileStream inner) { _inner = inner; }
+        public override bool CanRead => _inner.CanRead;
+        public override bool CanSeek => _inner.CanSeek;
+        public override bool CanWrite => _inner.CanWrite;
+        public override long Length => _inner.Length;
+        public override long Position { get => _inner.Position; set => _inner.Position = value; }
+        public override void Flush() => _inner.Flush();
+        public override int Read(byte[] buffer, int offset, int count) => _inner.Read(buffer, offset, count);
+        public override long Seek(long offset, SeekOrigin origin) => _inner.Seek(offset, origin);
+        public override void SetLength(long value) => _inner.SetLength(value);
+        public override void Write(byte[] buffer, int offset, int count) => _inner.Write(buffer, offset, count);
+        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken token) => await _inner.WriteAsync(buffer, offset, count, token);
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                try { _inner.Flush(flushToDisk: true); } catch { }
+                _inner.Dispose();
+            }
+            base.Dispose(disposing);
+        }
     }
 
     public Task<bool> ExistsAsync(string path)

@@ -5,7 +5,7 @@ using Android.OS;
 
 namespace Password_Phrase_Producer.Platforms.Android.Services;
 
-[Activity(NoHistory = true, LaunchMode = LaunchMode.SingleTop)]
+[Activity(LaunchMode = LaunchMode.SingleTop)]
 public class WebAuthenticatorIntermediateActivity : Activity
 {
     public static Action<string?>? Callback;
@@ -15,11 +15,20 @@ public class WebAuthenticatorIntermediateActivity : Activity
     {
         base.OnCreate(savedInstanceState);
 
-        var originalIntent = Intent?.GetParcelableExtra("OriginalIntent", Java.Lang.Class.FromType(typeof(Intent))) as Intent;
+        // Prevent restarting the picker on configuration changes if already started
+        if (savedInstanceState != null) return;
+
+        Intent? originalIntent = null;
         
-        // On older Android versions, or generic fallback
-        if (originalIntent == null) 
-             originalIntent = Intent?.GetParcelableExtra("OriginalIntent") as Intent;
+        // Android 13+ (API 33+)
+        if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu)
+        {
+            originalIntent = Intent?.GetParcelableExtra("OriginalIntent", Java.Lang.Class.FromType(typeof(Intent))) as Intent;
+        }
+        else
+        {
+            originalIntent = Intent?.GetParcelableExtra("OriginalIntent") as Intent;
+        }
 
         if (originalIntent != null)
         {
@@ -27,6 +36,8 @@ public class WebAuthenticatorIntermediateActivity : Activity
         }
         else
         {
+            // Failed to extract intent, ensure we don't hang
+            Callback?.Invoke(null);
             Finish();
         }
     }
@@ -39,10 +50,22 @@ public class WebAuthenticatorIntermediateActivity : Activity
         {
             if (resultCode == Result.Ok && data?.Data != null)
             {
-                Callback?.Invoke(data.Data.ToString());
+                var uri = data.Data;
+                try 
+                {
+                    var takeFlags = ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantWriteUriPermission;
+                    ContentResolver?.TakePersistableUriPermission(uri, takeFlags);
+                }
+                catch 
+                { 
+                    // Log or ignore if not supported
+                }
+                
+                Callback?.Invoke(uri.ToString());
             }
             else
             {
+                // Cancelled or failed
                 Callback?.Invoke(null);
             }
         }

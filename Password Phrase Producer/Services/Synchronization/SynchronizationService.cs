@@ -73,11 +73,11 @@ public class SynchronizationService : ISynchronizationService
             // We need to check if it has content (length > 0). ISyncFileService abstraction doesn't have Length?
             // Open stream to check.
             using var stream = await _syncFileService.OpenReadAsync(path);
-            if (stream.Length > 0)
-            {
-                 // Close and reopen properly in ReadHeaderAsync logic below
-                 stream.Close();
+            var length = stream.Length;
+            stream.Close();
 
+            if (length > 0)
+            {
                  try 
                  {
                     var existingHeader = await ReadHeaderAsync(path);
@@ -99,8 +99,16 @@ public class SynchronizationService : ISynchronizationService
                  }
                  catch (Exception ex) when (ex is not InvalidOperationException)
                  {
+                    // If parsing fails for any reason (e.g. legacy format or garbage), treat as invalid? 
+                    // Or ask user to overwrite? For now, throw is safer to avoid accidental data loss.
                     throw new InvalidOperationException("Die Datei existiert bereits, ist aber keine gültige oder lesbare Sync-Datei.", ex);
                  }
+            }
+            else
+            {
+                // File exists but is empty -> Initialize it
+                var content = new ExternalVaultContent();
+                await WriteVaultFileAsync(path, header, content, key);
             }
         }
         else
@@ -346,30 +354,24 @@ public class SynchronizationService : ISynchronizationService
         }
     }
 
-    private async Task<ExternalVaultHeader> ReadHeaderAsync(string path)
-    {
-        // Use Abstracted OpenRead
-        using var stream = await _syncFileService.OpenReadAsync(path);
-        using var reader = new StreamReader(stream);
-        var json = await reader.ReadToEndAsync();
-        var file = JsonSerializer.Deserialize<ExternalVaultFile>(json, _jsonOptions);
-        return file?.Header ?? throw new InvalidDataException("Invalid sync file format.");
-    }
+    private const string MagicHeader = "PPP1"; // Password Phrase Producer v1
 
     private async Task<(ExternalVaultHeader Header, ExternalVaultContent Content)> ReadVaultFileAsync(string path, byte[] key)
     {
         string json;
-        // Use Abstracted OpenRead
         using (var stream = await _syncFileService.OpenReadAsync(path))
-        using (var reader = new StreamReader(stream))
         {
-            json = await reader.ReadToEndAsync();
+            json = await ReadJsonFromStreamAsync(stream);
         }
-        
+
         var file = JsonSerializer.Deserialize<ExternalVaultFile>(json, _jsonOptions);
         if (file == null) throw new InvalidDataException("Invalid sync file.");
+        
+        if (string.IsNullOrEmpty(file.CipherText)) throw new InvalidDataException("Sync file has no content (CipherText empty).");
 
         var encryptedBytes = Convert.FromBase64String(file.CipherText);
+        if (encryptedBytes.Length < 28) throw new InvalidDataException("Sync file content invalid (too short).");
+
         var plainBytes = DecryptWithKey(encryptedBytes, key);
         var plainJson = Encoding.UTF8.GetString(plainBytes);
         
@@ -377,6 +379,80 @@ public class SynchronizationService : ISynchronizationService
                       ?? new ExternalVaultContent();
 
         return (file.Header, content);
+    }
+
+    private async Task<ExternalVaultHeader> ReadHeaderAsync(string path)
+    {
+        string json;
+        // Use Abstracted OpenRead
+        using (var stream = await _syncFileService.OpenReadAsync(path))
+        {
+            json = await ReadJsonFromStreamAsync(stream);
+        }
+        var file = JsonSerializer.Deserialize<ExternalVaultFile>(json, _jsonOptions);
+        return file?.Header ?? throw new InvalidDataException("Invalid sync file format.");
+    }
+
+    private async Task<string> ReadJsonFromStreamAsync(Stream stream)
+    {
+        // Try to read Magic Header
+        var magicBuffer = new byte[4];
+        var read = await stream.ReadAsync(magicBuffer, 0, 4);
+        
+        if (read < 4) 
+        {
+            if (read == 0) throw new InvalidDataException("Sync file is empty."); // Was return "{}"
+            
+            // Reconstruct what we read
+            var sb = new StringBuilder(Encoding.UTF8.GetString(magicBuffer, 0, read));
+            using var reader = new StreamReader(stream); // Read rest
+            sb.Append(await reader.ReadToEndAsync());
+            return sb.ToString();
+        }
+
+        var magic = Encoding.UTF8.GetString(magicBuffer);
+        if (magic == MagicHeader)
+        {
+            // Read Length (4 bytes, Little Endian)
+            var lenBuffer = new byte[4];
+            if (await stream.ReadAsync(lenBuffer, 0, 4) < 4) throw new InvalidDataException("Corrupted sync file (missing length).");
+            var length = BitConverter.ToInt32(lenBuffer, 0);
+            
+            if (length <= 0) throw new InvalidDataException($"Corrupted sync file (Invalid length: {length}).");
+
+            // Read Content
+            var contentBuffer = new byte[length];
+            var totalRead = 0;
+            while (totalRead < length)
+            {
+                var r = await stream.ReadAsync(contentBuffer, totalRead, length - totalRead);
+                if (r == 0) throw new InvalidDataException($"Unexpected end of stream. Expected {length}, got {totalRead}.");
+                totalRead += r;
+            }
+            
+            return Encoding.UTF8.GetString(contentBuffer);
+        }
+        else
+        {
+            // Legacy JSON format (no magic)
+            // We already read 4 bytes. We need to prepend them.
+            // But we can't easily prepend to StreamReader. 
+            // If stream is seekable, seek back.
+            if (stream.CanSeek)
+            {
+                stream.Seek(0, SeekOrigin.Begin);
+                using var reader = new StreamReader(stream, leaveOpen: true);
+                return await reader.ReadToEndAsync();
+            }
+            else
+            {
+                // Concatenate manual read + rest
+                var part1 = Encoding.UTF8.GetString(magicBuffer);
+                using var reader = new StreamReader(stream, leaveOpen: true);
+                var part2 = await reader.ReadToEndAsync();
+                return part1 + part2;
+            }
+        }
     }
 
     private async Task WriteVaultFileAsync(string path, ExternalVaultHeader header, ExternalVaultContent content, byte[] key)
@@ -392,11 +468,16 @@ public class SynchronizationService : ISynchronizationService
         };
 
         var json = JsonSerializer.Serialize(file, _jsonOptions);
-        
-        // Use Abstracted OpenWrite (overwrite)
+        var jsonBytes = Encoding.UTF8.GetBytes(json);
+        var length = jsonBytes.Length;
+        var lengthBytes = BitConverter.GetBytes(length);
+        var magicBytes = Encoding.UTF8.GetBytes(MagicHeader);
+
         using var stream = await _syncFileService.OpenWriteAsync(path);
-        using var writer = new StreamWriter(stream);
-        await writer.WriteAsync(json);
+        await stream.WriteAsync(magicBytes, 0, magicBytes.Length);
+        await stream.WriteAsync(lengthBytes, 0, lengthBytes.Length);
+        await stream.WriteAsync(jsonBytes, 0, jsonBytes.Length);
+        // Any extra bytes after this (from failed truncation) will be ignored by the reader.
     }
 
     private static byte[] DeriveKey(string password, byte[] salt, int iterations)
