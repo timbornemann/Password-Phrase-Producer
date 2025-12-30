@@ -354,8 +354,9 @@ public class DataVaultService
                     await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
                     Preferences.Set("DataVaultLastSync", DateTime.Now);
                 }
-                catch
+                catch (Exception ex)
                 {
+                     await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Data): {ex.Message}", "OK");
                 }
             }
 
@@ -388,8 +389,9 @@ public class DataVaultService
                         await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
                         Preferences.Set("DataVaultLastSync", DateTime.Now);
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                         await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Data): {ex.Message}", "OK");
                     }
                 }
                 await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);

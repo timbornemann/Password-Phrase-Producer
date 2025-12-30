@@ -92,7 +92,10 @@ public class TotpService
                     await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
                     Preferences.Set("AuthenticatorLastSync", DateTime.Now);
                 }
-                catch {}
+                catch (Exception ex)
+                {
+                     await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Auth): {ex.Message}", "OK");
+                }
             }
 
             await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
@@ -124,7 +127,10 @@ public class TotpService
                         await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
                         Preferences.Set("AuthenticatorLastSync", DateTime.Now);
                     }
-                    catch {}
+                    catch (Exception ex)
+                    {
+                         await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Auth): {ex.Message}", "OK");
+                    }
                 }
                 await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
             }

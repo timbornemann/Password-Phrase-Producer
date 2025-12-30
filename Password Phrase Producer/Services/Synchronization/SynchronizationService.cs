@@ -395,17 +395,19 @@ public class SynchronizationService : ISynchronizationService
 
     private async Task<string> ReadJsonFromStreamAsync(Stream stream)
     {
-        // Try to read Magic Header
+        // Try to read Magic Header (4 bytes)
         var magicBuffer = new byte[4];
-        var read = await stream.ReadAsync(magicBuffer, 0, 4);
+        var read = await ReadExactlyAsync(stream, magicBuffer, 4);
         
         if (read < 4) 
         {
-            if (read == 0) throw new InvalidDataException("Sync file is empty."); // Was return "{}"
-            
-            // Reconstruct what we read
+            if (read == 0) throw new InvalidDataException("Sync file is empty.");
+
+            // Partial read at start: fallback to legacy?
+            // If we read < 4 bytes and EOF, it can't be a valid magic header anyway.
+            // Try to treat as legacy text provided it's not binary garbage.
             var sb = new StringBuilder(Encoding.UTF8.GetString(magicBuffer, 0, read));
-            using var reader = new StreamReader(stream); // Read rest
+            using var reader = new StreamReader(stream); 
             sb.Append(await reader.ReadToEndAsync());
             return sb.ToString();
         }
@@ -415,29 +417,25 @@ public class SynchronizationService : ISynchronizationService
         {
             // Read Length (4 bytes, Little Endian)
             var lenBuffer = new byte[4];
-            if (await stream.ReadAsync(lenBuffer, 0, 4) < 4) throw new InvalidDataException("Corrupted sync file (missing length).");
+            if (await ReadExactlyAsync(stream, lenBuffer, 4) < 4) 
+                throw new InvalidDataException("Corrupted sync file (missing length).");
+            
             var length = BitConverter.ToInt32(lenBuffer, 0);
             
             if (length <= 0) throw new InvalidDataException($"Corrupted sync file (Invalid length: {length}).");
 
             // Read Content
             var contentBuffer = new byte[length];
-            var totalRead = 0;
-            while (totalRead < length)
-            {
-                var r = await stream.ReadAsync(contentBuffer, totalRead, length - totalRead);
-                if (r == 0) throw new InvalidDataException($"Unexpected end of stream. Expected {length}, got {totalRead}.");
-                totalRead += r;
-            }
+            var totalRead = await ReadExactlyAsync(stream, contentBuffer, length);
+            
+            if (totalRead < length) 
+                throw new InvalidDataException($"Unexpected end of stream. Expected {length}, got {totalRead}.");
             
             return Encoding.UTF8.GetString(contentBuffer);
         }
         else
         {
             // Legacy JSON format (no magic)
-            // We already read 4 bytes. We need to prepend them.
-            // But we can't easily prepend to StreamReader. 
-            // If stream is seekable, seek back.
             if (stream.CanSeek)
             {
                 stream.Seek(0, SeekOrigin.Begin);
@@ -446,13 +444,24 @@ public class SynchronizationService : ISynchronizationService
             }
             else
             {
-                // Concatenate manual read + rest
                 var part1 = Encoding.UTF8.GetString(magicBuffer);
                 using var reader = new StreamReader(stream, leaveOpen: true);
                 var part2 = await reader.ReadToEndAsync();
                 return part1 + part2;
             }
         }
+    }
+
+    private async Task<int> ReadExactlyAsync(Stream stream, byte[] buffer, int count)
+    {
+        var totalRead = 0;
+        while (totalRead < count)
+        {
+            var read = await stream.ReadAsync(buffer, totalRead, count - totalRead);
+            if (read == 0) break;
+            totalRead += read;
+        }
+        return totalRead;
     }
 
     private async Task WriteVaultFileAsync(string path, ExternalVaultHeader header, ExternalVaultContent content, byte[] key)

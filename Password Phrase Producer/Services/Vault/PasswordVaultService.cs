@@ -355,9 +355,10 @@ public class PasswordVaultService
                     await _syncService.SyncPasswordVaultAsync(entries, cancellationToken).ConfigureAwait(false);
                     Preferences.Set("PasswordVaultLastSync", DateTime.Now);
                 }
-                catch
+                catch (Exception ex)
                 {
                     // Sync failed, just save local
+                    await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren: {ex.Message}", "OK");
                 }
             }
 
@@ -390,9 +391,9 @@ public class PasswordVaultService
                         await _syncService.SyncPasswordVaultAsync(entries, cancellationToken).ConfigureAwait(false);
                         Preferences.Set("PasswordVaultLastSync", DateTime.Now);
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // Sync failed
+                         await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren: {ex.Message}", "OK");
                     }
                 }
                 await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
