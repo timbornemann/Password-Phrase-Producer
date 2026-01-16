@@ -77,20 +77,38 @@ public class AndroidSyncFileService : ISyncFileService
         var uri = AndroidUri.Parse(path);
         try
         {
-            // Use standard OpenOutputStream which is more reliable for Cloud Providers (triggering upload)
-            // "wt" = Write + Truncate. 
-            // If "wt" acts weirdly with OpenOutputStream on some devices, "w" is usually enough as simple open truncates.
-            // But we keep "wt" as it explicitly matches our intent. 
-            // Note: Since we use Magic Header protocol, even if truncation fails slightly (garbage at end), 
-            // the file is still readable. The priority is ensuring the provider sees the 'write' event.
-            var stream = Application.Context.ContentResolver?.OpenOutputStream(uri, "wt");
+            var stream = TryOpenOutputStream(uri);
             if (stream == null) throw new FileNotFoundException("Could not open output stream for URI", path);
-            
+
             return Task.FromResult(stream);
         }
         catch (Exception ex)
         {
              throw new IOException($"Failed to open write stream: {ex.Message}", ex);
+        }
+    }
+
+    private static Stream? TryOpenOutputStream(AndroidUri uri)
+    {
+        // Use standard OpenOutputStream which is more reliable for Cloud Providers (triggering upload).
+        // "wt" = Write + Truncate. Some providers (e.g., Proton Drive) don't support "wt" and only
+        // accept "w" or default write. Fall back to "w" then default mode.
+        try
+        {
+            return Application.Context.ContentResolver?.OpenOutputStream(uri, "wt");
+        }
+        catch (Java.Lang.UnsupportedOperationException)
+        {
+            // Fall through to retry with "w".
+        }
+
+        try
+        {
+            return Application.Context.ContentResolver?.OpenOutputStream(uri, "w");
+        }
+        catch (Java.Lang.UnsupportedOperationException)
+        {
+            return Application.Context.ContentResolver?.OpenOutputStream(uri);
         }
     }
 
