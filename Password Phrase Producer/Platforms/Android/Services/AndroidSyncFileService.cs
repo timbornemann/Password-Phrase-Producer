@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Android.Content;
 using Android.Database;
+using Android.OS;
 using Android.Provider;
 using Password_Phrase_Producer.Services.Storage;
 using Application = Android.App.Application;
@@ -90,12 +91,15 @@ public class AndroidSyncFileService : ISyncFileService
 
     private static Stream? TryOpenOutputStream(AndroidUri uri)
     {
+        var contentResolver = Application.Context.ContentResolver;
+        if (contentResolver == null) return null;
+
         // Use standard OpenOutputStream which is more reliable for Cloud Providers (triggering upload).
         // "wt" = Write + Truncate. Some providers (e.g., Proton Drive) don't support "wt" and only
-        // accept "w" or default write. Fall back to "w" then default mode.
+        // accept "w" or default write. Fall back to "w" then default mode, then try file descriptors.
         try
         {
-            return Application.Context.ContentResolver?.OpenOutputStream(uri, "wt");
+            return contentResolver.OpenOutputStream(uri, "wt");
         }
         catch (Java.Lang.UnsupportedOperationException)
         {
@@ -104,12 +108,49 @@ public class AndroidSyncFileService : ISyncFileService
 
         try
         {
-            return Application.Context.ContentResolver?.OpenOutputStream(uri, "w");
+            return contentResolver.OpenOutputStream(uri, "w");
         }
         catch (Java.Lang.UnsupportedOperationException)
         {
-            return Application.Context.ContentResolver?.OpenOutputStream(uri);
+            // Fall through to retry with default mode.
         }
+
+        try
+        {
+            return contentResolver.OpenOutputStream(uri);
+        }
+        catch (Java.Lang.UnsupportedOperationException)
+        {
+            // Fall through to retry with file descriptor modes.
+        }
+
+        try
+        {
+            var fileDescriptor = contentResolver.OpenFileDescriptor(uri, "rw");
+            if (fileDescriptor != null)
+            {
+                return new ParcelFileDescriptor.AutoCloseOutputStream(fileDescriptor);
+            }
+        }
+        catch (Exception)
+        {
+            // Fall through to retry with "rwt".
+        }
+
+        try
+        {
+            var fileDescriptor = contentResolver.OpenFileDescriptor(uri, "rwt");
+            if (fileDescriptor != null)
+            {
+                return new ParcelFileDescriptor.AutoCloseOutputStream(fileDescriptor);
+            }
+        }
+        catch (Exception)
+        {
+            // Nothing left to try.
+        }
+
+        return null;
     }
 
     public Task<bool> ExistsAsync(string path)
