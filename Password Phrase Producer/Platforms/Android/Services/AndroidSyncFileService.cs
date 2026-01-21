@@ -5,6 +5,7 @@ using Android.Content;
 using Android.Database;
 using Android.OS;
 using Android.Provider;
+using Android.Runtime;
 using Password_Phrase_Producer.Services.Storage;
 using Application = Android.App.Application;
 using AndroidUri = Android.Net.Uri;
@@ -129,7 +130,7 @@ public class AndroidSyncFileService : ISyncFileService
             var fileDescriptor = contentResolver.OpenFileDescriptor(uri, "rw");
             if (fileDescriptor != null)
             {
-                return new ParcelFileDescriptor.AutoCloseOutputStream(fileDescriptor);
+                return new OutputStreamInvoker(new ParcelFileDescriptor.AutoCloseOutputStream(fileDescriptor));
             }
         }
         catch (Exception)
@@ -142,7 +143,7 @@ public class AndroidSyncFileService : ISyncFileService
             var fileDescriptor = contentResolver.OpenFileDescriptor(uri, "rwt");
             if (fileDescriptor != null)
             {
-                return new ParcelFileDescriptor.AutoCloseOutputStream(fileDescriptor);
+                return new OutputStreamInvoker(new ParcelFileDescriptor.AutoCloseOutputStream(fileDescriptor));
             }
         }
         catch (Exception)
