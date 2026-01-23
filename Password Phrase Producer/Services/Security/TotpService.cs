@@ -663,6 +663,31 @@ public class TotpService
         EntriesChanged?.Invoke(this, EventArgs.Empty);
     }
 
+    public async Task LoadFromSyncAsync(CancellationToken cancellationToken = default)
+    {
+        if (!await _syncService.IsConfiguredAsync().ConfigureAwait(false)) return;
+
+        EnsureUnlocked();
+        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+            var result = await _syncService.GetMergedAuthenticatorReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+            Preferences.Set("AuthenticatorLastSync", DateTime.Now);
+            await SaveEntriesInternalAsync(result.MergedEntries, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Sync failed
+        }
+        finally
+        {
+            _syncLock.Release();
+        }
+
+        EntriesChanged?.Invoke(this, EventArgs.Empty);
+    }
+
 
     public async Task ResetVaultAsync(CancellationToken cancellationToken = default)
     {

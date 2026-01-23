@@ -247,6 +247,38 @@
                             </Button.Triggers>
                         </Button>
 
+                        <Button
+                            Text="Nur laden (kein Upload)"
+                            Clicked="OnLoadSyncClicked"
+                            BackgroundColor="#2D324A"
+                            TextColor="White"
+                            FontSize="13"
+                            Padding="12,8"
+                            CornerRadius="12"
+                            Margin="0,0,0,0">
+                            <Button.Triggers>
+                                <DataTrigger TargetType="Button" Binding="{Binding IsSyncBusy}" Value="True">
+                                    <Setter Property="IsEnabled" Value="False" />
+                                </DataTrigger>
+                            </Button.Triggers>
+                        </Button>
+
+                        <Button
+                            Text="Sync-Verbindung löschen"
+                            Clicked="OnRemoveSyncClicked"
+                            BackgroundColor="#FF4444"
+                            TextColor="White"
+                            FontSize="13"
+                            Padding="12,8"
+                            CornerRadius="12"
+                            Margin="0,8,0,0">
+                            <Button.Triggers>
+                                <DataTrigger TargetType="Button" Binding="{Binding IsSyncBusy}" Value="True">
+                                    <Setter Property="IsEnabled" Value="False" />
+                                </DataTrigger>
+                            </Button.Triggers>
+                        </Button>
+
                         <VerticalStackLayout Spacing="4" Margin="0,8,0,0">
                              <Label Text="Letzte Synchronisation:" FontSize="12" TextColor="#9EA3C4" FontAttributes="Bold"/>
                              <Label Text="{Binding PasswordVaultSyncTime, StringFormat='Passwörter: {0:g}'}" FontSize="11" TextColor="#7F85B2"/>

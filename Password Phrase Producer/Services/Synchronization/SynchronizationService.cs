@@ -21,12 +21,16 @@ public interface ISynchronizationService
     Task<bool> IsConfiguredAsync();
     Task ConfigureAsync(string path, string password);
     Task<bool> ValidatePasswordAsync(string password); // Checks if password matches existing file
+    Task ClearConfigurationAsync();
     Task SyncPasswordVaultAsync(IList<PasswordVaultEntry> localEntries, CancellationToken cancellationToken = default);
     Task SyncDataVaultAsync(IList<PasswordVaultEntry> localEntries, CancellationToken cancellationToken = default);
     Task SyncAuthenticatorAsync(IList<TotpEntry> localEntries, CancellationToken cancellationToken = default);
     Task<Services.Vault.MergeResult<PasswordVaultEntry>> GetMergedPasswordVaultAsync(IList<PasswordVaultEntry> localEntries, CancellationToken cancellationToken = default);
     Task<Services.Vault.MergeResult<PasswordVaultEntry>> GetMergedDataVaultAsync(IList<PasswordVaultEntry> localEntries, CancellationToken cancellationToken = default);
     Task<Services.Vault.MergeResult<TotpEntry>> GetMergedAuthenticatorAsync(IList<TotpEntry> localEntries, CancellationToken cancellationToken = default);
+    Task<Services.Vault.MergeResult<PasswordVaultEntry>> GetMergedPasswordVaultReadOnlyAsync(IList<PasswordVaultEntry> localEntries, CancellationToken cancellationToken = default);
+    Task<Services.Vault.MergeResult<PasswordVaultEntry>> GetMergedDataVaultReadOnlyAsync(IList<PasswordVaultEntry> localEntries, CancellationToken cancellationToken = default);
+    Task<Services.Vault.MergeResult<TotpEntry>> GetMergedAuthenticatorReadOnlyAsync(IList<TotpEntry> localEntries, CancellationToken cancellationToken = default);
 }
 
 public class SynchronizationService : ISynchronizationService
@@ -128,6 +132,14 @@ public class SynchronizationService : ISynchronizationService
         {
              throw new InvalidOperationException("App must be unlocked to configure sync.");
         }
+    }
+
+    public Task ClearConfigurationAsync()
+    {
+        Preferences.Remove(SyncPathKey);
+        SecureStorage.Default.Remove(SyncKeyStorageKey);
+        _cachedCommonKey = null;
+        return Task.CompletedTask;
     }
 
     public async Task<bool> ValidatePasswordAsync(string password)
@@ -347,6 +359,81 @@ public class SynchronizationService : ISynchronizationService
             await WriteVaultFileAsync(path, header, content, key);
             
             return result;
+        }
+        finally
+        {
+            _fileLock.Release();
+        }
+    }
+
+    public async Task<Services.Vault.MergeResult<PasswordVaultEntry>> GetMergedPasswordVaultReadOnlyAsync(
+        IList<PasswordVaultEntry> localEntries,
+        CancellationToken cancellationToken = default)
+    {
+        var path = GetPath();
+        if (!await _syncFileService.ExistsAsync(path))
+        {
+            return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
+        }
+
+        var key = await GetKeyAsync();
+
+        await _fileLock.WaitAsync(cancellationToken);
+        try
+        {
+            var (_, content) = await ReadVaultFileAsync(path, key);
+            var remoteEntries = content.PasswordVault.Select(d => d.ToModel()).ToList();
+            return _vaultMergeService.MergeEntries(localEntries, remoteEntries);
+        }
+        finally
+        {
+            _fileLock.Release();
+        }
+    }
+
+    public async Task<Services.Vault.MergeResult<PasswordVaultEntry>> GetMergedDataVaultReadOnlyAsync(
+        IList<PasswordVaultEntry> localEntries,
+        CancellationToken cancellationToken = default)
+    {
+        var path = GetPath();
+        if (!await _syncFileService.ExistsAsync(path))
+        {
+            return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
+        }
+
+        var key = await GetKeyAsync();
+
+        await _fileLock.WaitAsync(cancellationToken);
+        try
+        {
+            var (_, content) = await ReadVaultFileAsync(path, key);
+            var remoteEntries = content.DataVault.Select(d => d.ToModel()).ToList();
+            return _vaultMergeService.MergeEntries(localEntries, remoteEntries);
+        }
+        finally
+        {
+            _fileLock.Release();
+        }
+    }
+
+    public async Task<Services.Vault.MergeResult<TotpEntry>> GetMergedAuthenticatorReadOnlyAsync(
+        IList<TotpEntry> localEntries,
+        CancellationToken cancellationToken = default)
+    {
+        var path = GetPath();
+        if (!await _syncFileService.ExistsAsync(path))
+        {
+            return new MergeResult<TotpEntry> { MergedEntries = localEntries.ToList() };
+        }
+
+        var key = await GetKeyAsync();
+
+        await _fileLock.WaitAsync(cancellationToken);
+        try
+        {
+            var (_, content) = await ReadVaultFileAsync(path, key);
+            var remoteEntries = content.Authenticator.Select(d => d.ToModel()).ToList();
+            return _vaultMergeService.MergeEntries(localEntries, remoteEntries);
         }
         finally
         {

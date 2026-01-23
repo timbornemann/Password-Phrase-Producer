@@ -119,6 +119,16 @@ public class PasswordVaultService
 
     public async Task<bool> UnlockAsync(string password, CancellationToken cancellationToken = default)
     {
+        return await UnlockInternalAsync(password, syncAfterUnlock: true, cancellationToken).ConfigureAwait(false);
+    }
+
+    public Task<bool> UnlockWithoutSyncAsync(string password, CancellationToken cancellationToken = default)
+    {
+        return UnlockInternalAsync(password, syncAfterUnlock: false, cancellationToken);
+    }
+
+    private async Task<bool> UnlockInternalAsync(string password, bool syncAfterUnlock, CancellationToken cancellationToken)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(password);
 
         var metadata = await GetPasswordMetadataAsync(cancellationToken).ConfigureAwait(false);
@@ -141,7 +151,7 @@ public class PasswordVaultService
 
         _encryptionKey = key;
 
-        if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+        if (syncAfterUnlock && await _syncService.IsConfiguredAsync().ConfigureAwait(false))
         {
             await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
@@ -440,6 +450,37 @@ public class PasswordVaultService
         {
             _syncLock.Release();
         }
+    }
+
+    public async Task LoadFromSyncAsync(CancellationToken cancellationToken = default)
+    {
+        if (!IsUnlocked) return;
+
+        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (!await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+            {
+                return;
+            }
+
+            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+            var result = await _syncService.GetMergedPasswordVaultReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+            entries.Clear();
+            foreach (var entry in result.MergedEntries)
+            {
+                entries.Add(entry);
+            }
+
+            Preferences.Set("PasswordVaultLastSync", DateTime.Now);
+            await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _syncLock.Release();
+        }
+
+        MessagingCenter.Send(this, VaultMessages.EntriesChanged);
     }
 
     public async Task<byte[]> ExportWithFilePasswordAsync(string filePassword, CancellationToken cancellationToken = default)

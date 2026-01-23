@@ -121,6 +121,16 @@ public class DataVaultService
 
     public async Task<bool> UnlockAsync(string password, CancellationToken cancellationToken = default)
     {
+        return await UnlockInternalAsync(password, syncAfterUnlock: true, cancellationToken).ConfigureAwait(false);
+    }
+
+    public Task<bool> UnlockWithoutSyncAsync(string password, CancellationToken cancellationToken = default)
+    {
+        return UnlockInternalAsync(password, syncAfterUnlock: false, cancellationToken);
+    }
+
+    private async Task<bool> UnlockInternalAsync(string password, bool syncAfterUnlock, CancellationToken cancellationToken)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(password);
 
         var metadata = await GetPasswordMetadataAsync(cancellationToken).ConfigureAwait(false);
@@ -143,7 +153,7 @@ public class DataVaultService
 
         _encryptionKey = key;
         
-        if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+        if (syncAfterUnlock && await _syncService.IsConfiguredAsync().ConfigureAwait(false))
         {
             await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
@@ -265,8 +275,6 @@ public class DataVaultService
                 }
                 MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
             }
-
-            return true;
         }
         catch (UnauthorizedAccessException)
         {
@@ -276,6 +284,39 @@ public class DataVaultService
         {
              return false;
         }
+
+        return true;
+    }
+
+    public async Task LoadFromSyncAsync(CancellationToken cancellationToken = default)
+    {
+        if (!IsUnlocked) return;
+
+        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (!await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+            {
+                return;
+            }
+
+            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+            var result = await _syncService.GetMergedDataVaultReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+            entries.Clear();
+            foreach (var entry in result.MergedEntries)
+            {
+                entries.Add(entry);
+            }
+
+            Preferences.Set("DataVaultLastSync", DateTime.Now);
+            await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _syncLock.Release();
+        }
+
+        MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
     }
 
     public async Task SetBiometricUnlockAsync(bool enabled, CancellationToken cancellationToken = default)
