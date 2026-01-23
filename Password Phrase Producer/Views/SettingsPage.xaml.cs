@@ -56,6 +56,39 @@ public partial class SettingsPage : ContentPage
         return true;
     }
 
+    private async Task<bool> EnsureVaultUnlockedWithoutSyncAsync()
+    {
+        if (_viewModel.IsVaultUnlocked)
+        {
+            return true;
+        }
+
+        var promptPage = new PasswordPromptPage(
+            "Passwort-Tresor entsperren",
+            "Gib dein Master-Passwort ein, um fortzufahren.",
+            "Entsperren",
+            "Abbrechen");
+
+        await Navigation.PushModalAsync(promptPage);
+        var password = await promptPage.WaitForResultAsync();
+        await Navigation.PopModalAsync();
+
+        if (string.IsNullOrEmpty(password))
+        {
+            return false;
+        }
+
+        var success = await _viewModel.UnlockVaultWithoutSyncAsync(password);
+        if (!success)
+        {
+            await DisplayAlert("Fehler", "Falsches Passwort.", "OK");
+            return false;
+        }
+
+        await _viewModel.RefreshVaultStateAsync();
+        return true;
+    }
+
     private async Task<bool> EnsureDataVaultUnlockedAsync()
     {
         if (_viewModel.IsDataVaultUnlocked)
@@ -79,6 +112,39 @@ public partial class SettingsPage : ContentPage
         }
 
         var success = await _viewModel.UnlockDataVaultWithPasswordAsync(password);
+        if (!success)
+        {
+            await DisplayAlert("Fehler", "Falsches Passwort.", "OK");
+            return false;
+        }
+
+        await _viewModel.RefreshDataVaultStateAsync();
+        return true;
+    }
+
+    private async Task<bool> EnsureDataVaultUnlockedWithoutSyncAsync()
+    {
+        if (_viewModel.IsDataVaultUnlocked)
+        {
+            return true;
+        }
+
+        var promptPage = new PasswordPromptPage(
+            "Datentresor entsperren",
+            "Gib dein Master-Passwort ein, um fortzufahren.",
+            "Entsperren",
+            "Abbrechen");
+
+        await Navigation.PushModalAsync(promptPage);
+        var password = await promptPage.WaitForResultAsync();
+        await Navigation.PopModalAsync();
+
+        if (string.IsNullOrEmpty(password))
+        {
+            return false;
+        }
+
+        var success = await _viewModel.UnlockDataVaultWithoutSyncAsync(password);
         if (!success)
         {
             await DisplayAlert("Fehler", "Falsches Passwort.", "OK");
@@ -738,6 +804,89 @@ public partial class SettingsPage : ContentPage
             if (wasVaultLocked && _viewModel.IsVaultUnlocked) _viewModel.LockVault();
             if (wasDataVaultLocked && _viewModel.IsDataVaultUnlocked) _viewModel.LockDataVault();
             if (wasAuthenticatorLocked && _viewModel.IsAuthenticatorUnlocked) _viewModel.LockAuthenticator();
+        }
+    }
+
+    private async void OnLoadSyncClicked(object sender, EventArgs e)
+    {
+        if (!_viewModel.IsSyncConfigured)
+        {
+            await DisplayAlert("Info", "Bitte richte die Synchronisation zuerst ein.", "OK");
+            return;
+        }
+
+        bool wasVaultLocked = !_viewModel.IsVaultUnlocked;
+        bool wasDataVaultLocked = !_viewModel.IsDataVaultUnlocked;
+        bool wasAuthenticatorLocked = !_viewModel.IsAuthenticatorUnlocked && _viewModel.HasAuthenticatorPassword;
+
+        try
+        {
+            if (wasVaultLocked)
+            {
+                bool unlocked = await EnsureVaultUnlockedWithoutSyncAsync();
+                if (!unlocked) return;
+            }
+
+            if (wasDataVaultLocked)
+            {
+                bool unlocked = await EnsureDataVaultUnlockedWithoutSyncAsync();
+                if (!unlocked) return;
+            }
+
+            if (wasAuthenticatorLocked)
+            {
+                bool unlocked = await EnsureAuthenticatorUnlockedAsync();
+                if (!unlocked) return;
+            }
+
+            await ShowLoadingPageAsync("Lade Tresore...");
+            try
+            {
+                await _viewModel.LoadFromSyncAsync();
+            }
+            catch (Exception ex)
+            {
+                var fullError = ex.InnerException?.ToString() ?? ex.ToString();
+                if (fullError.Length > 800) fullError = fullError.Substring(0, 800) + "...";
+                await DisplayAlert("Fehler Details", fullError, "OK");
+            }
+            finally
+            {
+                await HideLoadingPageAsync();
+            }
+        }
+        finally
+        {
+            if (wasVaultLocked && _viewModel.IsVaultUnlocked) _viewModel.LockVault();
+            if (wasDataVaultLocked && _viewModel.IsDataVaultUnlocked) _viewModel.LockDataVault();
+            if (wasAuthenticatorLocked && _viewModel.IsAuthenticatorUnlocked) _viewModel.LockAuthenticator();
+        }
+    }
+
+    private async void OnRemoveSyncClicked(object sender, EventArgs e)
+    {
+        var popup = new ConfirmationPopup(
+            "Sync-Verbindung entfernen",
+            "Möchtest du die Sync-Verbindung wirklich löschen? Danach werden keine Daten mehr geladen oder hochgeladen.",
+            "Entfernen",
+            "Abbrechen",
+            confirmIsDestructive: true);
+
+        var result = await this.ShowPopupAsync(popup);
+        if (result is not bool confirm || !confirm)
+        {
+            return;
+        }
+
+        try
+        {
+            await _viewModel.RemoveSyncConfigurationAsync();
+        }
+        catch (Exception ex)
+        {
+            var fullError = ex.InnerException?.ToString() ?? ex.ToString();
+            if (fullError.Length > 800) fullError = fullError.Substring(0, 800) + "...";
+            await DisplayAlert("Fehler Details", fullError, "OK");
         }
     }
 }

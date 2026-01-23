@@ -751,6 +751,16 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         return await _vaultService.UnlockAsync(password, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<bool> UnlockVaultWithoutSyncAsync(string password, CancellationToken cancellationToken = default)
+    {
+        if (_vaultService.IsUnlocked)
+        {
+            return true;
+        }
+
+        return await _vaultService.UnlockWithoutSyncAsync(password, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<bool> UnlockDataVaultWithPasswordAsync(string password, CancellationToken cancellationToken = default)
     {
         if (_dataVaultService.IsUnlocked)
@@ -759,6 +769,16 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         }
 
         return await _dataVaultService.UnlockAsync(password, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> UnlockDataVaultWithoutSyncAsync(string password, CancellationToken cancellationToken = default)
+    {
+        if (_dataVaultService.IsUnlocked)
+        {
+            return true;
+        }
+
+        return await _dataVaultService.UnlockWithoutSyncAsync(password, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<bool> UnlockAuthenticatorWithPasswordAsync(string password, CancellationToken cancellationToken = default)
@@ -1337,6 +1357,73 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             SyncStatusMessage = $"Fehler beim Sync: {message}";
             SyncStatusColor = Colors.Red;
             throw; // Re-throw to let UI handle it too
+        }
+        finally
+        {
+            IsSyncBusy = false;
+        }
+    }
+
+    public async Task LoadFromSyncAsync()
+    {
+        try
+        {
+            IsSyncBusy = true;
+            SyncStatusMessage = "Lade aus Sync-Datei...";
+            SyncStatusColor = Colors.Orange;
+
+            if (_vaultService.IsUnlocked)
+            {
+                await _vaultService.LoadFromSyncAsync();
+            }
+
+            if (_dataVaultService.IsUnlocked)
+            {
+                await _dataVaultService.LoadFromSyncAsync();
+            }
+
+            if (_totpEncryptionService.IsUnlocked)
+            {
+                await _totpService.LoadFromSyncAsync();
+            }
+
+            SyncStatusMessage = "Sync-Daten geladen (kein Upload).";
+            SyncStatusColor = Colors.Green;
+        }
+        catch (Exception ex)
+        {
+            var message = ex.InnerException != null ? $"{ex.Message} -> {ex.InnerException.Message}" : ex.Message;
+            SyncStatusMessage = $"Fehler beim Laden: {message}";
+            SyncStatusColor = Colors.Red;
+            throw;
+        }
+        finally
+        {
+            IsSyncBusy = false;
+        }
+    }
+
+    public async Task RemoveSyncConfigurationAsync()
+    {
+        if (IsSyncBusy) return;
+
+        IsSyncBusy = true;
+        SyncStatusMessage = string.Empty;
+
+        try
+        {
+            await _syncService.ClearConfigurationAsync();
+            SyncPath = string.Empty;
+            SyncPassword = string.Empty;
+            IsSyncConfigured = false;
+            SyncStatusMessage = "Sync-Verbindung entfernt.";
+            SyncStatusColor = Colors.Gray;
+        }
+        catch (Exception ex)
+        {
+            SyncStatusMessage = $"Fehler beim Entfernen: {ex.Message}";
+            SyncStatusColor = Colors.Red;
+            throw;
         }
         finally
         {
