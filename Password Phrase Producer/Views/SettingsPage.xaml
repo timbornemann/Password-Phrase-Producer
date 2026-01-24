@@ -214,6 +214,27 @@
                             FontSize="13"
                             HeightRequest="38" />
 
+                        <Grid
+                            ColumnDefinitions="Auto,*"
+                            ColumnSpacing="10"
+                            Margin="0,6,0,2">
+                            <Switch
+                                IsToggled="{Binding IsSyncReadOnly}"
+                                Toggled="OnSyncAccessModeToggled"
+                                VerticalOptions="Center" />
+                            <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                <Label
+                                    Text="Nur lesen &amp; zusammenführen"
+                                    FontSize="12"
+                                    TextColor="White"
+                                    FontAttributes="Bold" />
+                                <Label
+                                    Text="Aktiviert: Sync liest nur und schreibt nie in die Datei."
+                                    FontSize="11"
+                                    TextColor="#9EA3C4" />
+                            </VerticalStackLayout>
+                        </Grid>
+
                         <Button
                             Text="Synchronisation einrichten"
                             Command="{Binding ConfigureSyncCommand}"

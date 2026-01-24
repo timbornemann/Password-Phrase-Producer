@@ -75,6 +75,14 @@ public class TotpService
         {
             var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
             var existingIndex = entries.FindIndex(e => e.Id == entry.Id);
+            var isSyncConfigured = await _syncService.IsConfiguredAsync().ConfigureAwait(false);
+            var isReadOnlySync = isSyncConfigured && await IsReadOnlySyncAsync().ConfigureAwait(false);
+
+            if (isReadOnlySync)
+            {
+                await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                existingIndex = entries.FindIndex(e => e.Id == entry.Id);
+            }
 
             entry.ModifiedAt = DateTimeOffset.UtcNow;
             entry.IsDeleted = false; // Restore if it was deleted
@@ -88,19 +96,25 @@ public class TotpService
                 entries.Add(entry);
             }
 
-            if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+            if (isSyncConfigured)
             {
                 try 
                 {
-                    await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
+                    if (!isReadOnlySync)
+                    {
+                        await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
+                    }
                     Preferences.Set("AuthenticatorLastSync", DateTime.Now);
                 }
                 catch (Exception ex)
                 {
-                     MainThread.BeginInvokeOnMainThread(async () => 
-                     {
-                         await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Auth): {ex.Message}", "OK");
-                     });
+                    if (!isReadOnlySync)
+                    {
+                         MainThread.BeginInvokeOnMainThread(async () => 
+                         {
+                             await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Auth): {ex.Message}", "OK");
+                         });
+                    }
                 }
             }
 
@@ -123,6 +137,14 @@ public class TotpService
         {
             var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
             var entry = entries.FirstOrDefault(e => e.Id == entryId);
+            var isSyncConfigured = await _syncService.IsConfiguredAsync().ConfigureAwait(false);
+            var isReadOnlySync = isSyncConfigured && await IsReadOnlySyncAsync().ConfigureAwait(false);
+
+            if (isReadOnlySync)
+            {
+                await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                entry = entries.FirstOrDefault(e => e.Id == entryId);
+            }
 
             if (entry != null)
             {
@@ -130,19 +152,25 @@ public class TotpService
                 entry.IsDeleted = true;
                 entry.ModifiedAt = DateTimeOffset.UtcNow;
 
-                if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+                if (isSyncConfigured)
                 {
                     try 
                     {
-                        await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
+                        if (!isReadOnlySync)
+                        {
+                            await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
+                        }
                         Preferences.Set("AuthenticatorLastSync", DateTime.Now);
                     }
                     catch (Exception ex)
                     {
-                         MainThread.BeginInvokeOnMainThread(async () => 
-                         {
-                             await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Auth): {ex.Message}", "OK");
-                         });
+                        if (!isReadOnlySync)
+                        {
+                             MainThread.BeginInvokeOnMainThread(async () => 
+                             {
+                                 await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Auth): {ex.Message}", "OK");
+                             });
+                        }
                     }
                 }
                 await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
@@ -648,7 +676,15 @@ public class TotpService
         try
         {
             var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-            await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
+            var isReadOnlySync = await IsReadOnlySyncAsync().ConfigureAwait(false);
+            if (isReadOnlySync)
+            {
+                await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
+            }
             Preferences.Set("AuthenticatorLastSync", DateTime.Now);
             await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
         }
@@ -661,6 +697,22 @@ public class TotpService
             _syncLock.Release();
         }
         EntriesChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private async Task<bool> IsReadOnlySyncAsync()
+    {
+        var mode = await _syncService.GetAccessModeAsync().ConfigureAwait(false);
+        return mode == SyncAccessMode.ReadMerge;
+    }
+
+    private async Task MergeFromSyncReadOnlyAsync(IList<TotpEntry> entries, CancellationToken cancellationToken)
+    {
+        var result = await _syncService.GetMergedAuthenticatorReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+        entries.Clear();
+        foreach (var mergedEntry in result.MergedEntries)
+        {
+            entries.Add(mergedEntry);
+        }
     }
 
     public async Task LoadFromSyncAsync(CancellationToken cancellationToken = default)

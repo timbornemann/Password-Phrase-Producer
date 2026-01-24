@@ -21,6 +21,8 @@ public interface ISynchronizationService
     Task<bool> IsConfiguredAsync();
     Task ConfigureAsync(string path, string password);
     Task<bool> ValidatePasswordAsync(string password); // Checks if password matches existing file
+    Task<SyncAccessMode> GetAccessModeAsync();
+    Task SetAccessModeAsync(SyncAccessMode mode);
     Task ClearConfigurationAsync();
     Task SyncPasswordVaultAsync(IList<PasswordVaultEntry> localEntries, CancellationToken cancellationToken = default);
     Task SyncDataVaultAsync(IList<PasswordVaultEntry> localEntries, CancellationToken cancellationToken = default);
@@ -33,10 +35,17 @@ public interface ISynchronizationService
     Task<Services.Vault.MergeResult<TotpEntry>> GetMergedAuthenticatorReadOnlyAsync(IList<TotpEntry> localEntries, CancellationToken cancellationToken = default);
 }
 
+public enum SyncAccessMode
+{
+    ReadWrite = 0,
+    ReadMerge = 1
+}
+
 public class SynchronizationService : ISynchronizationService
 {
     private const string SyncPathKey = "SyncFilePath";
     private const string SyncKeyStorageKey = "SyncCommonKey_Encrypted";
+    private const string SyncAccessModeKey = "SyncAccessMode";
     private const int KeySize = 32;
     private const int SaltSize = 16;
     private const int Iterations = 200_000;
@@ -137,8 +146,21 @@ public class SynchronizationService : ISynchronizationService
     public Task ClearConfigurationAsync()
     {
         Preferences.Remove(SyncPathKey);
+        Preferences.Remove(SyncAccessModeKey);
         SecureStorage.Default.Remove(SyncKeyStorageKey);
         _cachedCommonKey = null;
+        return Task.CompletedTask;
+    }
+
+    public Task<SyncAccessMode> GetAccessModeAsync()
+    {
+        var storedValue = Preferences.Get(SyncAccessModeKey, nameof(SyncAccessMode.ReadWrite));
+        return Task.FromResult(Enum.TryParse(storedValue, out SyncAccessMode mode) ? mode : SyncAccessMode.ReadWrite);
+    }
+
+    public Task SetAccessModeAsync(SyncAccessMode mode)
+    {
+        Preferences.Set(SyncAccessModeKey, mode.ToString());
         return Task.CompletedTask;
     }
 
