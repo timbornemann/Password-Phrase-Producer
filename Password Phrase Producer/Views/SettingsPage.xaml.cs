@@ -748,6 +748,12 @@ public partial class SettingsPage : ContentPage
             await this.ShowPopupAsync(successPopup);
         });
     }
+
+    private async void OnSyncAccessModeToggled(object sender, ToggledEventArgs e)
+    {
+        await _viewModel.SetSyncAccessModeAsync(e.Value);
+    }
+
     private async void OnManualSyncClicked(object sender, EventArgs e)
     {
         if (!_viewModel.IsSyncConfigured)

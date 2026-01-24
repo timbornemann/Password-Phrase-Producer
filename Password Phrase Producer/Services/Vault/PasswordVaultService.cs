@@ -157,7 +157,15 @@ public class PasswordVaultService
             try
             {
                 var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-                await _syncService.SyncPasswordVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                var isReadOnlySync = await IsReadOnlySyncAsync().ConfigureAwait(false);
+                if (isReadOnlySync)
+                {
+                    await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    await _syncService.SyncPasswordVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                }
                 Preferences.Set("PasswordVaultLastSync", DateTime.Now);
                 await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false); // Save merged changes
             }
@@ -262,7 +270,16 @@ public class PasswordVaultService
                 try
                 {
                     var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-                    await _syncService.SyncPasswordVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                    var isReadOnlySync = await IsReadOnlySyncAsync().ConfigureAwait(false);
+                    if (isReadOnlySync)
+                    {
+                        await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await _syncService.SyncPasswordVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                    }
+                    Preferences.Set("PasswordVaultLastSync", DateTime.Now);
                     await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false); 
                 }
                 catch (Exception ex)
@@ -344,6 +361,14 @@ public class PasswordVaultService
         {
             var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
             var existingIndex = entries.FindIndex(e => e.Id == entry.Id);
+            var isSyncConfigured = await _syncService.IsConfiguredAsync().ConfigureAwait(false);
+            var isReadOnlySync = isSyncConfigured && await IsReadOnlySyncAsync().ConfigureAwait(false);
+
+            if (isReadOnlySync)
+            {
+                await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                existingIndex = entries.FindIndex(e => e.Id == entry.Id);
+            }
 
             if (entry.Id == Guid.Empty)
             {
@@ -362,20 +387,26 @@ public class PasswordVaultService
                 entries.Add(entry.Clone());
             }
 
-            if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+            if (isSyncConfigured)
             {
                 try
                 {
-                    await _syncService.SyncPasswordVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                    if (!isReadOnlySync)
+                    {
+                        await _syncService.SyncPasswordVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                    }
                     Preferences.Set("PasswordVaultLastSync", DateTime.Now);
                 }
                 catch (Exception ex)
                 {
-                    // Sync failed, just save local
-                    MainThread.BeginInvokeOnMainThread(async () => 
+                    if (!isReadOnlySync)
                     {
-                        await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren: {ex.Message}", "OK");
-                    });
+                        // Sync failed, just save local
+                        MainThread.BeginInvokeOnMainThread(async () => 
+                        {
+                            await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren: {ex.Message}", "OK");
+                        });
+                    }
                 }
             }
 
@@ -398,6 +429,14 @@ public class PasswordVaultService
         {
             var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
             var entry = entries.FirstOrDefault(e => e.Id == entryId);
+            var isSyncConfigured = await _syncService.IsConfiguredAsync().ConfigureAwait(false);
+            var isReadOnlySync = isSyncConfigured && await IsReadOnlySyncAsync().ConfigureAwait(false);
+
+            if (isReadOnlySync)
+            {
+                await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                entry = entries.FirstOrDefault(e => e.Id == entryId);
+            }
             
             if (entry != null)
             {
@@ -405,19 +444,25 @@ public class PasswordVaultService
                 entry.IsDeleted = true;
                 entry.ModifiedAt = DateTimeOffset.UtcNow;
 
-                if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+                if (isSyncConfigured)
                 {
                     try
                     {
-                        await _syncService.SyncPasswordVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                        if (!isReadOnlySync)
+                        {
+                            await _syncService.SyncPasswordVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                        }
                         Preferences.Set("PasswordVaultLastSync", DateTime.Now);
                     }
                     catch (Exception ex)
                     {
-                        MainThread.BeginInvokeOnMainThread(async () => 
+                        if (!isReadOnlySync)
                         {
-                            await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren: {ex.Message}", "OK");
-                        });
+                            MainThread.BeginInvokeOnMainThread(async () => 
+                            {
+                                await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren: {ex.Message}", "OK");
+                            });
+                        }
                     }
                 }
                 await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
@@ -441,7 +486,15 @@ public class PasswordVaultService
             var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
             if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
             {
-                await _syncService.SyncPasswordVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                var isReadOnlySync = await IsReadOnlySyncAsync().ConfigureAwait(false);
+                if (isReadOnlySync)
+                {
+                    await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    await _syncService.SyncPasswordVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                }
                 Preferences.Set("PasswordVaultLastSync", DateTime.Now);
                 await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
             }
@@ -481,6 +534,22 @@ public class PasswordVaultService
         }
 
         MessagingCenter.Send(this, VaultMessages.EntriesChanged);
+    }
+
+    private async Task<bool> IsReadOnlySyncAsync()
+    {
+        var mode = await _syncService.GetAccessModeAsync().ConfigureAwait(false);
+        return mode == Services.Synchronization.SyncAccessMode.ReadMerge;
+    }
+
+    private async Task MergeFromSyncReadOnlyAsync(IList<PasswordVaultEntry> entries, CancellationToken cancellationToken)
+    {
+        var result = await _syncService.GetMergedPasswordVaultReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+        entries.Clear();
+        foreach (var mergedEntry in result.MergedEntries)
+        {
+            entries.Add(mergedEntry);
+        }
     }
 
     public async Task<byte[]> ExportWithFilePasswordAsync(string filePassword, CancellationToken cancellationToken = default)

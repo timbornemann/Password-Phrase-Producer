@@ -159,7 +159,16 @@ public class DataVaultService
             try
             {
                 var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-                await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                var isReadOnlySync = await IsReadOnlySyncAsync().ConfigureAwait(false);
+                if (isReadOnlySync)
+                {
+                    await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                }
+                Preferences.Set("DataVaultLastSync", DateTime.Now);
                 await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
             }
             catch
@@ -262,7 +271,16 @@ public class DataVaultService
                 try
                 {
                     var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-                    await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                    var isReadOnlySync = await IsReadOnlySyncAsync().ConfigureAwait(false);
+                    if (isReadOnlySync)
+                    {
+                        await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                    }
+                    Preferences.Set("DataVaultLastSync", DateTime.Now);
                     await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
                 }
                 catch
@@ -374,6 +392,14 @@ public class DataVaultService
         {
             var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
             var existingIndex = entries.FindIndex(e => e.Id == entry.Id);
+            var isSyncConfigured = await _syncService.IsConfiguredAsync().ConfigureAwait(false);
+            var isReadOnlySync = isSyncConfigured && await IsReadOnlySyncAsync().ConfigureAwait(false);
+
+            if (isReadOnlySync)
+            {
+                await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                existingIndex = entries.FindIndex(e => e.Id == entry.Id);
+            }
 
             if (entry.Id == Guid.Empty)
             {
@@ -392,19 +418,25 @@ public class DataVaultService
                 entries.Add(entry.Clone());
             }
 
-            if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+            if (isSyncConfigured)
             {
                 try
                 {
-                    await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                    if (!isReadOnlySync)
+                    {
+                        await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                    }
                     Preferences.Set("DataVaultLastSync", DateTime.Now);
                 }
                 catch (Exception ex)
                 {
-                     MainThread.BeginInvokeOnMainThread(async () => 
-                     {
-                         await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Data): {ex.Message}", "OK");
-                     });
+                    if (!isReadOnlySync)
+                    {
+                         MainThread.BeginInvokeOnMainThread(async () => 
+                         {
+                             await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Data): {ex.Message}", "OK");
+                         });
+                    }
                 }
             }
 
@@ -427,6 +459,14 @@ public class DataVaultService
         {
             var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
             var entry = entries.FirstOrDefault(e => e.Id == entryId);
+            var isSyncConfigured = await _syncService.IsConfiguredAsync().ConfigureAwait(false);
+            var isReadOnlySync = isSyncConfigured && await IsReadOnlySyncAsync().ConfigureAwait(false);
+
+            if (isReadOnlySync)
+            {
+                await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                entry = entries.FirstOrDefault(e => e.Id == entryId);
+            }
 
             if (entry != null)
             {
@@ -434,19 +474,25 @@ public class DataVaultService
                 entry.IsDeleted = true;
                 entry.ModifiedAt = DateTimeOffset.UtcNow;
 
-                if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+                if (isSyncConfigured)
                 {
                     try
                     {
-                        await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                        if (!isReadOnlySync)
+                        {
+                            await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                        }
                         Preferences.Set("DataVaultLastSync", DateTime.Now);
                     }
                     catch (Exception ex)
                     {
-                         MainThread.BeginInvokeOnMainThread(async () => 
-                         {
-                             await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Data): {ex.Message}", "OK");
-                         });
+                        if (!isReadOnlySync)
+                        {
+                             MainThread.BeginInvokeOnMainThread(async () => 
+                             {
+                                 await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Data): {ex.Message}", "OK");
+                             });
+                        }
                     }
                 }
                 await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
@@ -470,13 +516,38 @@ public class DataVaultService
             var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
             if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
             {
-                await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                var isReadOnlySync = await IsReadOnlySyncAsync().ConfigureAwait(false);
+                if (isReadOnlySync)
+                {
+                    await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                }
+                Preferences.Set("DataVaultLastSync", DateTime.Now);
                 await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
             }
         }
         finally
         {
             _syncLock.Release();
+        }
+    }
+
+    private async Task<bool> IsReadOnlySyncAsync()
+    {
+        var mode = await _syncService.GetAccessModeAsync().ConfigureAwait(false);
+        return mode == Services.Synchronization.SyncAccessMode.ReadMerge;
+    }
+
+    private async Task MergeFromSyncReadOnlyAsync(IList<PasswordVaultEntry> entries, CancellationToken cancellationToken)
+    {
+        var result = await _syncService.GetMergedDataVaultReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+        entries.Clear();
+        foreach (var mergedEntry in result.MergedEntries)
+        {
+            entries.Add(mergedEntry);
         }
     }
 

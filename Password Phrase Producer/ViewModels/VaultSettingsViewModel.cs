@@ -47,6 +47,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     private string _syncStatusMessage = string.Empty;
     private Color _syncStatusColor = Colors.Gray;
     private bool _isSyncBusy;
+    private bool _isSyncReadOnly;
 
     private bool _isVaultUnlocked;
     private bool _canUseBiometric;
@@ -180,6 +181,12 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
                 _pickSyncFileCommand.ChangeCanExecute();
             }
         }
+    }
+
+    public bool IsSyncReadOnly
+    {
+        get => _isSyncReadOnly;
+        set => SetProperty(ref _isSyncReadOnly, value);
     }
 
     public bool IsVaultUnlocked
@@ -1320,6 +1327,39 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             IsSyncBusy = false;
         }
     }
+
+    public async Task SetSyncAccessModeAsync(bool isReadOnly)
+    {
+        if (IsSyncBusy) return;
+
+        IsSyncBusy = true;
+        try
+        {
+            var mode = isReadOnly ? SyncAccessMode.ReadMerge : SyncAccessMode.ReadWrite;
+            await _syncService.SetAccessModeAsync(mode).ConfigureAwait(false);
+
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                IsSyncReadOnly = isReadOnly;
+                SyncStatusMessage = isReadOnly
+                    ? "Sync-Modus: Nur lesen & zusammenführen."
+                    : "Sync-Modus: Lesen & Schreiben.";
+                SyncStatusColor = isReadOnly ? Colors.Orange : Colors.Green;
+            }).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                SyncStatusMessage = $"Fehler beim Sync-Modus: {ex.Message}";
+                SyncStatusColor = Colors.Red;
+            }).ConfigureAwait(false);
+        }
+        finally
+        {
+            await MainThread.InvokeOnMainThreadAsync(() => IsSyncBusy = false).ConfigureAwait(false);
+        }
+    }
     
     public async Task SyncAllVaultsAsync()
     {
@@ -1434,9 +1474,12 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     private async Task RefreshSyncStateAsync()
     {
         var configured = await _syncService.IsConfiguredAsync();
+        var accessMode = await _syncService.GetAccessModeAsync().ConfigureAwait(false);
+        var isReadOnly = accessMode == SyncAccessMode.ReadMerge;
         await MainThread.InvokeOnMainThreadAsync(() =>
         {
              IsSyncConfigured = configured;
+             IsSyncReadOnly = isReadOnly;
              if (!configured && string.IsNullOrEmpty(SyncStatusMessage))
              {
                  SyncStatusMessage = "Nicht konfiguriert";
@@ -1444,8 +1487,8 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
              }
              if (configured && string.IsNullOrEmpty(SyncStatusMessage)) // Keep success message if just configured
              {
-                 SyncStatusMessage = "Sync bereit";
-                 SyncStatusColor = Colors.Green;
+                 SyncStatusMessage = isReadOnly ? "Sync bereit (Nur lesen & zusammenführen)" : "Sync bereit";
+                 SyncStatusColor = isReadOnly ? Colors.Orange : Colors.Green;
                  
                  // Pre-fill path if configured (read propery from SyncService? It stores in Preferences)
                  // We don't have direct access here easily without exposing, but we can read preferences.
