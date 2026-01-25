@@ -107,13 +107,16 @@ DOTNET_CLI_TELEMETRY_OPTOUT=1 dotnet build "Password Phrase Producer/PasswordPhr
 
 # Windows (only on Windows hosts)
 DOTNET_CLI_TELEMETRY_OPTOUT=1 dotnet build "Password Phrase Producer/PasswordPhraseProducer.csproj" -f net9.0-windows10.0.19041.0
+
+# Linux (portable build on Linux hosts)
+DOTNET_CLI_TELEMETRY_OPTOUT=1 dotnet publish "Password Phrase Producer/PasswordPhraseProducer.csproj" -c Release -f net9.0 -p:RuntimeIdentifier=linux-x64 -p:SelfContained=true
 ```
 
 ---
 
 ## 📦 Continuous delivery packages
 
-The GitHub Actions workflow produces installable artifacts for **Android** and **Windows**.
+The GitHub Actions workflow produces installable artifacts for **Android**, **Windows**, and **Linux**.
 
 ### Android (APK)
 
@@ -131,6 +134,15 @@ The workflow restores the keystore, signs the APK during `dotnet publish`, and i
 ### Windows (portable ZIP)
 
 Windows builds are published as self-contained, portable bundles. The workflow zips the published output (`Password Phrase Producer.exe` plus all required dependencies) into a single archive named `Password-Phrase-Producer_<version>_windows_x64_portable.zip`. Users simply extract the ZIP and launch the executable—no installer or code-signing certificate is required.
+
+### Linux (portable TAR + Debian installer)
+
+Linux builds are published as self-contained, portable bundles and Debian installers. The workflow packages the published output into:
+
+- `Password-Phrase-Producer_<version>_linux_amd64_portable.tar.gz` for portable extraction.
+- `Password-Phrase-Producer_<version>_linux_amd64.deb` for Debian-based installers.
+
+The Debian package installs into `/opt/Password-Phrase-Producer` and places a launcher at `/usr/bin/password-phrase-producer`.
 
 ### Versioning
 

@@ -1,4 +1,4 @@
-name: Build Android and Windows Packages
+name: Build Android, Windows, and Linux Packages
 
 on:
   push:
@@ -221,9 +221,77 @@ jobs:
           name: windows-installer
           path: '${{ env.RELEASE_DIRECTORY }}\\Password-Phrase-Producer_${{ env.APP_VERSION }}_windows_x64_installer.msix'
 
+  linux:
+    name: Build Linux Packages
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Install MAUI workload
+        run: dotnet workload install maui --ignore-failed-sources
+
+      - name: Compute version numbers
+        id: compute_versions
+        run: |
+          run_number="${{ github.run_number }}"
+          major=$((run_number / 100 + 1))
+          minor=$(((run_number % 100) / 10))
+          patch=$((run_number % 10))
+
+          app_version="${major}.${minor}.${patch}"
+          release_dir="${RUNNER_TEMP}/release"
+
+          mkdir -p "${release_dir}"
+
+          echo "APP_VERSION=${app_version}" >> "$GITHUB_ENV"
+          echo "RELEASE_DIRECTORY=${release_dir}" >> "$GITHUB_ENV"
+
+      - name: Restore dependencies
+        run: dotnet restore "./Password Phrase Producer/Password Phrase Producer.sln"
+
+      - name: Publish Linux portable build
+        run: |
+          dotnet publish "./Password Phrase Producer/Password Phrase Producer.sln" \
+            -c Release \
+            -f net9.0 \
+            -p:RuntimeIdentifier=linux-x64 \
+            -p:SelfContained=true \
+            -p:PublishSingleFile=false \
+            -p:ApplicationDisplayVersion="${APP_VERSION}" \
+            -p:ApplicationVersion="${{ github.run_number }}"
+
+      - name: Stage Linux artifacts
+        run: |
+          publish_dir="./Password Phrase Producer/bin/Release/net9.0/linux-x64/publish"
+          if [ ! -d "${publish_dir}" ]; then
+            echo "Linux publish directory not found."
+            exit 1
+          fi
+
+          ./build/linux/package-linux.sh "${APP_VERSION}" "${publish_dir}" "${RELEASE_DIRECTORY}" "amd64"
+
+      - name: Upload Linux portable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-portable
+          path: '${{ env.RELEASE_DIRECTORY }}/Password-Phrase-Producer_${{ env.APP_VERSION }}_linux_amd64_portable.tar.gz'
+
+      - name: Upload Linux installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-installer
+          path: '${{ env.RELEASE_DIRECTORY }}/Password-Phrase-Producer_${{ env.APP_VERSION }}_linux_amd64.deb'
+
   release:
     name: Release artifacts
-    needs: build
+    needs: [build, linux]
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.build.outputs.app-version }}
@@ -251,12 +319,26 @@ jobs:
           name: windows-installer
           path: release-assets
 
+      - name: Download Linux portable artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-portable
+          path: release-assets
+
+      - name: Download Linux installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-installer
+          path: release-assets
+
       - name: Generate SHA256 checksums
         working-directory: release-assets
         run: |
           sha256sum "Password-Phrase-Producer_${VERSION}_android_signed.apk" \
             "Password-Phrase-Producer_${VERSION}_windows_x64_portable.zip" \
             "Password-Phrase-Producer_${VERSION}_windows_x64_installer.msix" \
+            "Password-Phrase-Producer_${VERSION}_linux_amd64_portable.tar.gz" \
+            "Password-Phrase-Producer_${VERSION}_linux_amd64.deb" \
             > "Password-Phrase-Producer_${VERSION}_SHA256.txt"
 
       - name: Determine release metadata
@@ -284,4 +366,6 @@ jobs:
             release-assets/Password-Phrase-Producer_${{ env.VERSION }}_android_signed.apk
             release-assets/Password-Phrase-Producer_${{ env.VERSION }}_windows_x64_portable.zip
             release-assets/Password-Phrase-Producer_${{ env.VERSION }}_windows_x64_installer.msix
+            release-assets/Password-Phrase-Producer_${{ env.VERSION }}_linux_amd64_portable.tar.gz
+            release-assets/Password-Phrase-Producer_${{ env.VERSION }}_linux_amd64.deb
             release-assets/Password-Phrase-Producer_${{ env.VERSION }}_SHA256.txt
