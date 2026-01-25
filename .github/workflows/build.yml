@@ -234,9 +234,6 @@ jobs:
         with:
           dotnet-version: 9.0.x
 
-      - name: Install MAUI workload
-        run: dotnet workload install maui --ignore-failed-sources
-
       - name: Compute version numbers
         id: compute_versions
         run: |
