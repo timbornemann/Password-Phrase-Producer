@@ -155,6 +155,27 @@ jobs:
             -p:ApplicationDisplayVersion=$env:APP_VERSION `
             -p:ApplicationVersion=$env:APP_BUILD
 
+      - name: Publish Windows installer (MSIX)
+        shell: pwsh
+        run: |
+          $signingArgs = ""
+          if (Test-Path $env:WINDOWS_CERTIFICATE_PATH) {
+            $signingArgs = "-p:PackageCertificateKeyFile=$env:WINDOWS_CERTIFICATE_PATH"
+          }
+          else {
+            Write-Host "::warning::Windows signing certificate not provided. MSIX will be unsigned and cannot be installed on Windows without a trusted certificate."
+            $signingArgs = "-p:AppxPackageSigningEnabled=false"
+          }
+
+          dotnet publish "./Password Phrase Producer/Password Phrase Producer.sln" `
+            -c Release `
+            -f net9.0-windows10.0.19041.0 `
+            -p:RuntimeIdentifier=win-x64 `
+            -p:WindowsPackageType=MSIX `
+            -p:ApplicationDisplayVersion=$env:APP_VERSION `
+            -p:ApplicationVersion=$env:APP_BUILD `
+            $signingArgs
+
       - name: Stage Windows artifact
         shell: pwsh
         run: |
@@ -171,11 +192,34 @@ jobs:
 
           Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $destination
 
+      - name: Stage Windows installer artifact
+        shell: pwsh
+        run: |
+          $workspace = "${{ github.workspace }}"
+          $appPackagesDir = Join-Path $workspace "Password Phrase Producer\bin\Release\net9.0-windows10.0.19041.0\win-x64\AppPackages"
+          if (-not (Test-Path $appPackagesDir)) {
+            throw "Windows AppPackages directory not found."
+          }
+
+          $msix = Get-ChildItem -Path $appPackagesDir -Recurse -Filter "*.msix" | Select-Object -First 1
+          if (-not $msix) {
+            throw "MSIX package was not produced."
+          }
+
+          $destination = Join-Path $env:RELEASE_DIRECTORY "Password-Phrase-Producer_$($env:APP_VERSION)_windows_x64_installer.msix"
+          Copy-Item -Path $msix.FullName -Destination $destination -Force
+
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-portable
           path: '${{ env.RELEASE_DIRECTORY }}\\Password-Phrase-Producer_${{ env.APP_VERSION }}_windows_x64_portable.zip'
+
+      - name: Upload Windows installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: '${{ env.RELEASE_DIRECTORY }}\\Password-Phrase-Producer_${{ env.APP_VERSION }}_windows_x64_installer.msix'
 
   release:
     name: Release artifacts
@@ -201,10 +245,19 @@ jobs:
           name: windows-portable
           path: release-assets
 
+      - name: Download Windows installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: release-assets
+
       - name: Generate SHA256 checksums
         working-directory: release-assets
         run: |
-          sha256sum "Password-Phrase-Producer_${VERSION}_android_signed.apk" "Password-Phrase-Producer_${VERSION}_windows_x64_portable.zip" > "Password-Phrase-Producer_${VERSION}_SHA256.txt"
+          sha256sum "Password-Phrase-Producer_${VERSION}_android_signed.apk" \
+            "Password-Phrase-Producer_${VERSION}_windows_x64_portable.zip" \
+            "Password-Phrase-Producer_${VERSION}_windows_x64_installer.msix" \
+            > "Password-Phrase-Producer_${VERSION}_SHA256.txt"
 
       - name: Determine release metadata
         id: release_meta
@@ -230,4 +283,5 @@ jobs:
           files: |
             release-assets/Password-Phrase-Producer_${{ env.VERSION }}_android_signed.apk
             release-assets/Password-Phrase-Producer_${{ env.VERSION }}_windows_x64_portable.zip
+            release-assets/Password-Phrase-Producer_${{ env.VERSION }}_windows_x64_installer.msix
             release-assets/Password-Phrase-Producer_${{ env.VERSION }}_SHA256.txt
