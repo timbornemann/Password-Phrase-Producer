@@ -20,22 +20,17 @@ jobs:
         shell: pwsh
         run: |
           $androidPath = [System.IO.Path]::Combine($env:RUNNER_TEMP, 'android_signing.keystore')
-          $windowsPath = [System.IO.Path]::Combine($env:RUNNER_TEMP, 'windows_signing_certificate.pfx')
 
           "ANDROID_KEYSTORE_PATH=$androidPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          "WINDOWS_CERTIFICATE_PATH=$windowsPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Detect available signing assets
         shell: pwsh
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          WINDOWS_PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
         run: |
           $hasAndroidKeystore = -not [string]::IsNullOrEmpty($env:ANDROID_KEYSTORE_BASE64)
-          $hasWindowsCertificate = -not [string]::IsNullOrEmpty($env:WINDOWS_PFX_BASE64)
 
           "HAS_ANDROID_KEYSTORE=$($hasAndroidKeystore.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          "HAS_WINDOWS_CERTIFICATE=$($hasWindowsCertificate.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -134,14 +129,6 @@ jobs:
           name: android-apk
           path: '${{ env.RELEASE_DIRECTORY }}\\Password-Phrase-Producer_${{ env.APP_VERSION }}_android_signed.apk'
 
-      - name: Restore Windows signing certificate
-        if: ${{ env.HAS_WINDOWS_CERTIFICATE == 'true' }}
-        shell: pwsh
-        env:
-          WINDOWS_PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
-        run: |
-          [IO.File]::WriteAllBytes($env:WINDOWS_CERTIFICATE_PATH, [Convert]::FromBase64String($env:WINDOWS_PFX_BASE64))
-
       - name: Publish Windows portable build
         shell: pwsh
         run: |
@@ -154,27 +141,6 @@ jobs:
             -p:PublishSingleFile=false `
             -p:ApplicationDisplayVersion=$env:APP_VERSION `
             -p:ApplicationVersion=$env:APP_BUILD
-
-      - name: Publish Windows installer (MSIX)
-        shell: pwsh
-        run: |
-          $signingArgs = ""
-          if (Test-Path $env:WINDOWS_CERTIFICATE_PATH) {
-            $signingArgs = "-p:PackageCertificateKeyFile=$env:WINDOWS_CERTIFICATE_PATH"
-          }
-          else {
-            Write-Host "::warning::Windows signing certificate not provided. MSIX will be unsigned and cannot be installed on Windows without a trusted certificate."
-            $signingArgs = "-p:AppxPackageSigningEnabled=false"
-          }
-
-          dotnet publish "./Password Phrase Producer/Password Phrase Producer.sln" `
-            -c Release `
-            -f net9.0-windows10.0.19041.0 `
-            -p:RuntimeIdentifier=win-x64 `
-            -p:WindowsPackageType=MSIX `
-            -p:ApplicationDisplayVersion=$env:APP_VERSION `
-            -p:ApplicationVersion=$env:APP_BUILD `
-            $signingArgs
 
       - name: Stage Windows artifact
         shell: pwsh
@@ -192,22 +158,26 @@ jobs:
 
           Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $destination
 
-      - name: Stage Windows installer artifact
+      - name: Stage Windows easy installer
         shell: pwsh
         run: |
           $workspace = "${{ github.workspace }}"
-          $appPackagesDir = Join-Path $workspace "Password Phrase Producer\bin\Release\net9.0-windows10.0.19041.0\win-x64\AppPackages"
-          if (-not (Test-Path $appPackagesDir)) {
-            throw "Windows AppPackages directory not found."
-          }
+          $publishDir = Join-Path $workspace "Password Phrase Producer\bin\Release\net9.0-windows10.0.19041.0\win-x64\publish"
+          if (-not (Test-Path $publishDir)) { throw "Windows publish directory not found." }
 
-          $msix = Get-ChildItem -Path $appPackagesDir -Recurse -Filter "*.msix" | Select-Object -First 1
-          if (-not $msix) {
-            throw "MSIX package was not produced."
-          }
+          $installerRoot = Join-Path $env:RELEASE_DIRECTORY "windows-installer"
+          if (Test-Path $installerRoot) { Remove-Item -Path $installerRoot -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $installerRoot | Out-Null
+          New-Item -ItemType Directory -Force -Path (Join-Path $installerRoot "app") | Out-Null
 
-          $destination = Join-Path $env:RELEASE_DIRECTORY "Password-Phrase-Producer_$($env:APP_VERSION)_windows_x64_installer.msix"
-          Copy-Item -Path $msix.FullName -Destination $destination -Force
+          Copy-Item -Path (Join-Path $publishDir '*') -Destination (Join-Path $installerRoot "app") -Recurse -Force
+          Copy-Item -Path (Join-Path $workspace "Installer\Windows\Install.ps1") -Destination $installerRoot -Force
+          Copy-Item -Path (Join-Path $workspace "Installer\Windows\Uninstall.ps1") -Destination $installerRoot -Force
+          Copy-Item -Path (Join-Path $workspace "Installer\Windows\README.txt") -Destination $installerRoot -Force
+
+          $destination = Join-Path $env:RELEASE_DIRECTORY "Password-Phrase-Producer_$($env:APP_VERSION)_windows_x64_easy_installer.zip"
+          if (Test-Path $destination) { Remove-Item -Path $destination -Force }
+          Compress-Archive -Path (Join-Path $installerRoot '*') -DestinationPath $destination
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
@@ -215,11 +185,11 @@ jobs:
           name: windows-portable
           path: '${{ env.RELEASE_DIRECTORY }}\\Password-Phrase-Producer_${{ env.APP_VERSION }}_windows_x64_portable.zip'
 
-      - name: Upload Windows installer artifact
+      - name: Upload Windows easy installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: windows-installer
-          path: '${{ env.RELEASE_DIRECTORY }}\\Password-Phrase-Producer_${{ env.APP_VERSION }}_windows_x64_installer.msix'
+          name: windows-easy-installer
+          path: '${{ env.RELEASE_DIRECTORY }}\\Password-Phrase-Producer_${{ env.APP_VERSION }}_windows_x64_easy_installer.zip'
 
   release:
     name: Release artifacts
@@ -248,7 +218,7 @@ jobs:
       - name: Download Windows installer artifact
         uses: actions/download-artifact@v4
         with:
-          name: windows-installer
+          name: windows-easy-installer
           path: release-assets
 
       - name: Generate SHA256 checksums
@@ -256,7 +226,7 @@ jobs:
         run: |
           sha256sum "Password-Phrase-Producer_${VERSION}_android_signed.apk" \
             "Password-Phrase-Producer_${VERSION}_windows_x64_portable.zip" \
-            "Password-Phrase-Producer_${VERSION}_windows_x64_installer.msix" \
+            "Password-Phrase-Producer_${VERSION}_windows_x64_easy_installer.zip" \
             > "Password-Phrase-Producer_${VERSION}_SHA256.txt"
 
       - name: Determine release metadata
@@ -283,5 +253,5 @@ jobs:
           files: |
             release-assets/Password-Phrase-Producer_${{ env.VERSION }}_android_signed.apk
             release-assets/Password-Phrase-Producer_${{ env.VERSION }}_windows_x64_portable.zip
-            release-assets/Password-Phrase-Producer_${{ env.VERSION }}_windows_x64_installer.msix
+            release-assets/Password-Phrase-Producer_${{ env.VERSION }}_windows_x64_easy_installer.zip
             release-assets/Password-Phrase-Producer_${{ env.VERSION }}_SHA256.txt
