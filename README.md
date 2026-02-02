@@ -132,6 +132,22 @@ The workflow restores the keystore, signs the APK during `dotnet publish`, and i
 
 Windows builds are published as self-contained, portable bundles. The workflow zips the published output (`Password Phrase Producer.exe` plus all required dependencies) into a single archive named `Password-Phrase-Producer_<version>_windows_x64_portable.zip`. Users simply extract the ZIP and launch the executable—no installer or code-signing certificate is required.
 
+### Windows (easy installer ZIP)
+
+To avoid unsigned MSIX warnings, the workflow also publishes a simple installer ZIP: `Password-Phrase-Producer_<version>_windows_x64_easy_installer.zip`. The package includes the portable app plus PowerShell helper scripts that install the files into `%LOCALAPPDATA%\\PasswordPhraseProducer` and create a Start Menu shortcut.
+
+Installation:
+
+```powershell
+PowerShell -ExecutionPolicy Bypass -File .\Install.ps1
+```
+
+Uninstall:
+
+```powershell
+PowerShell -ExecutionPolicy Bypass -File .\Uninstall.ps1
+```
+
 ### Versioning
 
 Both Android and Windows builds derive their version numbers from the GitHub Actions run number (`1.0.<run_number>`), allowing each build to install as an update without removing the previous version.
