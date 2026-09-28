@@ -9,6 +9,7 @@ No GitHub release has been published by this implementation task.
 | .NET SDK | 9.0.308, installed in a separate local build directory; no framework migration |
 | Update/core automated tests | 49 passed, 0 failed, 0 skipped |
 | Release orchestration tests | 14 passed, covering manual versions, retry safety, duplicate events, withdrawal and final-signature publication |
+| APK certificate regression tests | 18 passed; old/new apksigner output, wrong keys, multiple signers and malformed or missing certificate information |
 | Manual-version platform builds | Windows and Android Release builds passed with version 2.6.0 and internal build 2006000; Android manifest values inspected |
 | Windows Release publish | Passed, win-x64, .NET and Windows App SDK self-contained |
 | Velopack packaging | Passed with 1.2.158; Setup EXE and full NUPKG produced |
@@ -20,6 +21,15 @@ No GitHub release has been published by this implementation task.
 
 The local distributable files are in `artifacts/ready-release-2.5.8/` (ignored by Git). That directory contains only
 Setup, the full update package, the signed APK, the manifest and its detached signature. It contains no portable ZIP.
+
+APK-verification follow-up: the failed GitHub build used a runner with Android Build Tools 37.0.0 installed.
+Its `apksigner` prints `V3.0 Signer:` where versions 35/36 print `Signer #1`; the original parser incorrectly
+rejected the new format. The corrected verifier was exercised with real Build Tools 35.0.0, 36.0.0, 36.1.0 and
+37.0.0. A full signed Android Release publish of version **2.6.0 / versionCode 2006000** and all four package
+verification runs passed. The APK is in `artifacts/apk-signature-fix-2.6.0/`; this is a local verification artifact,
+not a published GitHub release. Both an actual development-key APK and a modified release APK were rejected.
+The permanent signing keys and pinned certificate fingerprint were not changed. The 18 regression tests run in
+both the pull-request and release workflows; actionlint and the 14 release orchestration tests also passed.
 
 The automated suite covers signature/platform/version rejection, interrupted or tampered downloads, low storage,
 metered network changes, six-hour throttling, concurrent calls, cached/offline installs, cancellation, post-restart

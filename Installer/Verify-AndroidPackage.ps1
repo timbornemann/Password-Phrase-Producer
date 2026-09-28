@@ -8,12 +8,11 @@ param(
 $ErrorActionPreference = 'Stop'
 $signer = Join-Path $BuildTools 'apksigner.bat'
 $aapt = Join-Path $BuildTools 'aapt.exe'
+Write-Output "Verifying APK using Android Build Tools $(Split-Path -Leaf $BuildTools)."
 $signatureOutput = (& $signer verify --verbose --print-certs $Apk) -join "`n"
 if ($LASTEXITCODE -ne 0) { throw 'APK signature verification failed.' }
-$certificateMatches = [regex]::Matches($signatureOutput, 'Signer #\d+ certificate SHA-256 digest: ([a-fA-F0-9]+)')
-if ($certificateMatches.Count -ne 1 -or $certificateMatches[0].Groups[1].Value -ne (Get-Content -LiteralPath $FingerprintFile -Raw).Trim()) {
-    throw 'APK is not signed with the permanent release certificate.'
-}
+& (Join-Path $PSScriptRoot 'Assert-AndroidSigningCertificate.ps1') -SignatureOutput $signatureOutput `
+    -ExpectedFingerprint (Get-Content -LiteralPath $FingerprintFile -Raw)
 $badging = (& $aapt dump badging $Apk) -join "`n"
 if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect APK.' }
 $package = [regex]::Match($badging, "package: name='([^']+)' versionCode='([^']+)' versionName='([^']+)'")

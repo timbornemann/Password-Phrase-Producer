@@ -41,6 +41,9 @@ jobs:
         run: dotnet test PasswordPhraseProducer.Updates.Tests/PasswordPhraseProducer.Updates.Tests.csproj -c Release
       - name: Test release publication and versioning
         run: python -m unittest discover -s Installer/tests -v
+      - name: Test Android signing certificate verification
+        shell: pwsh
+        run: ./Installer/tests/Test-AndroidPackageVerification.ps1
       - name: Validate user-selected release and derive platform versions
         id: version
         run: python Installer/release_pipeline.py prepare --release-id "$RELEASE_ID" --tag "$RELEASE_TAG" --directory release-inputs

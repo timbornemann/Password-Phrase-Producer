@@ -108,6 +108,10 @@ See [VALIDATION.md](VALIDATION.md) for the implementation's completed checks and
 
 Run `dotnet test PasswordPhraseProducer.Updates.Tests/PasswordPhraseProducer.Updates.Tests.csproj -c Release`.
 Run `python -m unittest discover -s Installer/tests -v` to test release sequencing, retries and tag-based versioning.
+Run `pwsh -File Installer/tests/Test-AndroidPackageVerification.ps1` for the Android certificate-verification tests.
+The APK verifier accepts both the numbered signer output in Android Build Tools 35/36 and the signature-scheme
+labels in Build Tools 37. Native `apksigner verify` must succeed first; every reported signing certificate must
+match the pinned release certificate. Missing, unknown, malformed or conflicting certificate output is rejected.
 For platform builds, use `-p:PppTargetFramework=net9.0-android` or
 `-p:PppTargetFramework=net9.0-windows10.0.19041.0`, together with the same `-f` value. Android requires JDK 17 and SDK 35.
 
