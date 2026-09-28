@@ -103,54 +103,36 @@ DOTNET_CLI_TELEMETRY_OPTOUT=1 dotnet build "Password Phrase Producer/PasswordPhr
 
 ```bash
 # Android
-DOTNET_CLI_TELEMETRY_OPTOUT=1 dotnet build "Password Phrase Producer/PasswordPhraseProducer.csproj" -f net9.0-android
+DOTNET_CLI_TELEMETRY_OPTOUT=1 dotnet build "Password Phrase Producer/PasswordPhraseProducer.csproj" -f net9.0-android -p:PppTargetFramework=net9.0-android
 
 # Windows (only on Windows hosts)
-DOTNET_CLI_TELEMETRY_OPTOUT=1 dotnet build "Password Phrase Producer/PasswordPhraseProducer.csproj" -f net9.0-windows10.0.19041.0
+DOTNET_CLI_TELEMETRY_OPTOUT=1 dotnet build "Password Phrase Producer/PasswordPhraseProducer.csproj" -f net9.0-windows10.0.19041.0 -p:PppTargetFramework=net9.0-windows10.0.19041.0
 ```
 
 ---
 
-## 📦 Continuous delivery packages
+## 📦 Installation and updates
 
-The GitHub Actions workflow produces installable artifacts for **Android** and **Windows**.
+Download the Windows `*-Setup.exe` or Android `*_android_signed.apk` from
+[GitHub Releases](https://github.com/timbornemann/Password-Phrase-Producer/releases).
+Windows Setup includes the required runtimes and installs for the current user.
 
-### Android (APK)
+In **Einstellungen → App-Updates**, the app checks for stable releases and downloads updates on unmetered
+connections. Installation starts only after clicking the update button; Android also asks for system confirmation.
+Vaults, passwords, authenticator entries, settings and sync connections stay in place.
 
-To receive an installable and updatable APK you must provide a persistent Android keystore through encrypted GitHub secrets:
+The first switch from the old Android signing key can require one uninstall and restore from an export.
+Windows portable/Schnellinstaller users install Setup once and keep their existing data.
+Historical MSIX users need a one-time export/import. Subsequent updates do not require exports or reinstallation.
 
-| Secret | Description |
-| --- | --- |
-| `ANDROID_KEYSTORE_BASE64` | Base64 encoded keystore file. |
-| `ANDROID_KEYSTORE_PASSWORD` | Password used to protect the keystore. |
-| `ANDROID_KEY_ALIAS` | Alias of the key used for signing. |
-| `ANDROID_KEY_PASSWORD` | Password for the signing key. |
+- [Windows installation and repair](Installer/Windows/README.md)
+- [Signing, release pipeline, key recovery and acceptance tests](Installer/UPDATES.md)
 
-The workflow restores the keystore, signs the APK during `dotnet publish`, and increments both the display and internal version numbers so that newer builds can be installed as updates on devices.
-
-### Windows (portable ZIP)
-
-Windows builds are published as self-contained, portable bundles. The workflow zips the published output (`Password Phrase Producer.exe` plus all required dependencies) into a single archive named `Password-Phrase-Producer_<version>_windows_x64_portable.zip`. Users simply extract the ZIP and launch the executable—no installer or code-signing certificate is required.
-
-### Windows (easy installer ZIP)
-
-To avoid unsigned MSIX warnings, the workflow also publishes a simple installer ZIP: `Password-Phrase-Producer_<version>_windows_x64_easy_installer.zip`. The package includes the portable app plus PowerShell helper scripts that install the files into `%LOCALAPPDATA%\\PasswordPhraseProducer` and create a Start Menu shortcut.
-
-Installation:
-
-```powershell
-PowerShell -ExecutionPolicy Bypass -File .\Install.ps1
-```
-
-Uninstall:
-
-```powershell
-PowerShell -ExecutionPolicy Bypass -File .\Uninstall.ps1
-```
-
-### Versioning
-
-Both Android and Windows builds derive their version numbers from the GitHub Actions run number (`1.0.<run_number>`), allowing each build to install as an update without removing the previous version.
+To publish a new version, push the source changes and then create a **normal GitHub release** with your chosen
+tag, for example `v2.6.0`. Pushes do not package or publish the app. The release workflow uses app version `2.6.0`,
+builds and verifies both platforms, then attaches their files to that release. The signed update manifest is
+completed last, so apps ignore the release while its files are still being prepared. Drafts and prereleases are
+excluded. See the [step-by-step release procedure](Installer/UPDATES.md#publication).
 
 ---
 

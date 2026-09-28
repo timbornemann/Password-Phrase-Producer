@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:Password_Phrase_Producer.ViewModels"
+             x:DataType="viewmodels:UpdateSettingsViewModel"
+             x:Class="Password_Phrase_Producer.Views.UpdateSettingsView">
+    <Border BackgroundColor="#1B2036" Padding="14" StrokeThickness="0">
+        <Border.StrokeShape><RoundRectangle CornerRadius="16" /></Border.StrokeShape>
+        <VerticalStackLayout Spacing="10">
+            <Label Text="App-Updates" FontSize="16" FontAttributes="Bold" TextColor="White" />
+            <Label Text="{Binding InstalledVersion, StringFormat='Installierte Version: {0}'}" TextColor="#E8EBFF" />
+            <Label Text="{Binding AvailableVersion, StringFormat='Verfügbare Version: {0}'}" TextColor="#E8EBFF" />
+            <Label Text="{Binding LastCheck, StringFormat='Letzte Prüfung: {0}'}" FontSize="12" TextColor="#9EA3C4" />
+            <Grid ColumnDefinitions="*,Auto">
+                <Label Text="Automatisch nach Updates suchen" TextColor="#E8EBFF" VerticalOptions="Center" />
+                <Switch Grid.Column="1" IsToggled="{Binding AutomaticChecks}" IsEnabled="{Binding CanChangeSettings}" />
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto">
+                <Label Text="Automatisch ungetaktet herunterladen" TextColor="#E8EBFF" VerticalOptions="Center" />
+                <Switch Grid.Column="1" IsToggled="{Binding AutomaticDownloads}" IsEnabled="{Binding CanChangeSettings}" />
+            </Grid>
+            <Label Text="{Binding Status}" TextColor="#BAC4FF" FontSize="13" />
+            <Label Text="{Binding DownloadSize}" TextColor="#9EA3C4" FontSize="12" IsVisible="{Binding HasUpdate}" />
+            <ProgressBar Progress="{Binding Progress}" IsVisible="{Binding IsDownloading}" ProgressColor="#7B8CFF" />
+            <Label Text="{Binding Notes}" TextColor="#9EA3C4" FontSize="12" IsVisible="{Binding HasUpdate}" />
+            <Button Text="Änderungshinweise öffnen" Command="{Binding ReleaseNotesCommand}" IsVisible="{Binding HasUpdate}" />
+            <Button Text="{Binding CheckText}" Command="{Binding CheckCommand}" />
+            <Button Text="Herunterladen" Command="{Binding DownloadCommand}" IsVisible="{Binding CanDownload}" />
+            <Button Text="{Binding InstallText}" Command="{Binding InstallCommand}" IsVisible="{Binding CanInstall}" />
+        </VerticalStackLayout>
+    </Border>
+</ContentView>

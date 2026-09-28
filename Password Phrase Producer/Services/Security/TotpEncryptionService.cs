@@ -1,3 +1,4 @@
+using PasswordPhraseProducer.Updates;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -64,42 +65,54 @@ public class TotpEncryptionService
     /// </summary>
     public async Task SetupPasswordAsync(string password)
     {
-        if (string.IsNullOrWhiteSpace(password))
-        {
-            throw new ArgumentException("Passwort darf nicht leer sein.", nameof(password));
-        }
-
-        // Generate a new master key
-        var masterKey = new byte[32]; // 256-bit key
-        using (var rng = RandomNumberGenerator.Create())
-        {
-            rng.GetBytes(masterKey);
-        }
-
-        // Generate a unique salt for this user
-        var salt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
-        var passwordDerivedKey = DeriveKeyFromPassword(password, salt);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var encryptedMasterKey = EncryptWithKey(masterKey, passwordDerivedKey);
-            var verifier = CreateVerifier(passwordDerivedKey);
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                throw new ArgumentException("Passwort darf nicht leer sein.", nameof(password));
+            }
 
-            // Save encrypted master key to file
-            Directory.CreateDirectory(Path.GetDirectoryName(_keyFilePath)!);
-            await _secureFileService.WriteAllBytesAsync(_keyFilePath, encryptedMasterKey);
+            StartupDataGuard.RequireNewStore(_keyFilePath);
+            StartupDataGuard.RequireNewStore(Path.Combine(FileSystem.AppDataDirectory, "totp_data.json.enc"));
 
-            // Store password metadata (salt, verifier, iterations) in SecureStorage
-            await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, Convert.ToBase64String(salt));
-            await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, Convert.ToBase64String(verifier));
-            await SecureStorage.Default.SetAsync(PasswordIterationsStorageKey, Pbkdf2Iterations.ToString());
+            // Generate a new master key
+            var masterKey = new byte[32]; // 256-bit key
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(masterKey);
+            }
 
-            // Unlock immediately
-            _unlockedKey = masterKey;
-            _isUnlocked = true;
+            // Generate a unique salt for this user
+            var salt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
+            var passwordDerivedKey = DeriveKeyFromPassword(password, salt);
+            try
+            {
+                var encryptedMasterKey = EncryptWithKey(masterKey, passwordDerivedKey);
+                var verifier = CreateVerifier(passwordDerivedKey);
+
+                // Save encrypted master key to file
+                Directory.CreateDirectory(Path.GetDirectoryName(_keyFilePath)!);
+                await _secureFileService.WriteAllBytesAsync(_keyFilePath, encryptedMasterKey);
+
+                // Store password metadata (salt, verifier, iterations) in SecureStorage
+                await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, Convert.ToBase64String(salt));
+                await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, Convert.ToBase64String(verifier));
+                await SecureStorage.Default.SetAsync(PasswordIterationsStorageKey, Pbkdf2Iterations.ToString());
+
+                // Unlock immediately
+                _unlockedKey = masterKey;
+                _isUnlocked = true;
+            }
+            finally
+            {
+                Array.Clear(passwordDerivedKey);
+            }
         }
-        finally
+        catch
         {
-            Array.Clear(passwordDerivedKey);
+            dataOperation.Failed();
+            throw;
         }
     }
 
@@ -108,61 +121,70 @@ public class TotpEncryptionService
     /// </summary>
     public async Task<bool> UnlockWithPasswordAsync(string password)
     {
-        if (!await HasPasswordAsync().ConfigureAwait(false))
-        {
-            return false;
-        }
-
-        // Get password metadata
-        var saltBase64 = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey);
-        var verifierBase64 = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey);
-        var iterationsStr = await SecureStorage.Default.GetAsync(PasswordIterationsStorageKey);
-
-        if (string.IsNullOrEmpty(saltBase64) || string.IsNullOrEmpty(verifierBase64))
-        {
-             // Missing metadata means invalid state in new system
-             return false;
-        }
-
-        if (!int.TryParse(iterationsStr, out var iterations) || iterations <= 0)
-        {
-            iterations = Pbkdf2Iterations;
-        }
-
-        var salt = Convert.FromBase64String(saltBase64);
-        var passwordDerivedKey = DeriveKeyFromPassword(password, salt, iterations);
-
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            // Verify password using verifier
-            var expectedVerifier = Convert.FromBase64String(verifierBase64);
-            var actualVerifier = CreateVerifier(passwordDerivedKey);
-
-            if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
-            {
-                return false; // Wrong password
-            }
-
-            // Load and decrypt master key
-            if (!await _secureFileService.ExistsAsync(_keyFilePath))
+            if (!await HasPasswordAsync().ConfigureAwait(false))
             {
                 return false;
             }
 
-            var encryptedMasterKey = await _secureFileService.ReadAllBytesAsync(_keyFilePath);
-            _unlockedKey = DecryptWithKey(encryptedMasterKey, passwordDerivedKey);
-            _isUnlocked = true;
+            // Get password metadata
+            var saltBase64 = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey);
+            var verifierBase64 = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey);
+            var iterationsStr = await SecureStorage.Default.GetAsync(PasswordIterationsStorageKey);
 
-            return true;
+            if (string.IsNullOrEmpty(saltBase64) || string.IsNullOrEmpty(verifierBase64))
+            {
+                 // Missing metadata means invalid state in new system
+                 return false;
+            }
+
+            if (!int.TryParse(iterationsStr, out var iterations) || iterations <= 0)
+            {
+                iterations = Pbkdf2Iterations;
+            }
+
+            var salt = Convert.FromBase64String(saltBase64);
+            var passwordDerivedKey = DeriveKeyFromPassword(password, salt, iterations);
+
+            try
+            {
+                // Verify password using verifier
+                var expectedVerifier = Convert.FromBase64String(verifierBase64);
+                var actualVerifier = CreateVerifier(passwordDerivedKey);
+
+                if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
+                {
+                    return false; // Wrong password
+                }
+
+                // Load and decrypt master key
+                if (!await _secureFileService.ExistsAsync(_keyFilePath))
+                {
+                    return false;
+                }
+
+                var encryptedMasterKey = await _secureFileService.ReadAllBytesAsync(_keyFilePath);
+                _unlockedKey = DecryptWithKey(encryptedMasterKey, passwordDerivedKey);
+                _isUnlocked = true;
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+            finally
+            {
+                // Passwort-abgeleiteter Schlüssel aus dem Speicher löschen
+                Array.Clear(passwordDerivedKey);
+            }
         }
         catch
         {
-            return false;
-        }
-        finally
-        {
-            // Passwort-abgeleiteter Schlüssel aus dem Speicher löschen
-            Array.Clear(passwordDerivedKey);
+            dataOperation.Failed();
+            throw;
         }
     }
 
@@ -171,40 +193,49 @@ public class TotpEncryptionService
     /// </summary>
     public async Task ChangePasswordAsync(string oldPassword, string newPassword)
     {
-        if (!await UnlockWithPasswordAsync(oldPassword))
-        {
-            throw new InvalidOperationException("Falsches Passwort.");
-        }
-
-        if (_unlockedKey == null)
-        {
-            throw new InvalidOperationException("Kein Schlüssel vorhanden.");
-        }
-
-        if (string.IsNullOrWhiteSpace(newPassword))
-        {
-            throw new ArgumentException("Passwort darf nicht leer sein.", nameof(newPassword));
-        }
-
-        // Generate new salt for the new password
-        var newSalt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
-        var newPasswordDerivedKey = DeriveKeyFromPassword(newPassword, newSalt);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var encryptedMasterKey = EncryptWithKey(_unlockedKey, newPasswordDerivedKey);
-            var newVerifier = CreateVerifier(newPasswordDerivedKey);
+            if (!await UnlockWithPasswordAsync(oldPassword))
+            {
+                throw new InvalidOperationException("Falsches Passwort.");
+            }
 
-            await _secureFileService.WriteAllBytesAsync(_keyFilePath, encryptedMasterKey);
+            if (_unlockedKey == null)
+            {
+                throw new InvalidOperationException("Kein Schlüssel vorhanden.");
+            }
 
-            // Update password metadata
-            await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, Convert.ToBase64String(newSalt));
-            await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, Convert.ToBase64String(newVerifier));
-            await SecureStorage.Default.SetAsync(PasswordIterationsStorageKey, Pbkdf2Iterations.ToString());
+            if (string.IsNullOrWhiteSpace(newPassword))
+            {
+                throw new ArgumentException("Passwort darf nicht leer sein.", nameof(newPassword));
+            }
+
+            // Generate new salt for the new password
+            var newSalt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
+            var newPasswordDerivedKey = DeriveKeyFromPassword(newPassword, newSalt);
+            try
+            {
+                var encryptedMasterKey = EncryptWithKey(_unlockedKey, newPasswordDerivedKey);
+                var newVerifier = CreateVerifier(newPasswordDerivedKey);
+
+                await _secureFileService.WriteAllBytesAsync(_keyFilePath, encryptedMasterKey);
+
+                // Update password metadata
+                await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, Convert.ToBase64String(newSalt));
+                await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, Convert.ToBase64String(newVerifier));
+                await SecureStorage.Default.SetAsync(PasswordIterationsStorageKey, Pbkdf2Iterations.ToString());
+            }
+            finally
+            {
+                // Neuer Passwort-abgeleiteter Schlüssel aus dem Speicher löschen
+                Array.Clear(newPasswordDerivedKey);
+            }
         }
-        finally
+        catch
         {
-            // Neuer Passwort-abgeleiteter Schlüssel aus dem Speicher löschen
-            Array.Clear(newPasswordDerivedKey);
+            dataOperation.Failed();
+            throw;
         }
     }
 
@@ -226,32 +257,41 @@ public class TotpEncryptionService
     /// </summary>
     public void Reset()
     {
-        // Lock first
-        Lock();
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
+        {
+            // Lock first
+            Lock();
 
-        // Delete key file - Note: Delete is synchronous in interface??
-        // Wait, ISecureFileService.Delete is probably void Delete(string path). Check Step 46.
-        // Step 46: `void Delete(string path);` Yes.
-        
-        // However, I need to check existence first? SecureFileService.Delete does File.Delete which doesn't throw if file missing?
-        // Actually File.Delete does not throw if file doesn't exist. But SecureFileService might throw?
-        // Let's assume it's safe or check ExistsAsync first. 
-        // Sync context in Reset()? It's a sync method?
-        // The Reset() method in TotpEncryptionService is synchronous: `public void Reset()`.
-        // _secureFileService.ExistsAsync is async. I cannot call it easily here.
-        // I should probably skip the check or update Reset to be async, but that changes API.
-        // Or just call `_secureFileService.Delete(_keyFilePath)` assuming it handles it.
-        // Let's look at `SecureFileService.cs` implementation (Step 46).
-        // It's `public void Delete(string path) { if (File.Exists(path)) File.Delete(path); }` (inferred).
-        // Wait, I created Step 46. Let's check `SecureFileService` content if needed.
-        // But for now, I'll just call `_secureFileService.Delete`.
-        
-        _secureFileService.Delete(_keyFilePath);
+            // Delete key file - Note: Delete is synchronous in interface??
+            // Wait, ISecureFileService.Delete is probably void Delete(string path). Check Step 46.
+            // Step 46: `void Delete(string path);` Yes.
 
-        // Clear password preferences and metadata
-        SecureStorage.Default.Remove(PasswordSaltStorageKey);
-        SecureStorage.Default.Remove(PasswordVerifierStorageKey);
-        SecureStorage.Default.Remove(PasswordIterationsStorageKey);
+            // However, I need to check existence first? SecureFileService.Delete does File.Delete which doesn't throw if file missing?
+            // Actually File.Delete does not throw if file doesn't exist. But SecureFileService might throw?
+            // Let's assume it's safe or check ExistsAsync first.
+            // Sync context in Reset()? It's a sync method?
+            // The Reset() method in TotpEncryptionService is synchronous: `public void Reset()`.
+            // _secureFileService.ExistsAsync is async. I cannot call it easily here.
+            // I should probably skip the check or update Reset to be async, but that changes API.
+            // Or just call `_secureFileService.Delete(_keyFilePath)` assuming it handles it.
+            // Let's look at `SecureFileService.cs` implementation (Step 46).
+            // It's `public void Delete(string path) { if (File.Exists(path)) File.Delete(path); }` (inferred).
+            // Wait, I created Step 46. Let's check `SecureFileService` content if needed.
+            // But for now, I'll just call `_secureFileService.Delete`.
+
+            _secureFileService.Delete(_keyFilePath);
+
+            // Clear password preferences and metadata
+            SecureStorage.Default.Remove(PasswordSaltStorageKey);
+            SecureStorage.Default.Remove(PasswordVerifierStorageKey);
+            SecureStorage.Default.Remove(PasswordIterationsStorageKey);
+        }
+        catch
+        {
+            dataOperation.Failed();
+            throw;
+        }
     }
 
     /// <summary>

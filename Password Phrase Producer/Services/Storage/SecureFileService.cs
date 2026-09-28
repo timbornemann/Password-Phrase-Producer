@@ -1,3 +1,4 @@
+using PasswordPhraseProducer.Updates;
 using System.Security.Cryptography;
 
 namespace Password_Phrase_Producer.Services.Storage;
@@ -24,68 +25,104 @@ public class SecureFileService : ISecureFileService
 
     public async Task WriteAllBytesAsync(string path, byte[] bytes, CancellationToken cancellationToken = default)
     {
-        if (_appLockService.IsUnlocked)
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
         {
-            var masterKey = _appLockService.GetMasterKey();
-            var encrypted = Encrypt(bytes, masterKey);
-            
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            await File.WriteAllBytesAsync(path, encrypted, cancellationToken).ConfigureAwait(false);
+            if (_appLockService.IsUnlocked)
+            {
+                var masterKey = _appLockService.GetMasterKey();
+                var encrypted = Encrypt(bytes, masterKey);
+
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                await AtomicFile.WriteAsync(path, encrypted, cancellationToken).ConfigureAwait(false);
+            }
+            else if (await _appLockService.IsConfiguredAsync().ConfigureAwait(false))
+            {
+                 // Configured but locked -> Error
+                 throw new InvalidOperationException("Cannot write secure file while App Lock is locked.");
+            }
+            else
+            {
+                // Not configured (Fresh install) -> Write plain
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                await AtomicFile.WriteAsync(path, bytes, cancellationToken).ConfigureAwait(false);
+            }
         }
-        else if (await _appLockService.IsConfiguredAsync().ConfigureAwait(false))
+        catch
         {
-             // Configured but locked -> Error
-             throw new InvalidOperationException("Cannot write secure file while App Lock is locked.");
-        }
-        else
-        {
-            // Not configured (Fresh install) -> Write plain
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            await File.WriteAllBytesAsync(path, bytes, cancellationToken).ConfigureAwait(false);
+            dataOperation.Failed();
+            throw;
         }
     }
 
     public async Task<byte[]> ReadAllBytesAsync(string path, CancellationToken cancellationToken = default)
     {
-        if (!File.Exists(path)) return Array.Empty<byte>();
-        
-        // If configured, require encryption (or valid unlock)
-        if (await _appLockService.IsConfiguredAsync().ConfigureAwait(false))
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
         {
-            if (!_appLockService.IsUnlocked)
+            if (!File.Exists(path)) return Array.Empty<byte>();
+
+            // If configured, require encryption (or valid unlock)
+            if (await _appLockService.IsConfiguredAsync().ConfigureAwait(false))
             {
-                // Cannot decrypt.
-                 throw new InvalidOperationException("Cannot read secure file while App Lock is locked.");
+                if (!_appLockService.IsUnlocked)
+                {
+                    // Cannot decrypt.
+                     throw new InvalidOperationException("Cannot read secure file while App Lock is locked.");
+                }
+
+                var fileContent = await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
+
+                try
+                {
+                    var masterKey = _appLockService.GetMasterKey();
+                    return Decrypt(fileContent, masterKey);
+                }
+                catch (Exception ex)
+                {
+                    // No migration fallback. If decryption fails, it's an error.
+                    throw new InvalidOperationException("Failed to decrypt secure file.", ex);
+                }
             }
 
-            var fileContent = await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
-            
-            try 
-            {
-                var masterKey = _appLockService.GetMasterKey();
-                return Decrypt(fileContent, masterKey);
-            }
-            catch (Exception ex)
-            {
-                // No migration fallback. If decryption fails, it's an error.
-                throw new InvalidOperationException("Failed to decrypt secure file.", ex);
-            }
+            // Not configured: Assume plain.
+            return await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
         }
-        
-        // Not configured: Assume plain.
-        return await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
+        catch
+        {
+            dataOperation.Failed();
+            throw;
+        }
     }
 
     public Task<bool> ExistsAsync(string path)
     {
-        return Task.FromResult(File.Exists(path));
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
+        {
+            return Task.FromResult(File.Exists(path));
+        }
+        catch
+        {
+            dataOperation.Failed();
+            throw;
+        }
     }
 
     public void Delete(string path)
     {
-        if (File.Exists(path))
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
         {
-            File.Delete(path);
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch
+        {
+            dataOperation.Failed();
+            throw;
         }
     }
 

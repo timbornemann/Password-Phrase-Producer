@@ -1,3 +1,4 @@
+using PasswordPhraseProducer.Updates;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -66,90 +67,108 @@ public class SynchronizationService : ISynchronizationService
 
     public async Task ConfigureAsync(string path, string password)
     {
-        if (string.IsNullOrWhiteSpace(path) || string.IsNullOrWhiteSpace(password))
-            throw new ArgumentException("Path and password are required.");
-
-        var salt = RandomNumberGenerator.GetBytes(SaltSize);
-        var key = await Task.Run(() => DeriveKey(password, salt, Iterations)).ConfigureAwait(false);
-        var verifier = CreateVerifier(key);
-
-        var header = new ExternalVaultHeader
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
         {
-            Version = 1,
-            Salt = Convert.ToBase64String(salt),
-            Verifier = Convert.ToBase64String(verifier),
-            Iterations = Iterations
-        };
+            if (string.IsNullOrWhiteSpace(path) || string.IsNullOrWhiteSpace(password))
+                throw new ArgumentException("Path and password are required.");
 
-        if (await _syncFileService.ExistsAsync(path)) // Abstracted check
-        {
-            // We need to check if it has content (length > 0). ISyncFileService abstraction doesn't have Length?
-            // Open stream to check.
-            using var stream = await _syncFileService.OpenReadAsync(path);
-            var length = stream.Length;
-            stream.Close();
+            var salt = RandomNumberGenerator.GetBytes(SaltSize);
+            var key = await Task.Run(() => DeriveKey(password, salt, Iterations)).ConfigureAwait(false);
+            var verifier = CreateVerifier(key);
 
-            if (length > 0)
+            var header = new ExternalVaultHeader
             {
-                 try 
-                 {
-                    var existingHeader = await ReadHeaderAsync(path);
-                    if (existingHeader != null)
-                    {
-                        var existingSalt = Convert.FromBase64String(existingHeader.Salt);
-                        var existingKey = await Task.Run(() => DeriveKey(password, existingSalt, existingHeader.Iterations)).ConfigureAwait(false);
-                        var expectedVerifier = Convert.FromBase64String(existingHeader.Verifier);
-                        var actualVerifier = CreateVerifier(existingKey);
-                        
-                        if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
+                Version = 1,
+                Salt = Convert.ToBase64String(salt),
+                Verifier = Convert.ToBase64String(verifier),
+                Iterations = Iterations
+            };
+
+            if (await _syncFileService.ExistsAsync(path)) // Abstracted check
+            {
+                // We need to check if it has content (length > 0). ISyncFileService abstraction doesn't have Length?
+                // Open stream to check.
+                using var stream = await _syncFileService.OpenReadAsync(path);
+                var length = stream.Length;
+                stream.Close();
+
+                if (length > 0)
+                {
+                     try
+                     {
+                        var existingHeader = await ReadHeaderAsync(path);
+                        if (existingHeader != null)
                         {
-                             throw new InvalidOperationException("Das angegebene Passwort stimmt nicht mit der existierenden Sync-Datei überein.");
+                            var existingSalt = Convert.FromBase64String(existingHeader.Salt);
+                            var existingKey = await Task.Run(() => DeriveKey(password, existingSalt, existingHeader.Iterations)).ConfigureAwait(false);
+                            var expectedVerifier = Convert.FromBase64String(existingHeader.Verifier);
+                            var actualVerifier = CreateVerifier(existingKey);
+
+                            if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
+                            {
+                                 throw new InvalidOperationException("Das angegebene Passwort stimmt nicht mit der existierenden Sync-Datei überein.");
+                            }
+
+                            key = existingKey;
+                            header = existingHeader;
                         }
-                        
-                        key = existingKey; 
-                        header = existingHeader; 
-                    }
-                 }
-                 catch (Exception ex) when (ex is not InvalidOperationException)
-                 {
-                    // If parsing fails for any reason (e.g. legacy format or garbage), treat as invalid? 
-                    // Or ask user to overwrite? For now, throw is safer to avoid accidental data loss.
-                    throw new InvalidOperationException("Die Datei existiert bereits, ist aber keine gültige oder lesbare Sync-Datei.", ex);
-                 }
+                     }
+                     catch (Exception ex) when (ex is not InvalidOperationException)
+                     {
+                        // If parsing fails for any reason (e.g. legacy format or garbage), treat as invalid?
+                        // Or ask user to overwrite? For now, throw is safer to avoid accidental data loss.
+                        throw new InvalidOperationException("Die Datei existiert bereits, ist aber keine gültige oder lesbare Sync-Datei.", ex);
+                     }
+                }
+                else
+                {
+                    // File exists but is empty -> Initialize it
+                    var content = new ExternalVaultContent();
+                    await WriteVaultFileAsync(path, header, content, key);
+                }
             }
             else
             {
-                // File exists but is empty -> Initialize it
                 var content = new ExternalVaultContent();
                 await WriteVaultFileAsync(path, header, content, key);
             }
-        }
-        else
-        {
-            var content = new ExternalVaultContent();
-            await WriteVaultFileAsync(path, header, content, key);
-        }
 
-        Preferences.Set(SyncPathKey, path);
-        if (_appLockService.IsUnlocked)
-        {
-            var encryptedKey = _appLockService.EncryptWithMasterKey(key);
-            await SecureStorage.Default.SetAsync(SyncKeyStorageKey, Convert.ToBase64String(encryptedKey));
-            _cachedCommonKey = key;
+            Preferences.Set(SyncPathKey, path);
+            if (_appLockService.IsUnlocked)
+            {
+                var encryptedKey = _appLockService.EncryptWithMasterKey(key);
+                await SecureStorage.Default.SetAsync(SyncKeyStorageKey, Convert.ToBase64String(encryptedKey));
+                _cachedCommonKey = key;
+            }
+            else
+            {
+                 throw new InvalidOperationException("App must be unlocked to configure sync.");
+            }
         }
-        else
+        catch
         {
-             throw new InvalidOperationException("App must be unlocked to configure sync.");
+            dataOperation.Failed();
+            throw;
         }
     }
 
     public Task ClearConfigurationAsync()
     {
-        Preferences.Remove(SyncPathKey);
-        Preferences.Remove(SyncAccessModeKey);
-        SecureStorage.Default.Remove(SyncKeyStorageKey);
-        _cachedCommonKey = null;
-        return Task.CompletedTask;
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
+        {
+            Preferences.Remove(SyncPathKey);
+            Preferences.Remove(SyncAccessModeKey);
+            SecureStorage.Default.Remove(SyncKeyStorageKey);
+            _cachedCommonKey = null;
+            return Task.CompletedTask;
+        }
+        catch
+        {
+            dataOperation.Failed();
+            throw;
+        }
     }
 
     public Task<SyncAccessMode> GetAccessModeAsync()
@@ -160,28 +179,46 @@ public class SynchronizationService : ISynchronizationService
 
     public Task SetAccessModeAsync(SyncAccessMode mode)
     {
-        Preferences.Set(SyncAccessModeKey, mode.ToString());
-        return Task.CompletedTask;
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
+        {
+            Preferences.Set(SyncAccessModeKey, mode.ToString());
+            return Task.CompletedTask;
+        }
+        catch
+        {
+            dataOperation.Failed();
+            throw;
+        }
     }
 
     public async Task<bool> ValidatePasswordAsync(string password)
     {
-        var path = Preferences.Get(SyncPathKey, string.Empty);
-        if (string.IsNullOrEmpty(path)) return false; 
-        if (!await _syncFileService.ExistsAsync(path)) return false;
-
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var header = await ReadHeaderAsync(path);
-            var salt = Convert.FromBase64String(header.Salt);
-            var key = DeriveKey(password, salt, header.Iterations);
-            var expectedVerifier = Convert.FromBase64String(header.Verifier);
-            var actualVerifier = CreateVerifier(key);
-            return CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier);
+            var path = Preferences.Get(SyncPathKey, string.Empty);
+            if (string.IsNullOrEmpty(path)) return false;
+            if (!await _syncFileService.ExistsAsync(path)) return false;
+
+            try
+            {
+                var header = await ReadHeaderAsync(path);
+                var salt = Convert.FromBase64String(header.Salt);
+                var key = DeriveKey(password, salt, header.Iterations);
+                var expectedVerifier = Convert.FromBase64String(header.Verifier);
+                var actualVerifier = CreateVerifier(key);
+                return CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier);
+            }
+            catch
+            {
+                return false;
+            }
         }
         catch
         {
-            return false;
+            dataOperation.Failed();
+            throw;
         }
     }
 
@@ -225,166 +262,220 @@ public class SynchronizationService : ISynchronizationService
 
     public async Task SyncPasswordVaultAsync(IList<PasswordVaultEntry> localEntries, CancellationToken cancellationToken = default)
     {
-        // Use GetMergedPasswordVaultAsync which handles reading, merging, and WRITING back to the file.
-        var result = await GetMergedPasswordVaultAsync(localEntries, cancellationToken);
-        
-        // Critical: Update the local list instance so the UI sees the changes!
-        localEntries.Clear();
-        foreach (var entry in result.MergedEntries)
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
         {
-            localEntries.Add(entry);
+            // Use GetMergedPasswordVaultAsync which handles reading, merging, and WRITING back to the file.
+            var result = await GetMergedPasswordVaultAsync(localEntries, cancellationToken);
+
+            // Critical: Update the local list instance so the UI sees the changes!
+            localEntries.Clear();
+            foreach (var entry in result.MergedEntries)
+            {
+                localEntries.Add(entry);
+            }
+        }
+        catch
+        {
+            dataOperation.Failed();
+            throw;
         }
     }
 
     public async Task SyncDataVaultAsync(IList<PasswordVaultEntry> localEntries, CancellationToken cancellationToken = default)
     {
-        var path = GetPath();
-        if (!await _syncFileService.ExistsAsync(path)) return; 
-
-        var key = await GetKeyAsync();
-        
-        await _fileLock.WaitAsync(cancellationToken);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var (header, content) = await ReadVaultFileAsync(path, key);
-            
-            var remoteEntries = content.DataVault.Select(d => d.ToModel()).ToList();
-            var result = _vaultMergeService.MergeEntries(localEntries, remoteEntries);
-            
-            content.DataVault = result.MergedEntries
-                .Select(PasswordVaultEntryDto.FromModel)
-                .ToList();
-            content.LastModified = DateTimeOffset.UtcNow;
+            var path = GetPath();
+            if (!await _syncFileService.ExistsAsync(path)) return;
 
-            await WriteVaultFileAsync(path, header, content, key);
-            
-            localEntries.Clear();
-            foreach(var e in result.MergedEntries) localEntries.Add(e);
+            var key = await GetKeyAsync();
+
+            await _fileLock.WaitAsync(cancellationToken);
+            try
+            {
+                var (header, content) = await ReadVaultFileAsync(path, key);
+
+                var remoteEntries = content.DataVault.Select(d => d.ToModel()).ToList();
+                var result = _vaultMergeService.MergeEntries(localEntries, remoteEntries);
+
+                content.DataVault = result.MergedEntries
+                    .Select(PasswordVaultEntryDto.FromModel)
+                    .ToList();
+                content.LastModified = DateTimeOffset.UtcNow;
+
+                await WriteVaultFileAsync(path, header, content, key);
+
+                localEntries.Clear();
+                foreach(var e in result.MergedEntries) localEntries.Add(e);
+            }
+            finally
+            {
+                _fileLock.Release();
+            }
         }
-        finally
+        catch
         {
-            _fileLock.Release();
+            dataOperation.Failed();
+            throw;
         }
     }
 
     public async Task SyncAuthenticatorAsync(IList<TotpEntry> localEntries, CancellationToken cancellationToken = default)
     {
-         var path = GetPath();
-        if (!await _syncFileService.ExistsAsync(path)) return;
-
-        var key = await GetKeyAsync();
-        
-        await _fileLock.WaitAsync(cancellationToken);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var (header, content) = await ReadVaultFileAsync(path, key);
-            
-            var remoteEntries = content.Authenticator.Select(d => d.ToModel()).ToList();
-            var result = _vaultMergeService.MergeEntries(localEntries, remoteEntries);
-            
-            content.Authenticator = result.MergedEntries
-                .Select(TotpEntryDto.FromModel)
-                .ToList();
-            content.LastModified = DateTimeOffset.UtcNow;
+             var path = GetPath();
+            if (!await _syncFileService.ExistsAsync(path)) return;
 
-            await WriteVaultFileAsync(path, header, content, key);
-            
-             localEntries.Clear();
-            foreach(var e in result.MergedEntries) localEntries.Add(e);
+            var key = await GetKeyAsync();
+
+            await _fileLock.WaitAsync(cancellationToken);
+            try
+            {
+                var (header, content) = await ReadVaultFileAsync(path, key);
+
+                var remoteEntries = content.Authenticator.Select(d => d.ToModel()).ToList();
+                var result = _vaultMergeService.MergeEntries(localEntries, remoteEntries);
+
+                content.Authenticator = result.MergedEntries
+                    .Select(TotpEntryDto.FromModel)
+                    .ToList();
+                content.LastModified = DateTimeOffset.UtcNow;
+
+                await WriteVaultFileAsync(path, header, content, key);
+
+                 localEntries.Clear();
+                foreach(var e in result.MergedEntries) localEntries.Add(e);
+            }
+            finally
+            {
+                _fileLock.Release();
+            }
         }
-        finally
+        catch
         {
-            _fileLock.Release();
+            dataOperation.Failed();
+            throw;
         }
     }
 
     public async Task<Services.Vault.MergeResult<PasswordVaultEntry>> GetMergedPasswordVaultAsync(IList<PasswordVaultEntry> localEntries, CancellationToken cancellationToken = default)
     {
-         var path = GetPath();
-        if (!await _syncFileService.ExistsAsync(path)) return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
-
-        var key = await GetKeyAsync();
-        
-        await _fileLock.WaitAsync(cancellationToken);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var (header, content) = await ReadVaultFileAsync(path, key);
-            
-            var remoteEntries = content.PasswordVault.Select(d => d.ToModel()).ToList();
-            var result = _vaultMergeService.MergeEntries(localEntries, remoteEntries);
-            
-            content.PasswordVault = result.MergedEntries
-                .Select(PasswordVaultEntryDto.FromModel)
-                .ToList();
-            content.LastModified = DateTimeOffset.UtcNow;
+             var path = GetPath();
+            if (!await _syncFileService.ExistsAsync(path)) return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
 
-            await WriteVaultFileAsync(path, header, content, key);
-            
-            return result;
+            var key = await GetKeyAsync();
+
+            await _fileLock.WaitAsync(cancellationToken);
+            try
+            {
+                var (header, content) = await ReadVaultFileAsync(path, key);
+
+                var remoteEntries = content.PasswordVault.Select(d => d.ToModel()).ToList();
+                var result = _vaultMergeService.MergeEntries(localEntries, remoteEntries);
+
+                content.PasswordVault = result.MergedEntries
+                    .Select(PasswordVaultEntryDto.FromModel)
+                    .ToList();
+                content.LastModified = DateTimeOffset.UtcNow;
+
+                await WriteVaultFileAsync(path, header, content, key);
+
+                return result;
+            }
+            finally
+            {
+                _fileLock.Release();
+            }
         }
-        finally
+        catch
         {
-            _fileLock.Release();
+            dataOperation.Failed();
+            throw;
         }
     }
 
     public async Task<Services.Vault.MergeResult<PasswordVaultEntry>> GetMergedDataVaultAsync(IList<PasswordVaultEntry> localEntries, CancellationToken cancellationToken = default)
     {
-         var path = GetPath();
-        if (!await _syncFileService.ExistsAsync(path)) return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
-
-        var key = await GetKeyAsync();
-        
-        await _fileLock.WaitAsync(cancellationToken);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var (header, content) = await ReadVaultFileAsync(path, key);
-            
-            var remoteEntries = content.DataVault.Select(d => d.ToModel()).ToList();
-            var result = _vaultMergeService.MergeEntries(localEntries, remoteEntries);
-            
-            content.DataVault = result.MergedEntries
-                .Select(PasswordVaultEntryDto.FromModel)
-                .ToList();
-            content.LastModified = DateTimeOffset.UtcNow;
+             var path = GetPath();
+            if (!await _syncFileService.ExistsAsync(path)) return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
 
-            await WriteVaultFileAsync(path, header, content, key);
-            
-            return result;
+            var key = await GetKeyAsync();
+
+            await _fileLock.WaitAsync(cancellationToken);
+            try
+            {
+                var (header, content) = await ReadVaultFileAsync(path, key);
+
+                var remoteEntries = content.DataVault.Select(d => d.ToModel()).ToList();
+                var result = _vaultMergeService.MergeEntries(localEntries, remoteEntries);
+
+                content.DataVault = result.MergedEntries
+                    .Select(PasswordVaultEntryDto.FromModel)
+                    .ToList();
+                content.LastModified = DateTimeOffset.UtcNow;
+
+                await WriteVaultFileAsync(path, header, content, key);
+
+                return result;
+            }
+            finally
+            {
+                _fileLock.Release();
+            }
         }
-        finally
+        catch
         {
-            _fileLock.Release();
+            dataOperation.Failed();
+            throw;
         }
     }
 
     public async Task<Services.Vault.MergeResult<TotpEntry>> GetMergedAuthenticatorAsync(IList<TotpEntry> localEntries, CancellationToken cancellationToken = default)
     {
-         var path = GetPath();
-        if (!await _syncFileService.ExistsAsync(path)) return new MergeResult<TotpEntry> { MergedEntries = localEntries.ToList() };
-
-        var key = await GetKeyAsync();
-        
-        await _fileLock.WaitAsync(cancellationToken);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var (header, content) = await ReadVaultFileAsync(path, key);
-            
-            var remoteEntries = content.Authenticator.Select(d => d.ToModel()).ToList();
-            var result = _vaultMergeService.MergeEntries(localEntries, remoteEntries);
-            
-            content.Authenticator = result.MergedEntries
-                .Select(TotpEntryDto.FromModel)
-                .ToList();
-            content.LastModified = DateTimeOffset.UtcNow;
+             var path = GetPath();
+            if (!await _syncFileService.ExistsAsync(path)) return new MergeResult<TotpEntry> { MergedEntries = localEntries.ToList() };
 
-            await WriteVaultFileAsync(path, header, content, key);
-            
-            return result;
+            var key = await GetKeyAsync();
+
+            await _fileLock.WaitAsync(cancellationToken);
+            try
+            {
+                var (header, content) = await ReadVaultFileAsync(path, key);
+
+                var remoteEntries = content.Authenticator.Select(d => d.ToModel()).ToList();
+                var result = _vaultMergeService.MergeEntries(localEntries, remoteEntries);
+
+                content.Authenticator = result.MergedEntries
+                    .Select(TotpEntryDto.FromModel)
+                    .ToList();
+                content.LastModified = DateTimeOffset.UtcNow;
+
+                await WriteVaultFileAsync(path, header, content, key);
+
+                return result;
+            }
+            finally
+            {
+                _fileLock.Release();
+            }
         }
-        finally
+        catch
         {
-            _fileLock.Release();
+            dataOperation.Failed();
+            throw;
         }
     }
 
@@ -392,24 +483,33 @@ public class SynchronizationService : ISynchronizationService
         IList<PasswordVaultEntry> localEntries,
         CancellationToken cancellationToken = default)
     {
-        var path = GetPath();
-        if (!await _syncFileService.ExistsAsync(path))
-        {
-            return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
-        }
-
-        var key = await GetKeyAsync();
-
-        await _fileLock.WaitAsync(cancellationToken);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var (_, content) = await ReadVaultFileAsync(path, key);
-            var remoteEntries = content.PasswordVault.Select(d => d.ToModel()).ToList();
-            return _vaultMergeService.MergeEntries(localEntries, remoteEntries);
+            var path = GetPath();
+            if (!await _syncFileService.ExistsAsync(path))
+            {
+                return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
+            }
+
+            var key = await GetKeyAsync();
+
+            await _fileLock.WaitAsync(cancellationToken);
+            try
+            {
+                var (_, content) = await ReadVaultFileAsync(path, key);
+                var remoteEntries = content.PasswordVault.Select(d => d.ToModel()).ToList();
+                return _vaultMergeService.MergeEntries(localEntries, remoteEntries);
+            }
+            finally
+            {
+                _fileLock.Release();
+            }
         }
-        finally
+        catch
         {
-            _fileLock.Release();
+            dataOperation.Failed();
+            throw;
         }
     }
 
@@ -417,24 +517,33 @@ public class SynchronizationService : ISynchronizationService
         IList<PasswordVaultEntry> localEntries,
         CancellationToken cancellationToken = default)
     {
-        var path = GetPath();
-        if (!await _syncFileService.ExistsAsync(path))
-        {
-            return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
-        }
-
-        var key = await GetKeyAsync();
-
-        await _fileLock.WaitAsync(cancellationToken);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var (_, content) = await ReadVaultFileAsync(path, key);
-            var remoteEntries = content.DataVault.Select(d => d.ToModel()).ToList();
-            return _vaultMergeService.MergeEntries(localEntries, remoteEntries);
+            var path = GetPath();
+            if (!await _syncFileService.ExistsAsync(path))
+            {
+                return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
+            }
+
+            var key = await GetKeyAsync();
+
+            await _fileLock.WaitAsync(cancellationToken);
+            try
+            {
+                var (_, content) = await ReadVaultFileAsync(path, key);
+                var remoteEntries = content.DataVault.Select(d => d.ToModel()).ToList();
+                return _vaultMergeService.MergeEntries(localEntries, remoteEntries);
+            }
+            finally
+            {
+                _fileLock.Release();
+            }
         }
-        finally
+        catch
         {
-            _fileLock.Release();
+            dataOperation.Failed();
+            throw;
         }
     }
 
@@ -442,24 +551,33 @@ public class SynchronizationService : ISynchronizationService
         IList<TotpEntry> localEntries,
         CancellationToken cancellationToken = default)
     {
-        var path = GetPath();
-        if (!await _syncFileService.ExistsAsync(path))
-        {
-            return new MergeResult<TotpEntry> { MergedEntries = localEntries.ToList() };
-        }
-
-        var key = await GetKeyAsync();
-
-        await _fileLock.WaitAsync(cancellationToken);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var (_, content) = await ReadVaultFileAsync(path, key);
-            var remoteEntries = content.Authenticator.Select(d => d.ToModel()).ToList();
-            return _vaultMergeService.MergeEntries(localEntries, remoteEntries);
+            var path = GetPath();
+            if (!await _syncFileService.ExistsAsync(path))
+            {
+                return new MergeResult<TotpEntry> { MergedEntries = localEntries.ToList() };
+            }
+
+            var key = await GetKeyAsync();
+
+            await _fileLock.WaitAsync(cancellationToken);
+            try
+            {
+                var (_, content) = await ReadVaultFileAsync(path, key);
+                var remoteEntries = content.Authenticator.Select(d => d.ToModel()).ToList();
+                return _vaultMergeService.MergeEntries(localEntries, remoteEntries);
+            }
+            finally
+            {
+                _fileLock.Release();
+            }
         }
-        finally
+        catch
         {
-            _fileLock.Release();
+            dataOperation.Failed();
+            throw;
         }
     }
 
@@ -475,7 +593,7 @@ public class SynchronizationService : ISynchronizationService
 
         var file = JsonSerializer.Deserialize<ExternalVaultFile>(json, _jsonOptions);
         if (file == null) throw new InvalidDataException("Invalid sync file.");
-        
+
         if (string.IsNullOrEmpty(file.CipherText)) throw new InvalidDataException("Sync file has no content (CipherText empty).");
 
         var encryptedBytes = Convert.FromBase64String(file.CipherText);
@@ -483,8 +601,8 @@ public class SynchronizationService : ISynchronizationService
 
         var plainBytes = DecryptWithKey(encryptedBytes, key);
         var plainJson = Encoding.UTF8.GetString(plainBytes);
-        
-        var content = JsonSerializer.Deserialize<ExternalVaultContent>(plainJson, _jsonOptions) 
+
+        var content = JsonSerializer.Deserialize<ExternalVaultContent>(plainJson, _jsonOptions)
                       ?? new ExternalVaultContent();
 
         return (file.Header, content);
@@ -507,8 +625,8 @@ public class SynchronizationService : ISynchronizationService
         // Try to read Magic Header (4 bytes)
         var magicBuffer = new byte[4];
         var read = await ReadExactlyAsync(stream, magicBuffer, 4);
-        
-        if (read < 4) 
+
+        if (read < 4)
         {
             if (read == 0) throw new InvalidDataException("Sync file is empty.");
 
@@ -516,7 +634,7 @@ public class SynchronizationService : ISynchronizationService
             // If we read < 4 bytes and EOF, it can't be a valid magic header anyway.
             // Try to treat as legacy text provided it's not binary garbage.
             var sb = new StringBuilder(Encoding.UTF8.GetString(magicBuffer, 0, read));
-            using var reader = new StreamReader(stream); 
+            using var reader = new StreamReader(stream);
             sb.Append(await reader.ReadToEndAsync());
             return sb.ToString();
         }
@@ -526,20 +644,20 @@ public class SynchronizationService : ISynchronizationService
         {
             // Read Length (4 bytes, Little Endian)
             var lenBuffer = new byte[4];
-            if (await ReadExactlyAsync(stream, lenBuffer, 4) < 4) 
+            if (await ReadExactlyAsync(stream, lenBuffer, 4) < 4)
                 throw new InvalidDataException("Corrupted sync file (missing length).");
-            
+
             var length = BitConverter.ToInt32(lenBuffer, 0);
-            
+
             if (length <= 0) throw new InvalidDataException($"Corrupted sync file (Invalid length: {length}).");
 
             // Read Content
             var contentBuffer = new byte[length];
             var totalRead = await ReadExactlyAsync(stream, contentBuffer, length);
-            
-            if (totalRead < length) 
+
+            if (totalRead < length)
                 throw new InvalidDataException($"Unexpected end of stream. Expected {length}, got {totalRead}.");
-            
+
             return Encoding.UTF8.GetString(contentBuffer);
         }
         else

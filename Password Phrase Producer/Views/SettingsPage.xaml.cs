@@ -17,10 +17,11 @@ public partial class SettingsPage : ContentPage
     private readonly VaultSettingsViewModel _viewModel;
     private LoadingPage? _loadingPage;
 
-    public SettingsPage(VaultSettingsViewModel viewModel)
+    public SettingsPage(VaultSettingsViewModel viewModel, UpdateSettingsViewModel updates)
     {
         InitializeComponent();
         BindingContext = _viewModel = viewModel;
+        UpdatePanel.BindingContext = updates;
     }
 
     private async Task<bool> EnsureVaultUnlockedAsync()
@@ -208,7 +209,7 @@ public partial class SettingsPage : ContentPage
     {
         base.OnAppearing();
         _viewModel.Activate();
-        
+
         // Run initialization in background to avoid blocking UI thread
         _ = Task.Run(async () =>
         {
@@ -655,7 +656,7 @@ public partial class SettingsPage : ContentPage
         }
 
         var navigation = Navigation ?? Microsoft.Maui.Controls.Application.Current?.MainPage?.Navigation;
-        if (navigation is null) 
+        if (navigation is null)
         {
             return;
         }
@@ -676,7 +677,7 @@ public partial class SettingsPage : ContentPage
         {
             await navigation.PopModalAsync();
         }
-        
+
         _loadingPage = null;
     }
 
@@ -789,7 +790,7 @@ public partial class SettingsPage : ContentPage
 
             // All ensured unlocked, proceed to sync
             await ShowLoadingPageAsync("Synchronisiere Tresore...");
-            try 
+            try
             {
                 await _viewModel.SyncAllVaultsAsync();
             }

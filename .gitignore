@@ -378,3 +378,6 @@ Directory.Build.Override.props
 # Only the "snapshots" directory should be added to Git, not the "snapshots-diff" directory
 snapshots-diff/
 .claude/
+*.keystore
+*.dpapi
+*.encrypted.pem

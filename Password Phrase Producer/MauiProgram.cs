@@ -6,6 +6,7 @@ using Password_Phrase_Producer.Services.Synchronization;
 using Password_Phrase_Producer.Services.Vault;
 using Password_Phrase_Producer.ViewModels;
 using Password_Phrase_Producer.Views;
+using Password_Phrase_Producer.Services.Updates;
 
 namespace Password_Phrase_Producer;
 
@@ -29,6 +30,7 @@ public static class MauiProgram
 #endif
 
         builder.Services.AddSingleton<VaultMergeService>();
+        builder.Services.AddAppUpdates();
         builder.Services.AddSingleton<PasswordVaultService>();
         builder.Services.AddSingleton<DataVaultService>();
         builder.Services.AddSingleton<TotpEncryptionService>();
@@ -49,7 +51,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<Services.Security.IAppLockService, Services.Security.AppLockService>();
         builder.Services.AddSingleton<Services.Storage.ISecureFileService, Services.Storage.SecureFileService>();
         builder.Services.AddSingleton<ISynchronizationService, SynchronizationService>();
-        
+
         builder.Services.AddTransient<Views.Security.AppLoginPage>();
         builder.Services.AddTransient<Views.Security.SetupAppPasswordPage>();
 
@@ -58,7 +60,7 @@ public static class MauiProgram
 #elif ANDROID
         builder.Services.AddSingleton<Password_Phrase_Producer.Services.Storage.ISyncFileService, Password_Phrase_Producer.Platforms.Android.Services.AndroidSyncFileService>();
 #endif
-        
+
         return builder.Build();
     }
 }

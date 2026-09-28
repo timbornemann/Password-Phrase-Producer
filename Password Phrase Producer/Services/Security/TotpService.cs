@@ -1,3 +1,4 @@
+using PasswordPhraseProducer.Updates;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -28,7 +29,7 @@ public class TotpService
 
 
     public TotpService(
-        TotpEncryptionService encryptionService, 
+        TotpEncryptionService encryptionService,
         Services.Vault.VaultMergeService vaultMergeService,
         ISynchronizationService syncService)
     {
@@ -48,113 +49,69 @@ public class TotpService
 
     public async Task<List<TotpEntry>> GetEntriesAsync(CancellationToken cancellationToken = default)
     {
-        if (!_encryptionService.IsUnlocked)
-        {
-             return new List<TotpEntry>();
-        }
-
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-            return entries.Where(e => !e.IsDeleted).ToList();
+            if (!_encryptionService.IsUnlocked)
+            {
+                 return new List<TotpEntry>();
+            }
+
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                return entries.Where(e => !e.IsDeleted).ToList();
+            }
+            finally
+            {
+                _syncLock.Release();
+            }
         }
-        finally
+        catch
         {
-            _syncLock.Release();
+            dataOperation.Failed();
+            throw;
         }
     }
 
     public async Task AddOrUpdateEntryAsync(TotpEntry entry, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(entry);
-        EnsureUnlocked();
-
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-            var existingIndex = entries.FindIndex(e => e.Id == entry.Id);
-            var isSyncConfigured = await _syncService.IsConfiguredAsync().ConfigureAwait(false);
-            var isReadOnlySync = isSyncConfigured && await IsReadOnlySyncAsync().ConfigureAwait(false);
+            ArgumentNullException.ThrowIfNull(entry);
+            EnsureUnlocked();
 
-            if (isReadOnlySync)
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
-                existingIndex = entries.FindIndex(e => e.Id == entry.Id);
-            }
+                var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                var existingIndex = entries.FindIndex(e => e.Id == entry.Id);
+                var isSyncConfigured = await _syncService.IsConfiguredAsync().ConfigureAwait(false);
+                var isReadOnlySync = isSyncConfigured && await IsReadOnlySyncAsync().ConfigureAwait(false);
 
-            entry.ModifiedAt = DateTimeOffset.UtcNow;
-            entry.IsDeleted = false; // Restore if it was deleted
-
-            if (existingIndex >= 0)
-            {
-                entries[existingIndex] = entry;
-            }
-            else
-            {
-                entries.Add(entry);
-            }
-
-            if (isSyncConfigured)
-            {
-                try 
+                if (isReadOnlySync)
                 {
-                    if (!isReadOnlySync)
-                    {
-                        await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
-                    }
-                    Preferences.Set("AuthenticatorLastSync", DateTime.Now);
+                    await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                    existingIndex = entries.FindIndex(e => e.Id == entry.Id);
                 }
-                catch (Exception ex)
-                {
-                    if (!isReadOnlySync)
-                    {
-                         MainThread.BeginInvokeOnMainThread(async () => 
-                         {
-                             await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Auth): {ex.Message}", "OK");
-                         });
-                    }
-                }
-            }
 
-            await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            _syncLock.Release();
-        }
-
-        EntriesChanged?.Invoke(this, EventArgs.Empty);
-    }
-
-    public async Task DeleteEntryAsync(Guid entryId, CancellationToken cancellationToken = default)
-    {
-        EnsureUnlocked();
-
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-            var entry = entries.FirstOrDefault(e => e.Id == entryId);
-            var isSyncConfigured = await _syncService.IsConfiguredAsync().ConfigureAwait(false);
-            var isReadOnlySync = isSyncConfigured && await IsReadOnlySyncAsync().ConfigureAwait(false);
-
-            if (isReadOnlySync)
-            {
-                await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
-                entry = entries.FirstOrDefault(e => e.Id == entryId);
-            }
-
-            if (entry != null)
-            {
-                // Soft delete
-                entry.IsDeleted = true;
                 entry.ModifiedAt = DateTimeOffset.UtcNow;
+                entry.IsDeleted = false; // Restore if it was deleted
+
+                if (existingIndex >= 0)
+                {
+                    entries[existingIndex] = entry;
+                }
+                else
+                {
+                    entries.Add(entry);
+                }
 
                 if (isSyncConfigured)
                 {
-                    try 
+                    try
                     {
                         if (!isReadOnlySync)
                         {
@@ -166,22 +123,93 @@ public class TotpService
                     {
                         if (!isReadOnlySync)
                         {
-                             MainThread.BeginInvokeOnMainThread(async () => 
+                             MainThread.BeginInvokeOnMainThread(async () =>
                              {
                                  await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Auth): {ex.Message}", "OK");
                              });
                         }
                     }
                 }
+
                 await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
             }
+            finally
+            {
+                _syncLock.Release();
+            }
+
+            EntriesChanged?.Invoke(this, EventArgs.Empty);
         }
-        finally
+        catch
         {
-            _syncLock.Release();
+            dataOperation.Failed();
+            throw;
         }
-        
-        EntriesChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public async Task DeleteEntryAsync(Guid entryId, CancellationToken cancellationToken = default)
+    {
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
+        {
+            EnsureUnlocked();
+
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                var entry = entries.FirstOrDefault(e => e.Id == entryId);
+                var isSyncConfigured = await _syncService.IsConfiguredAsync().ConfigureAwait(false);
+                var isReadOnlySync = isSyncConfigured && await IsReadOnlySyncAsync().ConfigureAwait(false);
+
+                if (isReadOnlySync)
+                {
+                    await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                    entry = entries.FirstOrDefault(e => e.Id == entryId);
+                }
+
+                if (entry != null)
+                {
+                    // Soft delete
+                    entry.IsDeleted = true;
+                    entry.ModifiedAt = DateTimeOffset.UtcNow;
+
+                    if (isSyncConfigured)
+                    {
+                        try
+                        {
+                            if (!isReadOnlySync)
+                            {
+                                await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
+                            }
+                            Preferences.Set("AuthenticatorLastSync", DateTime.Now);
+                        }
+                        catch (Exception ex)
+                        {
+                            if (!isReadOnlySync)
+                            {
+                                 MainThread.BeginInvokeOnMainThread(async () =>
+                                 {
+                                     await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Auth): {ex.Message}", "OK");
+                                 });
+                            }
+                        }
+                    }
+                    await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                _syncLock.Release();
+            }
+
+            EntriesChanged?.Invoke(this, EventArgs.Empty);
+        }
+        catch
+        {
+            dataOperation.Failed();
+            throw;
+        }
     }
 
     public TotpCode? GenerateCode(TotpEntry entry)
@@ -214,31 +242,40 @@ public class TotpService
 
     public async Task<List<TotpEntry>> ImportFromUriAsync(string uriString)
     {
-        if (string.IsNullOrWhiteSpace(uriString)) return new List<TotpEntry>();
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
+        {
+            if (string.IsNullOrWhiteSpace(uriString)) return new List<TotpEntry>();
 
-        if (uriString.StartsWith("otpauth://totp/"))
-        {
-            var entry = ParseOtpAuthUri(uriString);
-            if (entry != null)
+            if (uriString.StartsWith("otpauth://totp/"))
             {
-                await AddOrUpdateEntryAsync(entry);
-                return new List<TotpEntry> { entry };
-            }
-        }
-        else if (uriString.StartsWith("otpauth-migration://offline"))
-        {
-            var entries = ParseMigrationPayload(uriString);
-            if (entries.Any())
-            {
-                foreach (var entry in entries)
+                var entry = ParseOtpAuthUri(uriString);
+                if (entry != null)
                 {
                     await AddOrUpdateEntryAsync(entry);
+                    return new List<TotpEntry> { entry };
                 }
-                return entries;
             }
-        }
+            else if (uriString.StartsWith("otpauth-migration://offline"))
+            {
+                var entries = ParseMigrationPayload(uriString);
+                if (entries.Any())
+                {
+                    foreach (var entry in entries)
+                    {
+                        await AddOrUpdateEntryAsync(entry);
+                    }
+                    return entries;
+                }
+            }
 
-        return new List<TotpEntry>();
+            return new List<TotpEntry>();
+        }
+        catch
+        {
+            dataOperation.Failed();
+            throw;
+        }
     }
 
     private TotpEntry? ParseOtpAuthUri(string uriString)
@@ -247,10 +284,10 @@ public class TotpService
         {
             var uri = new Uri(uriString);
             var path = Uri.UnescapeDataString(uri.AbsolutePath.TrimStart('/')); // "label"
-            
+
             // Format: otpauth://totp/Issuer:Account?secret=...
             // or: otpauth://totp/Account?secret=...&issuer=...
-            
+
             var label = path;
             string issuer = "";
             string accountName = label;
@@ -362,10 +399,10 @@ public class TotpService
         }
 
         byte[]? decryptedBytes = null;
-        try 
+        try
         {
             decryptedBytes = _encryptionService.Decrypt(encryptedBytes);
-            
+
             if (decryptedBytes.Length == 0)
             {
                 return new List<TotpEntry>();
@@ -408,13 +445,13 @@ public class TotpService
 
         var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
         var bytes = Encoding.UTF8.GetBytes(json);
-        
+
         try
         {
             var encryptedBytes = _encryptionService.Encrypt(bytes);
-            
+
             Directory.CreateDirectory(Path.GetDirectoryName(_totpFilePath)!);
-            await File.WriteAllBytesAsync(_totpFilePath, encryptedBytes, cancellationToken).ConfigureAwait(false);
+            await AtomicFile.WriteAsync(_totpFilePath, encryptedBytes, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -428,65 +465,74 @@ public class TotpService
     /// </summary>
     public async Task<byte[]> ExportWithFilePasswordAsync(string filePassword, CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);
-        EnsureUnlocked();
-
-        const int KeySizeBytes = 32;
-        const int SaltSizeBytes = 16;
-        const int Pbkdf2Iterations = 200_000;
-
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            // 1. Klardaten auslesen
-            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-            var dtos = entries.Select(TotpEntryDto.FromModel).ToList();
+            ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);
+            EnsureUnlocked();
 
-            var snapshot = new TotpSnapshotDto
-            {
-                Entries = dtos,
-                ExportedAt = DateTimeOffset.UtcNow
-            };
+            const int KeySizeBytes = 32;
+            const int SaltSizeBytes = 16;
+            const int Pbkdf2Iterations = 200_000;
 
-            var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
-            var plainBytes = Encoding.UTF8.GetBytes(json);
-
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                // 2. Mit Datei-Passwort verschlüsseln (neue Salt/Key für Export)
-                var salt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
-                var key = DeriveKey(filePassword, salt, Pbkdf2Iterations);
+                // 1. Klardaten auslesen
+                var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                var dtos = entries.Select(TotpEntryDto.FromModel).ToList();
+
+                var snapshot = new TotpSnapshotDto
+                {
+                    Entries = dtos,
+                    ExportedAt = DateTimeOffset.UtcNow
+                };
+
+                var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
+                var plainBytes = Encoding.UTF8.GetBytes(json);
+
                 try
                 {
-                    var encrypted = EncryptWithKey(plainBytes, key);
-                    var verifier = CreateVerifier(key);
-
-                    // 3. Format: { salt, verifier, iterations, cipherText }
-                    var exportDto = new PortableBackupDto
+                    // 2. Mit Datei-Passwort verschlüsseln (neue Salt/Key für Export)
+                    var salt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
+                    var key = DeriveKey(filePassword, salt, Pbkdf2Iterations);
+                    try
                     {
-                        Salt = Convert.ToBase64String(salt),
-                        Verifier = Convert.ToBase64String(verifier),
-                        Iterations = Pbkdf2Iterations,
-                        CipherText = Convert.ToBase64String(encrypted),
-                        CreatedAt = DateTimeOffset.UtcNow
-                    };
+                        var encrypted = EncryptWithKey(plainBytes, key);
+                        var verifier = CreateVerifier(key);
 
-                    return Encoding.UTF8.GetBytes(JsonSerializer.Serialize(exportDto, _jsonOptions));
+                        // 3. Format: { salt, verifier, iterations, cipherText }
+                        var exportDto = new PortableBackupDto
+                        {
+                            Salt = Convert.ToBase64String(salt),
+                            Verifier = Convert.ToBase64String(verifier),
+                            Iterations = Pbkdf2Iterations,
+                            CipherText = Convert.ToBase64String(encrypted),
+                            CreatedAt = DateTimeOffset.UtcNow
+                        };
+
+                        return Encoding.UTF8.GetBytes(JsonSerializer.Serialize(exportDto, _jsonOptions));
+                    }
+                    finally
+                    {
+                        Array.Clear(key);
+                    }
                 }
                 finally
                 {
-                    Array.Clear(key);
+                    // Plain-Text Daten aus dem Speicher löschen
+                    Array.Clear(plainBytes);
                 }
             }
             finally
             {
-                // Plain-Text Daten aus dem Speicher löschen
-                Array.Clear(plainBytes);
+                _syncLock.Release();
             }
         }
-        finally
+        catch
         {
-            _syncLock.Release();
+            dataOperation.Failed();
+            throw;
         }
     }
 
@@ -505,65 +551,74 @@ public class TotpService
 
     public async Task ImportWithFilePasswordAsync(Stream stream, string filePassword, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(stream);
-        ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);
-        EnsureUnlocked();
-
-        // 1. Datei lesen und parsen
-        using var reader = new StreamReader(stream, Encoding.UTF8, leaveOpen: true);
-        var json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-        var dto = JsonSerializer.Deserialize<PortableBackupDto>(json, _jsonOptions)
-                  ?? throw new InvalidOperationException("Ungültiges Export-Format.");
-
-        // 2. Mit Datei-Passwort entschlüsseln
-        var salt = Convert.FromBase64String(dto.Salt);
-        var key = DeriveKey(filePassword, salt, dto.Iterations);
-
-        // Verifier prüfen
-        var expectedVerifier = Convert.FromBase64String(dto.Verifier);
-        var actualVerifier = CreateVerifier(key);
-        if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
-        {
-            Array.Clear(key);
-            throw new InvalidOperationException("Falsches Datei-Passwort.");
-        }
-
-        var encrypted = Convert.FromBase64String(dto.CipherText);
-        var plainBytes = DecryptWithKey(encrypted, key);
-        Array.Clear(key);
-
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            // 3. Klardaten in Tresor einfügen
-            var jsonString = Encoding.UTF8.GetString(plainBytes);
-            var snapshot = JsonSerializer.Deserialize<TotpSnapshotDto>(jsonString, _jsonOptions)
-                          ?? throw new InvalidOperationException("Ungültiges Snapshot-Format.");
-            
-            if (snapshot.Entries is null)
+            ArgumentNullException.ThrowIfNull(stream);
+            ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);
+            EnsureUnlocked();
+
+            // 1. Datei lesen und parsen
+            using var reader = new StreamReader(stream, Encoding.UTF8, leaveOpen: true);
+            var json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            var dto = JsonSerializer.Deserialize<PortableBackupDto>(json, _jsonOptions)
+                      ?? throw new InvalidOperationException("Ungültiges Export-Format.");
+
+            // 2. Mit Datei-Passwort entschlüsseln
+            var salt = Convert.FromBase64String(dto.Salt);
+            var key = DeriveKey(filePassword, salt, dto.Iterations);
+
+            // Verifier prüfen
+            var expectedVerifier = Convert.FromBase64String(dto.Verifier);
+            var actualVerifier = CreateVerifier(key);
+            if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
             {
-                return;
+                Array.Clear(key);
+                throw new InvalidOperationException("Falsches Datei-Passwort.");
             }
 
-            var entries = snapshot.Entries.Select(e => e.ToModel()).ToList();
+            var encrypted = Convert.FromBase64String(dto.CipherText);
+            var plainBytes = DecryptWithKey(encrypted, key);
+            Array.Clear(key);
 
-            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                var existingEntries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-                var result = _vaultMergeService.MergeEntries(existingEntries, entries);
-                await SaveEntriesInternalAsync(result.MergedEntries, cancellationToken).ConfigureAwait(false);
+                // 3. Klardaten in Tresor einfügen
+                var jsonString = Encoding.UTF8.GetString(plainBytes);
+                var snapshot = JsonSerializer.Deserialize<TotpSnapshotDto>(jsonString, _jsonOptions)
+                              ?? throw new InvalidOperationException("Ungültiges Snapshot-Format.");
+
+                if (snapshot.Entries is null)
+                {
+                    return;
+                }
+
+                var entries = snapshot.Entries.Select(e => e.ToModel()).ToList();
+
+                await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    var existingEntries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                    var result = _vaultMergeService.MergeEntries(existingEntries, entries);
+                    await SaveEntriesInternalAsync(result.MergedEntries, cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    _syncLock.Release();
+                }
+
+                EntriesChanged?.Invoke(this, EventArgs.Empty);
             }
             finally
             {
-                _syncLock.Release();
+                // Plain-Text Daten aus dem Speicher löschen
+                Array.Clear(plainBytes);
             }
-
-            EntriesChanged?.Invoke(this, EventArgs.Empty);
         }
-        finally
+        catch
         {
-            // Plain-Text Daten aus dem Speicher löschen
-            Array.Clear(plainBytes);
+            dataOperation.Failed();
+            throw;
         }
     }
 
@@ -615,16 +670,25 @@ public class TotpService
 
     public async Task<List<TotpEntry>> GetEntriesForExportAsync(CancellationToken cancellationToken = default)
     {
-        EnsureUnlocked();
-
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            return await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+            EnsureUnlocked();
+
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                return await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                _syncLock.Release();
+            }
         }
-        finally
+        catch
         {
-            _syncLock.Release();
+            dataOperation.Failed();
+            throw;
         }
     }
 
@@ -632,20 +696,29 @@ public class TotpService
         IList<TotpEntry> incomingEntries,
         CancellationToken cancellationToken = default)
     {
-        EnsureUnlocked();
-
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var existingEntries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-            var result = _vaultMergeService.MergeEntries(existingEntries, incomingEntries);
+            EnsureUnlocked();
 
-            await SaveEntriesInternalAsync(result.MergedEntries, cancellationToken).ConfigureAwait(false);
-            return result;
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var existingEntries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                var result = _vaultMergeService.MergeEntries(existingEntries, incomingEntries);
+
+                await SaveEntriesInternalAsync(result.MergedEntries, cancellationToken).ConfigureAwait(false);
+                return result;
+            }
+            finally
+            {
+                _syncLock.Release();
+            }
         }
-        finally
+        catch
         {
-            _syncLock.Release();
+            dataOperation.Failed();
+            throw;
         }
     }
 
@@ -653,50 +726,68 @@ public class TotpService
 
     public async Task RestoreBackupWithMergeAsync(Stream backupStream, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(backupStream);
-        EnsureUnlocked();
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
+        {
+            ArgumentNullException.ThrowIfNull(backupStream);
+            EnsureUnlocked();
 
-        using var reader = new StreamReader(backupStream, Encoding.UTF8, leaveOpen: true);
-        var json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-        var backup = JsonSerializer.Deserialize<Models.AuthenticatorBackupDto>(json, _jsonOptions)
-                     ?? throw new InvalidOperationException("Ungültiges Backup-Format.");
+            using var reader = new StreamReader(backupStream, Encoding.UTF8, leaveOpen: true);
+            var json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            var backup = JsonSerializer.Deserialize<Models.AuthenticatorBackupDto>(json, _jsonOptions)
+                         ?? throw new InvalidOperationException("Ungültiges Backup-Format.");
 
-        var incomingEntries = backup.Entries.Select(dto => dto.ToModel()).ToList();
-        await MergeEntriesAsync(incomingEntries, cancellationToken).ConfigureAwait(false);
+            var incomingEntries = backup.Entries.Select(dto => dto.ToModel()).ToList();
+            await MergeEntriesAsync(incomingEntries, cancellationToken).ConfigureAwait(false);
 
-        EntriesChanged?.Invoke(this, EventArgs.Empty);
+            EntriesChanged?.Invoke(this, EventArgs.Empty);
+        }
+        catch
+        {
+            dataOperation.Failed();
+            throw;
+        }
     }
 
     public async Task SyncAfterUnlockAsync(CancellationToken cancellationToken = default)
     {
-        if (!await _syncService.IsConfiguredAsync().ConfigureAwait(false)) return;
-        
-        EnsureUnlocked();
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-            var isReadOnlySync = await IsReadOnlySyncAsync().ConfigureAwait(false);
-            if (isReadOnlySync)
+            if (!await _syncService.IsConfiguredAsync().ConfigureAwait(false)) return;
+
+            EnsureUnlocked();
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                var isReadOnlySync = await IsReadOnlySyncAsync().ConfigureAwait(false);
+                if (isReadOnlySync)
+                {
+                    await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
+                }
+                Preferences.Set("AuthenticatorLastSync", DateTime.Now);
+                await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
             }
-            else
+            catch
             {
-                await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
+                // Sync failed
             }
-            Preferences.Set("AuthenticatorLastSync", DateTime.Now);
-            await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+            finally
+            {
+                _syncLock.Release();
+            }
+            EntriesChanged?.Invoke(this, EventArgs.Empty);
         }
         catch
         {
-            // Sync failed
+            dataOperation.Failed();
+            throw;
         }
-        finally
-        {
-            _syncLock.Release();
-        }
-        EntriesChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private async Task<bool> IsReadOnlySyncAsync()
@@ -717,50 +808,68 @@ public class TotpService
 
     public async Task LoadFromSyncAsync(CancellationToken cancellationToken = default)
     {
-        if (!await _syncService.IsConfiguredAsync().ConfigureAwait(false)) return;
-
-        EnsureUnlocked();
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-            var result = await _syncService.GetMergedAuthenticatorReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
-            Preferences.Set("AuthenticatorLastSync", DateTime.Now);
-            await SaveEntriesInternalAsync(result.MergedEntries, cancellationToken).ConfigureAwait(false);
+            if (!await _syncService.IsConfiguredAsync().ConfigureAwait(false)) return;
+
+            EnsureUnlocked();
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                var result = await _syncService.GetMergedAuthenticatorReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                Preferences.Set("AuthenticatorLastSync", DateTime.Now);
+                await SaveEntriesInternalAsync(result.MergedEntries, cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                // Sync failed
+            }
+            finally
+            {
+                _syncLock.Release();
+            }
+
+            EntriesChanged?.Invoke(this, EventArgs.Empty);
         }
         catch
         {
-            // Sync failed
+            dataOperation.Failed();
+            throw;
         }
-        finally
-        {
-            _syncLock.Release();
-        }
-
-        EntriesChanged?.Invoke(this, EventArgs.Empty);
     }
 
 
     public async Task ResetVaultAsync(CancellationToken cancellationToken = default)
     {
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            // Delete TOTP data file
-            if (File.Exists(_totpFilePath))
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                File.Delete(_totpFilePath);
+                // Delete TOTP data file
+                if (File.Exists(_totpFilePath))
+                {
+                    File.Delete(_totpFilePath);
+                }
+
+                // Reset encryption service (clears password and key file)
+                _encryptionService.Reset();
+            }
+            finally
+            {
+                _syncLock.Release();
             }
 
-            // Reset encryption service (clears password and key file)
-            _encryptionService.Reset();
+            EntriesChanged?.Invoke(this, EventArgs.Empty);
         }
-        finally
+        catch
         {
-            _syncLock.Release();
+            dataOperation.Failed();
+            throw;
         }
-
-        EntriesChanged?.Invoke(this, EventArgs.Empty);
     }
 }
 

@@ -15,6 +15,7 @@ namespace Password_Phrase_Producer
 
         protected override void OnCreate(Bundle? savedInstanceState)
         {
+            Platforms.Android.Services.AndroidUpdateInstaller.RecoverInterruptedSessions();
             base.OnCreate(savedInstanceState);
             Current = this;
         }
@@ -27,6 +28,12 @@ namespace Password_Phrase_Producer
             }
 
             base.OnDestroy();
+        }
+
+        protected override void OnResume()
+        {
+            base.OnResume();
+            Platforms.Android.Services.AndroidUpdateInstaller.OnActivityResumed();
         }
 
         protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)

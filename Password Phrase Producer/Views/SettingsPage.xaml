@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:converters="clr-namespace:Password_Phrase_Producer.Converters"
     xmlns:viewmodels="clr-namespace:Password_Phrase_Producer.ViewModels"
+    xmlns:views="clr-namespace:Password_Phrase_Producer.Views"
     Padding="0"
     Shell.NavBarIsVisible="False">
     <ContentPage.Resources>
@@ -27,7 +28,7 @@
             Padding="16,16,16,10"
             ColumnDefinitions="Auto,*,Auto"
             ColumnSpacing="10">
-            
+
             <!-- Hamburger Menu -->
             <Border
                 WidthRequest="34"
@@ -52,7 +53,7 @@
                     VerticalOptions="Center" />
             </Border>
 
-            <Label 
+            <Label
                 Grid.Column="1"
                 Text="Einstellungen"
                 FontSize="18"
@@ -90,6 +91,7 @@
 
         <ScrollView Grid.Row="1">
             <VerticalStackLayout Padding="16,0,16,24" Spacing="16">
+                <views:UpdateSettingsView x:Name="UpdatePanel" />
                 <Border
                     BackgroundColor="#1B2036"
                     Padding="14"
@@ -251,7 +253,7 @@
                                 </DataTrigger>
                             </Button.Triggers>
                         </Button>
-                        
+
                         <Button
                             Text="Jetzt synchronisieren"
                             Clicked="OnManualSyncClicked"

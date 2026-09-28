@@ -1,3 +1,4 @@
+using PasswordPhraseProducer.Updates;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -52,8 +53,8 @@ public class DataVaultService
     private byte[]? _encryptionKey;
 
     public DataVaultService(
-        IBiometricAuthenticationService biometricService, 
-        ISecureFileService secureFileService, 
+        IBiometricAuthenticationService biometricService,
+        ISecureFileService secureFileService,
         VaultMergeService vaultMergeService,
         Services.Synchronization.ISynchronizationService syncService)
     {
@@ -96,176 +97,96 @@ public class DataVaultService
 
     public async Task SetMasterPasswordAsync(string password, bool enableBiometrics, CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(password);
-
-        var salt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
-        var key = DeriveKey(password, salt, Pbkdf2Iterations);
-        var verifier = CreateVerifier(key);
-
-        await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, Convert.ToBase64String(salt)).ConfigureAwait(false);
-        await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, Convert.ToBase64String(verifier)).ConfigureAwait(false);
-        await SetStoredPbkdf2IterationsAsync(Pbkdf2Iterations).ConfigureAwait(false);
-
-        _encryptionKey = key;
-        UpdateStoredEntryCount(0);
-
-        if (enableBiometrics)
-        {
-             await SetBiometricUnlockAsync(true, cancellationToken).ConfigureAwait(false);
-        }
-        else
-        {
-            SecureStorage.Default.Remove(BiometricKeyStorageKey);
-        }
-    }
-
-    public async Task<bool> UnlockAsync(string password, CancellationToken cancellationToken = default)
-    {
-        return await UnlockInternalAsync(password, syncAfterUnlock: true, cancellationToken).ConfigureAwait(false);
-    }
-
-    public Task<bool> UnlockWithoutSyncAsync(string password, CancellationToken cancellationToken = default)
-    {
-        return UnlockInternalAsync(password, syncAfterUnlock: false, cancellationToken);
-    }
-
-    private async Task<bool> UnlockInternalAsync(string password, bool syncAfterUnlock, CancellationToken cancellationToken)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(password);
-
-        var metadata = await GetPasswordMetadataAsync(cancellationToken).ConfigureAwait(false);
-        if (string.IsNullOrEmpty(metadata.Salt) || string.IsNullOrEmpty(metadata.Verifier))
-        {
-            return false;
-        }
-
-        var salt = Convert.FromBase64String(metadata.Salt);
-        var iterations = metadata.Iterations;
-        var key = DeriveKey(password, salt, iterations);
-        var expectedVerifier = Convert.FromBase64String(metadata.Verifier);
-        var actualVerifier = CreateVerifier(key);
-
-        if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
-        {
-            Array.Clear(key);
-            return false;
-        }
-
-        _encryptionKey = key;
-        
-        if (syncAfterUnlock && await _syncService.IsConfiguredAsync().ConfigureAwait(false))
-        {
-            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-            try
-            {
-                var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-                var isReadOnlySync = await IsReadOnlySyncAsync().ConfigureAwait(false);
-                if (isReadOnlySync)
-                {
-                    await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
-                }
-                else
-                {
-                    await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
-                }
-                Preferences.Set("DataVaultLastSync", DateTime.Now);
-                await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
-            }
-            catch
-            {
-                // Sync fail ignored
-            }
-            finally
-            {
-                _syncLock.Release();
-            }
-            MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
-        }
-
-        return true;
-    }
-
-    public async Task ChangeMasterPasswordAsync(string newPassword, bool enableBiometrics, CancellationToken cancellationToken = default)
-    {
-        EnsureUnlocked();
-        ArgumentException.ThrowIfNullOrWhiteSpace(newPassword);
-
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+            ArgumentException.ThrowIfNullOrWhiteSpace(password);
 
-            var newSalt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
-            var newKey = DeriveKey(newPassword, newSalt, Pbkdf2Iterations);
-            var newVerifier = CreateVerifier(newKey);
+            StartupDataGuard.RequireNewStore(_vaultFilePath);
 
-            var previousKey = _encryptionKey;
-            _encryptionKey = newKey;
+            var salt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
+            var key = DeriveKey(password, salt, Pbkdf2Iterations);
+            var verifier = CreateVerifier(key);
 
-            try
-            {
-                await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
-            }
-            catch
-            {
-                _encryptionKey = previousKey;
-                Array.Clear(newKey);
-                throw;
-            }
-
-            await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, Convert.ToBase64String(newSalt)).ConfigureAwait(false);
-            await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, Convert.ToBase64String(newVerifier)).ConfigureAwait(false);
+            await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, Convert.ToBase64String(salt)).ConfigureAwait(false);
+            await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, Convert.ToBase64String(verifier)).ConfigureAwait(false);
             await SetStoredPbkdf2IterationsAsync(Pbkdf2Iterations).ConfigureAwait(false);
+
+            _encryptionKey = key;
+            UpdateStoredEntryCount(0);
 
             if (enableBiometrics)
             {
-                await SetBiometricUnlockAsync(true, cancellationToken).ConfigureAwait(false);
+                 await SetBiometricUnlockAsync(true, cancellationToken).ConfigureAwait(false);
             }
             else
             {
                 SecureStorage.Default.Remove(BiometricKeyStorageKey);
             }
-
-            if (previousKey is not null)
-            {
-                Array.Clear(previousKey);
-            }
         }
-        finally
+        catch
         {
-            _syncLock.Release();
+            dataOperation.Failed();
+            throw;
         }
     }
 
-    public async Task<bool> TryUnlockWithStoredKeyAsync(CancellationToken cancellationToken = default)
+    public async Task<bool> UnlockAsync(string password, CancellationToken cancellationToken = default)
     {
-        var storedKeyBase64 = await SecureStorage.Default.GetAsync(BiometricKeyStorageKey).ConfigureAwait(false);
-        var metadata = await GetPasswordMetadataAsync(cancellationToken).ConfigureAwait(false);
-
-        if (string.IsNullOrEmpty(storedKeyBase64) || string.IsNullOrEmpty(metadata.Verifier))
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
         {
-
-            return false;
+            return await UnlockInternalAsync(password, syncAfterUnlock: true, cancellationToken).ConfigureAwait(false);
         }
-
-        try 
+        catch
         {
-            var encryptedKey = Convert.FromBase64String(storedKeyBase64);
-            var key = await _biometricService.DecryptAsync(encryptedKey, cancellationToken).ConfigureAwait(false);
+            dataOperation.Failed();
+            throw;
+        }
+    }
 
+    public Task<bool> UnlockWithoutSyncAsync(string password, CancellationToken cancellationToken = default)
+    {
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
+        {
+            return UnlockInternalAsync(password, syncAfterUnlock: false, cancellationToken);
+        }
+        catch
+        {
+            dataOperation.Failed();
+            throw;
+        }
+    }
+
+    private async Task<bool> UnlockInternalAsync(string password, bool syncAfterUnlock, CancellationToken cancellationToken)
+    {
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(password);
+
+            var metadata = await GetPasswordMetadataAsync(cancellationToken).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(metadata.Salt) || string.IsNullOrEmpty(metadata.Verifier))
+            {
+                return false;
+            }
+
+            var salt = Convert.FromBase64String(metadata.Salt);
+            var iterations = metadata.Iterations;
+            var key = DeriveKey(password, salt, iterations);
             var expectedVerifier = Convert.FromBase64String(metadata.Verifier);
             var actualVerifier = CreateVerifier(key);
 
             if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
             {
-                SecureStorage.Default.Remove(BiometricKeyStorageKey);
                 Array.Clear(key);
                 return false;
             }
 
             _encryptionKey = key;
-            
-            if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+
+            if (syncAfterUnlock && await _syncService.IsConfiguredAsync().ConfigureAwait(false))
             {
                 await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
                 try
@@ -293,186 +214,296 @@ public class DataVaultService
                 }
                 MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
             }
+
+            return true;
         }
-        catch (UnauthorizedAccessException)
+        catch
         {
+            dataOperation.Failed();
             throw;
         }
-        catch (Exception)
-        {
-             return false;
-        }
+    }
 
-        return true;
+    public async Task ChangeMasterPasswordAsync(string newPassword, bool enableBiometrics, CancellationToken cancellationToken = default)
+    {
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
+        {
+            EnsureUnlocked();
+            ArgumentException.ThrowIfNullOrWhiteSpace(newPassword);
+
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+
+                var newSalt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
+                var newKey = DeriveKey(newPassword, newSalt, Pbkdf2Iterations);
+                var newVerifier = CreateVerifier(newKey);
+
+                var previousKey = _encryptionKey;
+                _encryptionKey = newKey;
+
+                try
+                {
+                    await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+                }
+                catch
+                {
+                    _encryptionKey = previousKey;
+                    Array.Clear(newKey);
+                    throw;
+                }
+
+                await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, Convert.ToBase64String(newSalt)).ConfigureAwait(false);
+                await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, Convert.ToBase64String(newVerifier)).ConfigureAwait(false);
+                await SetStoredPbkdf2IterationsAsync(Pbkdf2Iterations).ConfigureAwait(false);
+
+                if (enableBiometrics)
+                {
+                    await SetBiometricUnlockAsync(true, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    SecureStorage.Default.Remove(BiometricKeyStorageKey);
+                }
+
+                if (previousKey is not null)
+                {
+                    Array.Clear(previousKey);
+                }
+            }
+            finally
+            {
+                _syncLock.Release();
+            }
+        }
+        catch
+        {
+            dataOperation.Failed();
+            throw;
+        }
+    }
+
+    public async Task<bool> TryUnlockWithStoredKeyAsync(CancellationToken cancellationToken = default)
+    {
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
+        {
+            var storedKeyBase64 = await SecureStorage.Default.GetAsync(BiometricKeyStorageKey).ConfigureAwait(false);
+            var metadata = await GetPasswordMetadataAsync(cancellationToken).ConfigureAwait(false);
+
+            if (string.IsNullOrEmpty(storedKeyBase64) || string.IsNullOrEmpty(metadata.Verifier))
+            {
+
+                return false;
+            }
+
+            try
+            {
+                var encryptedKey = Convert.FromBase64String(storedKeyBase64);
+                var key = await _biometricService.DecryptAsync(encryptedKey, cancellationToken).ConfigureAwait(false);
+
+                var expectedVerifier = Convert.FromBase64String(metadata.Verifier);
+                var actualVerifier = CreateVerifier(key);
+
+                if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
+                {
+                    SecureStorage.Default.Remove(BiometricKeyStorageKey);
+                    Array.Clear(key);
+                    return false;
+                }
+
+                _encryptionKey = key;
+
+                if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+                {
+                    await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+                    try
+                    {
+                        var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                        var isReadOnlySync = await IsReadOnlySyncAsync().ConfigureAwait(false);
+                        if (isReadOnlySync)
+                        {
+                            await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                        }
+                        Preferences.Set("DataVaultLastSync", DateTime.Now);
+                        await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        // Sync fail ignored
+                    }
+                    finally
+                    {
+                        _syncLock.Release();
+                    }
+                    MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                 return false;
+            }
+
+            return true;
+        }
+        catch
+        {
+            dataOperation.Failed();
+            throw;
+        }
     }
 
     public async Task LoadFromSyncAsync(CancellationToken cancellationToken = default)
     {
-        if (!IsUnlocked) return;
-
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            if (!await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+            if (!IsUnlocked) return;
+
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                return;
+                if (!await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+                {
+                    return;
+                }
+
+                var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                var result = await _syncService.GetMergedDataVaultReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                entries.Clear();
+                foreach (var entry in result.MergedEntries)
+                {
+                    entries.Add(entry);
+                }
+
+                Preferences.Set("DataVaultLastSync", DateTime.Now);
+                await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                _syncLock.Release();
             }
 
-            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-            var result = await _syncService.GetMergedDataVaultReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
-            entries.Clear();
-            foreach (var entry in result.MergedEntries)
-            {
-                entries.Add(entry);
-            }
-
-            Preferences.Set("DataVaultLastSync", DateTime.Now);
-            await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+            MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
         }
-        finally
+        catch
         {
-            _syncLock.Release();
+            dataOperation.Failed();
+            throw;
         }
-
-        MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
     }
 
     public async Task SetBiometricUnlockAsync(bool enabled, CancellationToken cancellationToken = default)
     {
-        if (!IsUnlocked)
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
         {
-            throw new InvalidOperationException("Der Datentresor ist gesperrt.");
-        }
+            if (!IsUnlocked)
+            {
+                throw new InvalidOperationException("Der Datentresor ist gesperrt.");
+            }
 
-        if (enabled)
-        {
-            try 
+            if (enabled)
             {
-                var encrypted = await _biometricService.EncryptAsync(_encryptionKey!, cancellationToken).ConfigureAwait(false);
-                await SecureStorage.Default.SetAsync(BiometricKeyStorageKey, Convert.ToBase64String(encrypted)).ConfigureAwait(false);
+                try
+                {
+                    var encrypted = await _biometricService.EncryptAsync(_encryptionKey!, cancellationToken).ConfigureAwait(false);
+                    await SecureStorage.Default.SetAsync(BiometricKeyStorageKey, Convert.ToBase64String(encrypted)).ConfigureAwait(false);
+                }
+                catch (Exception)
+                {
+                     SecureStorage.Default.Remove(BiometricKeyStorageKey);
+                }
             }
-            catch (Exception)
+            else
             {
-                 SecureStorage.Default.Remove(BiometricKeyStorageKey);
+                SecureStorage.Default.Remove(BiometricKeyStorageKey);
             }
         }
-        else
+        catch
         {
-            SecureStorage.Default.Remove(BiometricKeyStorageKey);
+            dataOperation.Failed();
+            throw;
         }
     }
 
     public async Task<IReadOnlyList<PasswordVaultEntry>> GetEntriesAsync(CancellationToken cancellationToken = default)
     {
-        EnsureUnlocked();
-
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-            return entries
-                .Where(e => !e.IsDeleted) // Filter out soft-deleted items
-                .OrderBy(e => e.DisplayCategory, StringComparer.CurrentCultureIgnoreCase)
-                .ThenBy(e => e.Label, StringComparer.CurrentCultureIgnoreCase)
-                .ToList();
+            EnsureUnlocked();
+
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                return entries
+                    .Where(e => !e.IsDeleted) // Filter out soft-deleted items
+                    .OrderBy(e => e.DisplayCategory, StringComparer.CurrentCultureIgnoreCase)
+                    .ThenBy(e => e.Label, StringComparer.CurrentCultureIgnoreCase)
+                    .ToList();
+            }
+            finally
+            {
+                _syncLock.Release();
+            }
         }
-        finally
+        catch
         {
-            _syncLock.Release();
+            dataOperation.Failed();
+            throw;
         }
     }
 
     public async Task AddOrUpdateEntryAsync(PasswordVaultEntry entry, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(entry);
-        EnsureUnlocked();
-
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-            var existingIndex = entries.FindIndex(e => e.Id == entry.Id);
-            var isSyncConfigured = await _syncService.IsConfiguredAsync().ConfigureAwait(false);
-            var isReadOnlySync = isSyncConfigured && await IsReadOnlySyncAsync().ConfigureAwait(false);
+            ArgumentNullException.ThrowIfNull(entry);
+            EnsureUnlocked();
 
-            if (isReadOnlySync)
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
-                existingIndex = entries.FindIndex(e => e.Id == entry.Id);
-            }
+                var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                var existingIndex = entries.FindIndex(e => e.Id == entry.Id);
+                var isSyncConfigured = await _syncService.IsConfiguredAsync().ConfigureAwait(false);
+                var isReadOnlySync = isSyncConfigured && await IsReadOnlySyncAsync().ConfigureAwait(false);
 
-            if (entry.Id == Guid.Empty)
-            {
-                entry.Id = Guid.NewGuid();
-            }
-
-            entry.ModifiedAt = DateTimeOffset.UtcNow;
-            entry.IsDeleted = false; // Ensure it's revived if it was deleted
-
-            if (existingIndex >= 0)
-            {
-                entries[existingIndex] = entry.Clone();
-            }
-            else
-            {
-                entries.Add(entry.Clone());
-            }
-
-            if (isSyncConfigured)
-            {
-                try
+                if (isReadOnlySync)
                 {
-                    if (!isReadOnlySync)
-                    {
-                        await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
-                    }
-                    Preferences.Set("DataVaultLastSync", DateTime.Now);
+                    await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                    existingIndex = entries.FindIndex(e => e.Id == entry.Id);
                 }
-                catch (Exception ex)
+
+                if (entry.Id == Guid.Empty)
                 {
-                    if (!isReadOnlySync)
-                    {
-                         MainThread.BeginInvokeOnMainThread(async () => 
-                         {
-                             await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Data): {ex.Message}", "OK");
-                         });
-                    }
+                    entry.Id = Guid.NewGuid();
                 }
-            }
 
-            await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            _syncLock.Release();
-        }
-
-        MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
-    }
-
-    public async Task DeleteEntryAsync(Guid entryId, CancellationToken cancellationToken = default)
-    {
-        EnsureUnlocked();
-
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-            var entry = entries.FirstOrDefault(e => e.Id == entryId);
-            var isSyncConfigured = await _syncService.IsConfiguredAsync().ConfigureAwait(false);
-            var isReadOnlySync = isSyncConfigured && await IsReadOnlySyncAsync().ConfigureAwait(false);
-
-            if (isReadOnlySync)
-            {
-                await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
-                entry = entries.FirstOrDefault(e => e.Id == entryId);
-            }
-
-            if (entry != null)
-            {
-                // Soft delete
-                entry.IsDeleted = true;
                 entry.ModifiedAt = DateTimeOffset.UtcNow;
+                entry.IsDeleted = false; // Ensure it's revived if it was deleted
+
+                if (existingIndex >= 0)
+                {
+                    entries[existingIndex] = entry.Clone();
+                }
+                else
+                {
+                    entries.Add(entry.Clone());
+                }
 
                 if (isSyncConfigured)
                 {
@@ -488,50 +519,130 @@ public class DataVaultService
                     {
                         if (!isReadOnlySync)
                         {
-                             MainThread.BeginInvokeOnMainThread(async () => 
+                             MainThread.BeginInvokeOnMainThread(async () =>
                              {
                                  await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Data): {ex.Message}", "OK");
                              });
                         }
                     }
                 }
+
                 await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
             }
-        }
-        finally
-        {
-            _syncLock.Release();
-        }
+            finally
+            {
+                _syncLock.Release();
+            }
 
-        MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
+            MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
+        }
+        catch
+        {
+            dataOperation.Failed();
+            throw;
+        }
+    }
+
+    public async Task DeleteEntryAsync(Guid entryId, CancellationToken cancellationToken = default)
+    {
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
+        {
+            EnsureUnlocked();
+
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                var entry = entries.FirstOrDefault(e => e.Id == entryId);
+                var isSyncConfigured = await _syncService.IsConfiguredAsync().ConfigureAwait(false);
+                var isReadOnlySync = isSyncConfigured && await IsReadOnlySyncAsync().ConfigureAwait(false);
+
+                if (isReadOnlySync)
+                {
+                    await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                    entry = entries.FirstOrDefault(e => e.Id == entryId);
+                }
+
+                if (entry != null)
+                {
+                    // Soft delete
+                    entry.IsDeleted = true;
+                    entry.ModifiedAt = DateTimeOffset.UtcNow;
+
+                    if (isSyncConfigured)
+                    {
+                        try
+                        {
+                            if (!isReadOnlySync)
+                            {
+                                await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                            }
+                            Preferences.Set("DataVaultLastSync", DateTime.Now);
+                        }
+                        catch (Exception ex)
+                        {
+                            if (!isReadOnlySync)
+                            {
+                                 MainThread.BeginInvokeOnMainThread(async () =>
+                                 {
+                                     await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Data): {ex.Message}", "OK");
+                                 });
+                            }
+                        }
+                    }
+                    await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                _syncLock.Release();
+            }
+
+            MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
+        }
+        catch
+        {
+            dataOperation.Failed();
+            throw;
+        }
     }
 
     public async Task SyncNowAsync(CancellationToken cancellationToken = default)
     {
-        if (!IsUnlocked) return;
-        
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-            if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+            if (!IsUnlocked) return;
+
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                var isReadOnlySync = await IsReadOnlySyncAsync().ConfigureAwait(false);
-                if (isReadOnlySync)
+                var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
                 {
-                    await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                    var isReadOnlySync = await IsReadOnlySyncAsync().ConfigureAwait(false);
+                    if (isReadOnlySync)
+                    {
+                        await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
+                    }
+                    Preferences.Set("DataVaultLastSync", DateTime.Now);
+                    await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
                 }
-                else
-                {
-                    await _syncService.SyncDataVaultAsync(entries, cancellationToken).ConfigureAwait(false);
-                }
-                Preferences.Set("DataVaultLastSync", DateTime.Now);
-                await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                _syncLock.Release();
             }
         }
-        finally
+        catch
         {
-            _syncLock.Release();
+            dataOperation.Failed();
+            throw;
         }
     }
 
@@ -553,120 +664,138 @@ public class DataVaultService
 
     public async Task<byte[]> ExportWithFilePasswordAsync(string filePassword, CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);
-        EnsureUnlocked();
-
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-            var ordered = entries
-                .OrderBy(e => e.DisplayCategory, StringComparer.CurrentCultureIgnoreCase)
-                .ThenBy(e => e.Label, StringComparer.CurrentCultureIgnoreCase)
-                .Select(PasswordVaultEntryDto.FromModel)
-                .ToList();
+            ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);
+            EnsureUnlocked();
 
-            var snapshot = new PasswordVaultSnapshotDto
-            {
-                Entries = ordered,
-                ExportedAt = DateTimeOffset.UtcNow
-            };
-
-            var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
-            var plainBytes = Encoding.UTF8.GetBytes(json);
-
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                var salt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
-                var key = DeriveKey(filePassword, salt, Pbkdf2Iterations);
+                var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                var ordered = entries
+                    .OrderBy(e => e.DisplayCategory, StringComparer.CurrentCultureIgnoreCase)
+                    .ThenBy(e => e.Label, StringComparer.CurrentCultureIgnoreCase)
+                    .Select(PasswordVaultEntryDto.FromModel)
+                    .ToList();
+
+                var snapshot = new PasswordVaultSnapshotDto
+                {
+                    Entries = ordered,
+                    ExportedAt = DateTimeOffset.UtcNow
+                };
+
+                var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
+                var plainBytes = Encoding.UTF8.GetBytes(json);
+
                 try
                 {
-                    var encrypted = EncryptWithKey(plainBytes, key);
-                    var verifier = CreateVerifier(key);
-
-                    var exportDto = new PortableBackupDto
+                    var salt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
+                    var key = DeriveKey(filePassword, salt, Pbkdf2Iterations);
+                    try
                     {
-                        Salt = Convert.ToBase64String(salt),
-                        Verifier = Convert.ToBase64String(verifier),
-                        Iterations = Pbkdf2Iterations,
-                        CipherText = Convert.ToBase64String(encrypted),
-                        CreatedAt = DateTimeOffset.UtcNow
-                    };
+                        var encrypted = EncryptWithKey(plainBytes, key);
+                        var verifier = CreateVerifier(key);
 
-                    return Encoding.UTF8.GetBytes(JsonSerializer.Serialize(exportDto, _jsonOptions));
+                        var exportDto = new PortableBackupDto
+                        {
+                            Salt = Convert.ToBase64String(salt),
+                            Verifier = Convert.ToBase64String(verifier),
+                            Iterations = Pbkdf2Iterations,
+                            CipherText = Convert.ToBase64String(encrypted),
+                            CreatedAt = DateTimeOffset.UtcNow
+                        };
+
+                        return Encoding.UTF8.GetBytes(JsonSerializer.Serialize(exportDto, _jsonOptions));
+                    }
+                    finally
+                    {
+                        Array.Clear(key);
+                    }
                 }
                 finally
                 {
-                    Array.Clear(key);
+                    Array.Clear(plainBytes);
                 }
+            }
+            finally
+            {
+                _syncLock.Release();
+            }
+        }
+        catch
+        {
+            dataOperation.Failed();
+            throw;
+        }
+    }
+
+    public async Task ImportWithFilePasswordAsync(Stream stream, string filePassword, CancellationToken cancellationToken = default)
+    {
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
+        {
+            ArgumentNullException.ThrowIfNull(stream);
+            ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);
+            EnsureUnlocked();
+
+            using var reader = new StreamReader(stream, Encoding.UTF8, leaveOpen: true);
+            var json = await reader.ReadToEndAsync().ConfigureAwait(false);
+            var dto = JsonSerializer.Deserialize<PortableBackupDto>(json, _jsonOptions)
+                      ?? throw new InvalidOperationException("Ungültiges Export-Format.");
+
+            var salt = Convert.FromBase64String(dto.Salt);
+            var key = DeriveKey(filePassword, salt, dto.Iterations);
+
+            var expectedVerifier = Convert.FromBase64String(dto.Verifier);
+            var actualVerifier = CreateVerifier(key);
+            if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
+            {
+                Array.Clear(key);
+                throw new InvalidOperationException("Falsches Datei-Passwort.");
+            }
+
+            var encrypted = Convert.FromBase64String(dto.CipherText);
+            var plainBytes = DecryptWithKey(encrypted, key);
+            Array.Clear(key);
+
+            try
+            {
+                var snapshot = JsonSerializer.Deserialize<PasswordVaultSnapshotDto>(plainBytes, _jsonOptions)
+                              ?? throw new InvalidOperationException("Ungültiges Snapshot-Format.");
+
+                if (snapshot.Entries is null)
+                {
+                    return;
+                }
+
+                var entries = snapshot.Entries.Select(e => e.ToModel()).ToList();
+
+                await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    var existingEntries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                    var result = _vaultMergeService.MergeEntries(existingEntries, entries);
+                    await SaveEntriesInternalAsync(result.MergedEntries, cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    _syncLock.Release();
+                }
+
+                Lock();
+                MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
             }
             finally
             {
                 Array.Clear(plainBytes);
             }
         }
-        finally
+        catch
         {
-            _syncLock.Release();
-        }
-    }
-
-    public async Task ImportWithFilePasswordAsync(Stream stream, string filePassword, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(stream);
-        ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);
-        EnsureUnlocked();
-
-        using var reader = new StreamReader(stream, Encoding.UTF8, leaveOpen: true);
-        var json = await reader.ReadToEndAsync().ConfigureAwait(false);
-        var dto = JsonSerializer.Deserialize<PortableBackupDto>(json, _jsonOptions)
-                  ?? throw new InvalidOperationException("Ungültiges Export-Format.");
-
-        var salt = Convert.FromBase64String(dto.Salt);
-        var key = DeriveKey(filePassword, salt, dto.Iterations);
-
-        var expectedVerifier = Convert.FromBase64String(dto.Verifier);
-        var actualVerifier = CreateVerifier(key);
-        if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
-        {
-            Array.Clear(key);
-            throw new InvalidOperationException("Falsches Datei-Passwort.");
-        }
-
-        var encrypted = Convert.FromBase64String(dto.CipherText);
-        var plainBytes = DecryptWithKey(encrypted, key);
-        Array.Clear(key);
-
-        try
-        {
-            var snapshot = JsonSerializer.Deserialize<PasswordVaultSnapshotDto>(plainBytes, _jsonOptions)
-                          ?? throw new InvalidOperationException("Ungültiges Snapshot-Format.");
-            
-            if (snapshot.Entries is null)
-            {
-                return;
-            }
-
-            var entries = snapshot.Entries.Select(e => e.ToModel()).ToList();
-
-            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-            try
-            {
-                var existingEntries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-                var result = _vaultMergeService.MergeEntries(existingEntries, entries);
-                await SaveEntriesInternalAsync(result.MergedEntries, cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                _syncLock.Release();
-            }
-
-            Lock();
-            MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
-        }
-        finally
-        {
-            Array.Clear(plainBytes);
+            dataOperation.Failed();
+            throw;
         }
     }
 
@@ -937,6 +1066,7 @@ public class DataVaultService
             return new PasswordMetadata(vaultFile.PasswordSalt, vaultFile.PasswordVerifier, vaultIterations);
         }
 
+        StartupDataGuard.RequireNewStore(_vaultFilePath);
         return new PasswordMetadata(null, null, iterations);
     }
 
@@ -1060,89 +1190,116 @@ public class DataVaultService
         IList<PasswordVaultEntry> incomingEntries,
         CancellationToken cancellationToken = default)
     {
-        EnsureUnlocked();
-
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var existingEntries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-            var mergeService = new VaultMergeService();
-            var result = mergeService.MergeEntries(existingEntries, incomingEntries);
+            EnsureUnlocked();
 
-            await SaveEntriesInternalAsync(result.MergedEntries, cancellationToken).ConfigureAwait(false);
-            return result;
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var existingEntries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                var mergeService = new VaultMergeService();
+                var result = mergeService.MergeEntries(existingEntries, incomingEntries);
+
+                await SaveEntriesInternalAsync(result.MergedEntries, cancellationToken).ConfigureAwait(false);
+                return result;
+            }
+            finally
+            {
+                _syncLock.Release();
+            }
         }
-        finally
+        catch
         {
-            _syncLock.Release();
+            dataOperation.Failed();
+            throw;
         }
     }
 
     public async Task RestoreBackupWithMergeAsync(Stream backupStream, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(backupStream);
-        EnsureUnlocked();
-
-        using var reader = new StreamReader(backupStream, Encoding.UTF8, leaveOpen: true);
-        var json = await reader.ReadToEndAsync().ConfigureAwait(false);
-        var dto = JsonSerializer.Deserialize<PasswordVaultBackupDto>(json, _jsonOptions)
-                  ?? throw new InvalidOperationException("Ungültiges Backup-Format.");
-
-        var cipher = Convert.FromBase64String(dto.CipherText);
-
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            var decryptedBytes = await DecryptAsync(cipher, cancellationToken).ConfigureAwait(false);
-            if (decryptedBytes.Length == 0)
+            ArgumentNullException.ThrowIfNull(backupStream);
+            EnsureUnlocked();
+
+            using var reader = new StreamReader(backupStream, Encoding.UTF8, leaveOpen: true);
+            var json = await reader.ReadToEndAsync().ConfigureAwait(false);
+            var dto = JsonSerializer.Deserialize<PasswordVaultBackupDto>(json, _jsonOptions)
+                      ?? throw new InvalidOperationException("Ungültiges Backup-Format.");
+
+            var cipher = Convert.FromBase64String(dto.CipherText);
+
+            try
             {
-                throw new InvalidOperationException("Entschlüsselung fehlgeschlagen. Möglicherweise unterschiedliche Passwörter.");
+                var decryptedBytes = await DecryptAsync(cipher, cancellationToken).ConfigureAwait(false);
+                if (decryptedBytes.Length == 0)
+                {
+                    throw new InvalidOperationException("Entschlüsselung fehlgeschlagen. Möglicherweise unterschiedliche Passwörter.");
+                }
+
+                var snapshot = JsonSerializer.Deserialize<PasswordVaultSnapshotDto>(decryptedBytes, _jsonOptions);
+                if (snapshot?.Entries is null)
+                {
+                    return;
+                }
+
+                var incomingEntries = snapshot.Entries.Select(e => e.ToModel()).ToList();
+                await MergeEntriesAsync(incomingEntries, cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                throw new InvalidOperationException("Merge fehlgeschlagen. Die Passwörter der Backups müssen übereinstimmen.");
             }
 
-            var snapshot = JsonSerializer.Deserialize<PasswordVaultSnapshotDto>(decryptedBytes, _jsonOptions);
-            if (snapshot?.Entries is null)
-            {
-                return;
-            }
-
-            var incomingEntries = snapshot.Entries.Select(e => e.ToModel()).ToList();
-            await MergeEntriesAsync(incomingEntries, cancellationToken).ConfigureAwait(false);
+            MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
         }
         catch
         {
-            throw new InvalidOperationException("Merge fehlgeschlagen. Die Passwörter der Backups müssen übereinstimmen.");
+            dataOperation.Failed();
+            throw;
         }
-
-        MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
     }
 
     public async Task ResetVaultAsync(CancellationToken cancellationToken = default)
     {
-        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            // Lock the vault
-            Lock();
-
-            // Delete vault file
-            if (await _secureFileService.ExistsAsync(_vaultFilePath))
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                _secureFileService.Delete(_vaultFilePath);
+                // Lock the vault
+                Lock();
+
+                // Delete vault file
+                if (await _secureFileService.ExistsAsync(_vaultFilePath))
+                {
+                    _secureFileService.Delete(_vaultFilePath);
+                }
+
+                // Clear SecureStorage entries
+                SecureStorage.Default.Remove(PasswordSaltStorageKey);
+                SecureStorage.Default.Remove(PasswordVerifierStorageKey);
+                SecureStorage.Default.Remove(PasswordIterationsStorageKey);
+                SecureStorage.Default.Remove(BiometricKeyStorageKey);
+
+                // Clear entry count
+                ClearStoredEntryCount();
+            }
+            finally
+            {
+                _syncLock.Release();
             }
 
-            // Clear SecureStorage entries
-            SecureStorage.Default.Remove(PasswordSaltStorageKey);
-            SecureStorage.Default.Remove(PasswordVerifierStorageKey);
-            SecureStorage.Default.Remove(PasswordIterationsStorageKey);
-            SecureStorage.Default.Remove(BiometricKeyStorageKey);
-
-            // Clear entry count
-            ClearStoredEntryCount();
+            MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
         }
-        finally
+        catch
         {
-            _syncLock.Release();
+            dataOperation.Failed();
+            throw;
         }
-
-        MessagingCenter.Send(this, DataVaultMessages.EntriesChanged);
     }
 }
