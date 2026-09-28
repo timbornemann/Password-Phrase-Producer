@@ -107,7 +107,7 @@ def prepare(github: GitHub, release_id: int, tag: str, directory: Path) -> dict[
     version, code = validate_release(current, release_id, tag)
     result = {"version": version, "build": str(code), "tag": tag, "release_id": str(release_id), "build_needed": "false"}
     if ready_marker(current):
-        return result  # Duplicate published/released events and reruns cannot replace a sealed release.
+        return result  # Duplicate event deliveries and reruns cannot replace a sealed release.
     reject_legacy_release(current)
     ensure_mutable(current)
     validate_order(github.releases(), release_id, tag)

@@ -2,7 +2,8 @@ name: Build Android and Windows Packages
 
 on:
   release:
-    types: [published, released]
+    # Stable releases emit both published and released; subscribe only once.
+    types: [released]
 
 permissions:
   contents: read

@@ -50,6 +50,8 @@ release signed with the old key; generating a new key on every build is prohibit
 
 **A push never publishes or packages a version.** Only publishing a normal GitHub release, or promoting a release
 to stable, starts the packaging workflow. Drafts and prereleases are excluded. Pull requests run unit tests only.
+The workflow subscribes only to `released`: GitHub also emits `published` for a new stable release, so subscribing
+to both would start the same workflow twice.
 
 1. Commit and push the desired source changes to `main`, including the updated workflows before the first release.
 2. Open GitHub Releases, choose **Draft a new release**, and create your own version tag, for example `v2.6.0`.
