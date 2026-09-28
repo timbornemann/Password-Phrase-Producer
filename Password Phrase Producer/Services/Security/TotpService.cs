@@ -2,11 +2,9 @@ using PasswordPhraseProducer.Updates;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Web;
-using Google.Protobuf;
 using OtpNet;
 using Password_Phrase_Producer.Models;
-using Password_Phrase_Producer.Services.Security.Protobuf;
+using Password_Phrase_Producer.Services.Security.Otp;
 using Password_Phrase_Producer.Services.Synchronization;
 using Microsoft.Maui.ApplicationModel;
 
@@ -83,23 +81,12 @@ public class TotpService
             ArgumentNullException.ThrowIfNull(entry);
             EnsureUnlocked();
 
-            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-            try
+            await MutateEntriesAsync(entries =>
             {
-                var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-                var existingIndex = entries.FindIndex(e => e.Id == entry.Id);
-                var isSyncConfigured = await _syncService.IsConfiguredAsync().ConfigureAwait(false);
-                var isReadOnlySync = isSyncConfigured && await IsReadOnlySyncAsync().ConfigureAwait(false);
-
-                if (isReadOnlySync)
-                {
-                    await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
-                    existingIndex = entries.FindIndex(e => e.Id == entry.Id);
-                }
-
                 entry.ModifiedAt = DateTimeOffset.UtcNow;
                 entry.IsDeleted = false; // Restore if it was deleted
 
+                var existingIndex = entries.FindIndex(e => e.Id == entry.Id);
                 if (existingIndex >= 0)
                 {
                     entries[existingIndex] = entry;
@@ -109,34 +96,8 @@ public class TotpService
                     entries.Add(entry);
                 }
 
-                if (isSyncConfigured)
-                {
-                    try
-                    {
-                        if (!isReadOnlySync)
-                        {
-                            await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
-                        }
-                        Preferences.Set("AuthenticatorLastSync", DateTime.Now);
-                    }
-                    catch (Exception ex)
-                    {
-                        if (!isReadOnlySync)
-                        {
-                             MainThread.BeginInvokeOnMainThread(async () =>
-                             {
-                                 await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Auth): {ex.Message}", "OK");
-                             });
-                        }
-                    }
-                }
-
-                await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                _syncLock.Release();
-            }
+                return true;
+            }, cancellationToken).ConfigureAwait(false);
 
             EntriesChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -154,54 +115,19 @@ public class TotpService
         {
             EnsureUnlocked();
 
-            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-            try
+            await MutateEntriesAsync(entries =>
             {
-                var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
                 var entry = entries.FirstOrDefault(e => e.Id == entryId);
-                var isSyncConfigured = await _syncService.IsConfiguredAsync().ConfigureAwait(false);
-                var isReadOnlySync = isSyncConfigured && await IsReadOnlySyncAsync().ConfigureAwait(false);
-
-                if (isReadOnlySync)
+                if (entry is null)
                 {
-                    await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
-                    entry = entries.FirstOrDefault(e => e.Id == entryId);
+                    return false;
                 }
 
-                if (entry != null)
-                {
-                    // Soft delete
-                    entry.IsDeleted = true;
-                    entry.ModifiedAt = DateTimeOffset.UtcNow;
-
-                    if (isSyncConfigured)
-                    {
-                        try
-                        {
-                            if (!isReadOnlySync)
-                            {
-                                await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
-                            }
-                            Preferences.Set("AuthenticatorLastSync", DateTime.Now);
-                        }
-                        catch (Exception ex)
-                        {
-                            if (!isReadOnlySync)
-                            {
-                                 MainThread.BeginInvokeOnMainThread(async () =>
-                                 {
-                                     await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Auth): {ex.Message}", "OK");
-                                 });
-                            }
-                        }
-                    }
-                    await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
-                }
-            }
-            finally
-            {
-                _syncLock.Release();
-            }
+                // Soft delete
+                entry.IsDeleted = true;
+                entry.ModifiedAt = DateTimeOffset.UtcNow;
+                return true;
+            }, cancellationToken).ConfigureAwait(false);
 
             EntriesChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -209,6 +135,138 @@ public class TotpService
         {
             dataOperation.Failed();
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Imports scanned accounts (otpauth:// or Google Authenticator export) in one step, so a
+    /// large export is saved and synchronized only once. Accounts that already exist with the
+    /// same secret and settings are skipped, unsupported ones (HOTP, MD5) are only counted.
+    /// </summary>
+    public async Task<TotpImportResult> ImportAccountsAsync(IEnumerable<OtpAccount> accounts, CancellationToken cancellationToken = default)
+    {
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
+        {
+            ArgumentNullException.ThrowIfNull(accounts);
+            EnsureUnlocked();
+
+            var accountList = accounts.ToList();
+            var unsupported = accountList.Count(a => !a.IsSupported);
+            var candidates = accountList.Where(a => a.IsSupported).Select(ToTotpEntry).ToList();
+            var added = new List<TotpEntry>();
+            var duplicates = 0;
+
+            if (candidates.Count > 0)
+            {
+                await MutateEntriesAsync(entries =>
+                {
+                    var existing = entries.Where(e => !e.IsDeleted).ToList();
+                    foreach (var candidate in candidates)
+                    {
+                        if (existing.Any(e => GeneratesSameCodes(e, candidate)))
+                        {
+                            duplicates++;
+                            continue;
+                        }
+
+                        candidate.ModifiedAt = DateTimeOffset.UtcNow;
+                        entries.Add(candidate);
+                        existing.Add(candidate);
+                        added.Add(candidate);
+                    }
+
+                    return added.Count > 0;
+                }, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (added.Count > 0)
+            {
+                EntriesChanged?.Invoke(this, EventArgs.Empty);
+            }
+
+            return new TotpImportResult(added, duplicates, unsupported);
+        }
+        catch
+        {
+            dataOperation.Failed();
+            throw;
+        }
+    }
+
+    private static TotpEntry ToTotpEntry(OtpAccount account) => new()
+    {
+        Issuer = account.Issuer,
+        AccountName = string.IsNullOrWhiteSpace(account.AccountName) ? "Unbenannt" : account.AccountName,
+        Secret = account.Secret,
+        Algorithm = account.Algorithm switch
+        {
+            OtpHashAlgorithm.Sha256 => TotpAlgorithm.Sha256,
+            OtpHashAlgorithm.Sha512 => TotpAlgorithm.Sha512,
+            _ => TotpAlgorithm.Sha1
+        },
+        Digits = account.Digits,
+        Period = account.Period
+    };
+
+    private static bool GeneratesSameCodes(TotpEntry a, TotpEntry b)
+        => a.Algorithm == b.Algorithm
+           && a.Digits == b.Digits
+           && a.Period == b.Period
+           && a.Secret is not null
+           && b.Secret is not null
+           && a.Secret.AsSpan().SequenceEqual(b.Secret);
+
+    /// <summary>
+    /// Loads the entries, merges read-only sync data, applies <paramref name="mutate"/> and, if it
+    /// reports a change, synchronizes and saves the result once.
+    /// </summary>
+    private async Task MutateEntriesAsync(Func<List<TotpEntry>, bool> mutate, CancellationToken cancellationToken)
+    {
+        await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+            var isSyncConfigured = await _syncService.IsConfiguredAsync().ConfigureAwait(false);
+            var isReadOnlySync = isSyncConfigured && await IsReadOnlySyncAsync().ConfigureAwait(false);
+
+            if (isReadOnlySync)
+            {
+                await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (!mutate(entries))
+            {
+                return;
+            }
+
+            if (isSyncConfigured)
+            {
+                try
+                {
+                    if (!isReadOnlySync)
+                    {
+                        await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
+                    }
+                    Preferences.Set("AuthenticatorLastSync", DateTime.Now);
+                }
+                catch (Exception ex)
+                {
+                    if (!isReadOnlySync)
+                    {
+                         MainThread.BeginInvokeOnMainThread(async () =>
+                         {
+                             await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Auth): {ex.Message}", "OK");
+                         });
+                    }
+                }
+            }
+
+            await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _syncLock.Release();
         }
     }
 
@@ -237,151 +295,6 @@ public class TotpService
         catch
         {
             return null;
-        }
-    }
-
-    public async Task<List<TotpEntry>> ImportFromUriAsync(string uriString)
-    {
-        using var dataOperation = AppDataOperations.Shared.BeginOperation();
-        try
-        {
-            if (string.IsNullOrWhiteSpace(uriString)) return new List<TotpEntry>();
-
-            if (uriString.StartsWith("otpauth://totp/"))
-            {
-                var entry = ParseOtpAuthUri(uriString);
-                if (entry != null)
-                {
-                    await AddOrUpdateEntryAsync(entry);
-                    return new List<TotpEntry> { entry };
-                }
-            }
-            else if (uriString.StartsWith("otpauth-migration://offline"))
-            {
-                var entries = ParseMigrationPayload(uriString);
-                if (entries.Any())
-                {
-                    foreach (var entry in entries)
-                    {
-                        await AddOrUpdateEntryAsync(entry);
-                    }
-                    return entries;
-                }
-            }
-
-            return new List<TotpEntry>();
-        }
-        catch
-        {
-            dataOperation.Failed();
-            throw;
-        }
-    }
-
-    private TotpEntry? ParseOtpAuthUri(string uriString)
-    {
-        try
-        {
-            var uri = new Uri(uriString);
-            var path = Uri.UnescapeDataString(uri.AbsolutePath.TrimStart('/')); // "label"
-
-            // Format: otpauth://totp/Issuer:Account?secret=...
-            // or: otpauth://totp/Account?secret=...&issuer=...
-
-            var label = path;
-            string issuer = "";
-            string accountName = label;
-
-            if (label.Contains(':'))
-            {
-                var parts = label.Split(':', 2);
-                issuer = parts[0];
-                accountName = parts[1].Trim();
-            }
-
-            var query = HttpUtility.ParseQueryString(uri.Query);
-            var secretStr = query["secret"];
-            var issuerParam = query["issuer"];
-            var algorithmStr = query["algorithm"];
-            var digitsStr = query["digits"];
-            var periodStr = query["period"];
-
-            if (string.IsNullOrEmpty(secretStr)) return null;
-
-            if (!string.IsNullOrEmpty(issuerParam))
-            {
-                issuer = issuerParam; // Param takes precedence usually
-            }
-
-            var algorithm = algorithmStr?.ToUpperInvariant() switch
-            {
-                "SHA256" => TotpAlgorithm.Sha256,
-                "SHA512" => TotpAlgorithm.Sha512,
-                _ => TotpAlgorithm.Sha1
-            };
-
-            int.TryParse(digitsStr, out var digits);
-            if (digits == 0) digits = 6;
-
-            int.TryParse(periodStr, out var period);
-            if (period == 0) period = 30;
-
-            return new TotpEntry
-            {
-                Issuer = issuer,
-                AccountName = accountName,
-                Secret = Base32Encoding.ToBytes(secretStr),
-                Algorithm = algorithm,
-                Digits = digits,
-                Period = period
-            };
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private List<TotpEntry> ParseMigrationPayload(string uriString)
-    {
-        try
-        {
-            var uri = new Uri(uriString);
-            var query = HttpUtility.ParseQueryString(uri.Query);
-            var data = query["data"];
-
-            if (string.IsNullOrEmpty(data)) return new List<TotpEntry>();
-
-            var bytes = Convert.FromBase64String(data);
-            var payload = MigrationPayload.Parser.ParseFrom(bytes);
-
-            var list = new List<TotpEntry>();
-            foreach (var p in payload.OtpParameters)
-            {
-                if (p.Type != OtType.Totp) continue; // Skip HOTP for now
-
-                var algorithm = p.Algorithm switch
-                {
-                    Algorithm.Sha256 => TotpAlgorithm.Sha256,
-                    Algorithm.Sha512 => TotpAlgorithm.Sha512,
-                    _ => TotpAlgorithm.Sha1
-                };
-
-                list.Add(new TotpEntry
-                {
-                    Issuer = p.Issuer,
-                    AccountName = p.Name,
-                    Secret = p.Secret.ToByteArray(),
-                    Algorithm = algorithm,
-                    Digits = p.Digits > 0 ? p.Digits : 6,
-                    Period = 30 // Migration format usually implies 30s for TOTP
-                });
-            }
-            return list;
-        }
-        catch
-        {
-            return new List<TotpEntry>();
         }
     }
 
@@ -874,3 +787,5 @@ public class TotpService
 }
 
 public record TotpCode(string Code, int RemainingSeconds, int Period);
+
+public sealed record TotpImportResult(IReadOnlyList<TotpEntry> Added, int Duplicates, int Unsupported);

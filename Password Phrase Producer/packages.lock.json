@@ -35,12 +35,6 @@
           "Microsoft.Maui.Controls.Compatibility": "8.0.14"
         }
       },
-      "Google.Protobuf": {
-        "type": "Direct",
-        "requested": "[3.33.2, )",
-        "resolved": "3.33.2",
-        "contentHash": "vZXVbrZgBqUkP5iWQi0CS6pucIS2MQdEYPS1duWCo8fGrrt4th6HTiHfLFX2RmAWAQl1oUnzGgyDBsfq7fHQJA=="
-      },
       "Microsoft.Extensions.Logging.Debug": {
         "type": "Direct",
         "requested": "[8.0.0, )",
@@ -1311,12 +1305,6 @@
           "Microsoft.Maui.Controls.Compatibility": "8.0.14"
         }
       },
-      "Google.Protobuf": {
-        "type": "Direct",
-        "requested": "[3.33.2, )",
-        "resolved": "3.33.2",
-        "contentHash": "vZXVbrZgBqUkP5iWQi0CS6pucIS2MQdEYPS1duWCo8fGrrt4th6HTiHfLFX2RmAWAQl1oUnzGgyDBsfq7fHQJA=="
-      },
       "Microsoft.Extensions.Logging.Debug": {
         "type": "Direct",
         "requested": "[8.0.0, )",
@@ -1606,12 +1594,6 @@
           "Microsoft.Maui.Controls.Compatibility": "8.0.14"
         }
       },
-      "Google.Protobuf": {
-        "type": "Direct",
-        "requested": "[3.33.2, )",
-        "resolved": "3.33.2",
-        "contentHash": "vZXVbrZgBqUkP5iWQi0CS6pucIS2MQdEYPS1duWCo8fGrrt4th6HTiHfLFX2RmAWAQl1oUnzGgyDBsfq7fHQJA=="
-      },
       "Microsoft.Extensions.Logging.Debug": {
         "type": "Direct",
         "requested": "[8.0.0, )",
@@ -1900,12 +1882,6 @@
           "Microsoft.Maui.Controls": "8.0.14",
           "Microsoft.Maui.Controls.Compatibility": "8.0.14"
         }
-      },
-      "Google.Protobuf": {
-        "type": "Direct",
-        "requested": "[3.33.2, )",
-        "resolved": "3.33.2",
-        "contentHash": "vZXVbrZgBqUkP5iWQi0CS6pucIS2MQdEYPS1duWCo8fGrrt4th6HTiHfLFX2RmAWAQl1oUnzGgyDBsfq7fHQJA=="
       },
       "Microsoft.Extensions.Logging.Debug": {
         "type": "Direct",

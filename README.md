@@ -65,7 +65,9 @@ The authenticator module supports:
 
 - **Time-based one-time passwords (TOTP)**
 - **Manual entry** (issuer, account, secret)
-- **QR scanning** via the camera
+- **QR scanning** via the camera: codes are detected continuously and imported automatically
+- **Google Authenticator export** (`otpauth-migration://`), including exports split over several QR codes
+- **Import from a screenshot/photo** or by pasting an `otpauth://` link
 
 ---
 
