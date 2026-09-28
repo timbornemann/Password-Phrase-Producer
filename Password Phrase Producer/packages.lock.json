@@ -72,9 +72,9 @@
       },
       "Microsoft.NET.ILLink.Tasks": {
         "type": "Direct",
-        "requested": "[9.0.11, )",
-        "resolved": "9.0.11",
-        "contentHash": "vvB9rtDmWaXgYkViT00KORBVmA3pcYsHlgd9vOPqL9sf5bKy3rvLMF1+sI1uUfVj28S3itirHlHmX5/kcpZKNw=="
+        "requested": "[9.0.20, )",
+        "resolved": "9.0.20",
+        "contentHash": "oPFydtjCgow3DXnL8z5gPbq3R1zGvBpcypgRhW172Hn8asJcI8oy7isudAnAAALIWyK+uRWCDP+/+om3s0PZHA=="
       },
       "Otp.NET": {
         "type": "Direct",
@@ -1271,7 +1271,7 @@
         "contentHash": "tq417LpTlN9BB02LDnODI5WpTiaf2Wqwp9VsrUpLv1XOAXsIMscQrCagJbYkpfheZ0YoiqG4QuTMcQXL+P+4kg=="
       }
     },
-    "net9.0-ios26.0": {
+    "net9.0-ios26.5": {
       "Camera.MAUI": {
         "type": "Direct",
         "requested": "[1.5.1, )",
@@ -1342,9 +1342,9 @@
       },
       "Microsoft.NET.ILLink.Tasks": {
         "type": "Direct",
-        "requested": "[9.0.11, )",
-        "resolved": "9.0.11",
-        "contentHash": "vvB9rtDmWaXgYkViT00KORBVmA3pcYsHlgd9vOPqL9sf5bKy3rvLMF1+sI1uUfVj28S3itirHlHmX5/kcpZKNw=="
+        "requested": "[9.0.20, )",
+        "resolved": "9.0.20",
+        "contentHash": "oPFydtjCgow3DXnL8z5gPbq3R1zGvBpcypgRhW172Hn8asJcI8oy7isudAnAAALIWyK+uRWCDP+/+om3s0PZHA=="
       },
       "Otp.NET": {
         "type": "Direct",
@@ -1525,42 +1525,42 @@
         "type": "Project"
       }
     },
-    "net9.0-ios26.0/android-arm64": {
+    "net9.0-ios26.5/android-arm64": {
       "SkiaSharp.NativeAssets.iOS": {
         "type": "Transitive",
         "resolved": "2.88.8",
         "contentHash": "bo00z/N46eptBnCrdrLNMwLpJnjjMHJDW8c3/gA6WsGEc4M+n02WpQUbCukZMZzAGq4XmLMzBg46LcElHlAU6Q=="
       }
     },
-    "net9.0-ios26.0/android-x64": {
+    "net9.0-ios26.5/android-x64": {
       "SkiaSharp.NativeAssets.iOS": {
         "type": "Transitive",
         "resolved": "2.88.8",
         "contentHash": "bo00z/N46eptBnCrdrLNMwLpJnjjMHJDW8c3/gA6WsGEc4M+n02WpQUbCukZMZzAGq4XmLMzBg46LcElHlAU6Q=="
       }
     },
-    "net9.0-ios26.0/iossimulator-x64": {
+    "net9.0-ios26.5/iossimulator-x64": {
       "SkiaSharp.NativeAssets.iOS": {
         "type": "Transitive",
         "resolved": "2.88.8",
         "contentHash": "bo00z/N46eptBnCrdrLNMwLpJnjjMHJDW8c3/gA6WsGEc4M+n02WpQUbCukZMZzAGq4XmLMzBg46LcElHlAU6Q=="
       }
     },
-    "net9.0-ios26.0/maccatalyst-x64": {
+    "net9.0-ios26.5/maccatalyst-x64": {
       "SkiaSharp.NativeAssets.iOS": {
         "type": "Transitive",
         "resolved": "2.88.8",
         "contentHash": "bo00z/N46eptBnCrdrLNMwLpJnjjMHJDW8c3/gA6WsGEc4M+n02WpQUbCukZMZzAGq4XmLMzBg46LcElHlAU6Q=="
       }
     },
-    "net9.0-ios26.0/win10-x64": {
+    "net9.0-ios26.5/win10-x64": {
       "SkiaSharp.NativeAssets.iOS": {
         "type": "Transitive",
         "resolved": "2.88.8",
         "contentHash": "bo00z/N46eptBnCrdrLNMwLpJnjjMHJDW8c3/gA6WsGEc4M+n02WpQUbCukZMZzAGq4XmLMzBg46LcElHlAU6Q=="
       }
     },
-    "net9.0-maccatalyst26.0": {
+    "net9.0-maccatalyst26.5": {
       "Camera.MAUI": {
         "type": "Direct",
         "requested": "[1.5.1, )",
@@ -1631,9 +1631,9 @@
       },
       "Microsoft.NET.ILLink.Tasks": {
         "type": "Direct",
-        "requested": "[9.0.11, )",
-        "resolved": "9.0.11",
-        "contentHash": "vvB9rtDmWaXgYkViT00KORBVmA3pcYsHlgd9vOPqL9sf5bKy3rvLMF1+sI1uUfVj28S3itirHlHmX5/kcpZKNw=="
+        "requested": "[9.0.20, )",
+        "resolved": "9.0.20",
+        "contentHash": "oPFydtjCgow3DXnL8z5gPbq3R1zGvBpcypgRhW172Hn8asJcI8oy7isudAnAAALIWyK+uRWCDP+/+om3s0PZHA=="
       },
       "Otp.NET": {
         "type": "Direct",
@@ -1814,35 +1814,35 @@
         "type": "Project"
       }
     },
-    "net9.0-maccatalyst26.0/android-arm64": {
+    "net9.0-maccatalyst26.5/android-arm64": {
       "SkiaSharp.NativeAssets.MacCatalyst": {
         "type": "Transitive",
         "resolved": "2.88.8",
         "contentHash": "qwoqbad4RbMbfTa7cG27S0YtzyXcfoU4xu2t2Nux3GUxTKMnOneR1Ebj3QiGUTiGkYYejgmjEZpE1iSq6KmhYA=="
       }
     },
-    "net9.0-maccatalyst26.0/android-x64": {
+    "net9.0-maccatalyst26.5/android-x64": {
       "SkiaSharp.NativeAssets.MacCatalyst": {
         "type": "Transitive",
         "resolved": "2.88.8",
         "contentHash": "qwoqbad4RbMbfTa7cG27S0YtzyXcfoU4xu2t2Nux3GUxTKMnOneR1Ebj3QiGUTiGkYYejgmjEZpE1iSq6KmhYA=="
       }
     },
-    "net9.0-maccatalyst26.0/iossimulator-x64": {
+    "net9.0-maccatalyst26.5/iossimulator-x64": {
       "SkiaSharp.NativeAssets.MacCatalyst": {
         "type": "Transitive",
         "resolved": "2.88.8",
         "contentHash": "qwoqbad4RbMbfTa7cG27S0YtzyXcfoU4xu2t2Nux3GUxTKMnOneR1Ebj3QiGUTiGkYYejgmjEZpE1iSq6KmhYA=="
       }
     },
-    "net9.0-maccatalyst26.0/maccatalyst-x64": {
+    "net9.0-maccatalyst26.5/maccatalyst-x64": {
       "SkiaSharp.NativeAssets.MacCatalyst": {
         "type": "Transitive",
         "resolved": "2.88.8",
         "contentHash": "qwoqbad4RbMbfTa7cG27S0YtzyXcfoU4xu2t2Nux3GUxTKMnOneR1Ebj3QiGUTiGkYYejgmjEZpE1iSq6KmhYA=="
       }
     },
-    "net9.0-maccatalyst26.0/win10-x64": {
+    "net9.0-maccatalyst26.5/win10-x64": {
       "SkiaSharp.NativeAssets.MacCatalyst": {
         "type": "Transitive",
         "resolved": "2.88.8",
@@ -2323,45 +2323,6 @@
       }
     },
     "net9.0-windows10.0.19041/win10-x64": {
-      "Microsoft.Graphics.Win2D": {
-        "type": "Transitive",
-        "resolved": "1.3.2",
-        "contentHash": "xAv4+Xj8wePW1innIUSXebX6UHMGDzOxwKPwYNUNY7mBrsRL/hPFEtuPLpBSxc3iBnuaCogPDCDeN7T4b1xV0Q==",
-        "dependencies": {
-          "Microsoft.WindowsAppSDK": "1.6.241114003"
-        }
-      },
-      "Microsoft.Web.WebView2": {
-        "type": "Transitive",
-        "resolved": "1.0.3179.45",
-        "contentHash": "3pokSH5CnN0G6rGhGFo1y87inxYhNxBQ2Vdf0wlvBj99KHxQJormjDACmqRnFeUsmuNFIhWwfAL1ztq7wD5qRA=="
-      },
-      "Microsoft.WindowsAppSDK": {
-        "type": "Transitive",
-        "resolved": "1.7.250606001",
-        "contentHash": "LdMRw0HqGu/w0DQKDRaABdIuSL8GiRitHSMiHH3SAR715/mEiWtVWPRJKp0aMcQ6JiBBqkQVZgu71MeXmQipkw==",
-        "dependencies": {
-          "Microsoft.Web.WebView2": "1.0.2903.40",
-          "Microsoft.Windows.SDK.BuildTools": "10.0.22621.756"
-        }
-      },
-      "SkiaSharp.NativeAssets.macOS": {
-        "type": "Transitive",
-        "resolved": "2.88.8",
-        "contentHash": "6Kn5TSkKlfyS6azWHF3Jk2sW5C4jCE5uSshM/5AbfFrR+5n6qM5XEnz9h4VaVl7LTxBvHvMkuPb/3bpbq0vxTw=="
-      },
-      "SkiaSharp.NativeAssets.Win32": {
-        "type": "Transitive",
-        "resolved": "2.88.8",
-        "contentHash": "O9QXoWEXA+6cweR4h3BOnwMz+pO9vL9mXdjLrpDd0w1QzCgWmLQBxa1VgySDITiH7nQndrDG1h6937zm9pLj1Q=="
-      },
-      "System.Speech": {
-        "type": "Transitive",
-        "resolved": "8.0.0",
-        "contentHash": "CNuiA6vb95Oe5PRjClZEBiaju31vwB8OIeCgeSBXyZL6+MS4RVVB2X/C11z0xCkooHE3Vy91nM2z76emIzR+sg=="
-      }
-    },
-    "net9.0-windows10.0.19041/win-x64": {
       "Microsoft.Graphics.Win2D": {
         "type": "Transitive",
         "resolved": "1.3.2",
