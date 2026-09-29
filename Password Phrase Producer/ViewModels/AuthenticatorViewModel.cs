@@ -209,7 +209,7 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
         
         // Remove spaces for clipboard
         var cleanCode = item.Code.Replace(" ", "");
-        await Clipboard.SetTextAsync(cleanCode);
+        await Password_Phrase_Producer.Services.SensitiveClipboard.CopyAsync(cleanCode);
 
         // Visual feedback for copy button + toast (match Vault behavior)
         var token = item.NextCopyFeedbackToken();

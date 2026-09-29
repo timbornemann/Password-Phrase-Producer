@@ -282,7 +282,7 @@ public partial class DataVaultPage : ContentPage
             await AnimateCopyButton(border);
         }
 
-        await Clipboard.Default.SetTextAsync(entry.Password);
+        await Password_Phrase_Producer.Services.SensitiveClipboard.CopyAsync(entry.Password);
         await ToastService.ShowCopiedAsync("Passwort");
     }
 
@@ -314,7 +314,7 @@ public partial class DataVaultPage : ContentPage
             await AnimateCopyButton(border);
         }
 
-        await Clipboard.Default.SetTextAsync(entry.Username);
+        await Password_Phrase_Producer.Services.SensitiveClipboard.CopyAsync(entry.Username);
         await ToastService.ShowCopiedAsync("Benutzername");
     }
 

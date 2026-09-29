@@ -75,7 +75,7 @@ public partial class CaesarCipherTechniqueUiPage : PasswordGeneratorContentView
                 await AnimateCopyButton(button);
             }
 
-            await Clipboard.Default.SetTextAsync(resultEntry!.Text);
+            await Password_Phrase_Producer.Services.SensitiveClipboard.CopyAsync(resultEntry!.Text);
             await ToastService.ShowCopiedAsync("Passwort");
         }
     }

@@ -99,7 +99,7 @@ public partial class VaultEntryDetailPage : ContentPage
             await AnimateCopyButton(border);
         }
 
-        await Clipboard.Default.SetTextAsync(_entry.Username);
+        await Password_Phrase_Producer.Services.SensitiveClipboard.CopyAsync(_entry.Username);
         await ToastService.ShowCopiedAsync("Benutzername");
     }
 
@@ -126,7 +126,7 @@ public partial class VaultEntryDetailPage : ContentPage
             await AnimateCopyButton(border);
         }
 
-        await Clipboard.Default.SetTextAsync(_entry.Password);
+        await Password_Phrase_Producer.Services.SensitiveClipboard.CopyAsync(_entry.Password);
         await ToastService.ShowCopiedAsync("Passwort");
     }
 
