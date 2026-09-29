@@ -66,21 +66,14 @@ public class AppLockService : IAppLockService
             var salt = Convert.FromBase64String(_cachedMetadata.Salt);
             var iterations = _cachedMetadata.Iterations;
 
-            using var derivedKey = DeriveKey(password, salt, iterations);
-
-            // Verify Password
-            var actualVerifier = CreateVerifier(derivedKey.GetBytes(KeySize));
-            var expectedVerifier = Convert.FromBase64String(_cachedMetadata.Verifier);
-
-            if (!CryptographicOperations.FixedTimeEquals(actualVerifier, expectedVerifier))
-            {
-                return false;
-            }
-
-            // Decrypt Master Key
+            var kek = DeriveKeyBytes(password, salt, iterations);
             try
             {
-                var kek = DeriveKeyBytes(password, salt, iterations); // Key Encryption Key
+                var actualVerifier = CreateVerifier(kek);
+                var expectedVerifier = Convert.FromBase64String(_cachedMetadata.Verifier);
+                if (!CryptographicOperations.FixedTimeEquals(actualVerifier, expectedVerifier))
+                    return false;
+
                 var encryptedMek = Convert.FromBase64String(_cachedMetadata.EncryptedMasterKey);
 
                 var masterKey = DecryptAesGcm(encryptedMek, kek);
@@ -114,6 +107,10 @@ public class AppLockService : IAppLockService
             catch
             {
                 return false;
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(kek);
             }
         }
         catch
@@ -184,33 +181,30 @@ public class AppLockService : IAppLockService
 
             // Derive KEK (Key Encryption Key)
             var kek = DeriveKeyBytes(password, salt, iterations);
-
-            // Create Verifier
-            var verifier = CreateVerifier(kek);
-
-            // Encrypt MEK with KEK
-            var encryptedMek = EncryptAesGcm(mek, kek);
-
-            var metadata = new AppLockMetadata
+            try
             {
-                Salt = Convert.ToBase64String(salt),
-                Iterations = iterations,
-                Verifier = Convert.ToBase64String(verifier),
-                EncryptedMasterKey = Convert.ToBase64String(encryptedMek),
-                MasterKeyVerifier = Convert.ToBase64String(CreateVerifier(mek)),
-                BiometricEncryptedMasterKey = null
-            };
+                var verifier = CreateVerifier(kek);
+                var encryptedMek = EncryptAesGcm(mek, kek);
+                var metadata = new AppLockMetadata
+                {
+                    Salt = Convert.ToBase64String(salt),
+                    Iterations = iterations,
+                    Verifier = Convert.ToBase64String(verifier),
+                    EncryptedMasterKey = Convert.ToBase64String(encryptedMek),
+                    MasterKeyVerifier = Convert.ToBase64String(CreateVerifier(mek)),
+                    BiometricEncryptedMasterKey = null
+                };
 
-            // Save initial metadata
-            var json = JsonSerializer.Serialize(metadata);
-            await SecureStorage.Default.SetAsync(AppLockStorageKey, json).ConfigureAwait(false);
-            _cachedMetadata = metadata;
-            _masterKey = mek; // Logged in immediately
-
-            // Enable biometrics if requested
-            if (enableBiometrics)
+                await SecureStorage.Default.SetAsync(AppLockStorageKey, JsonSerializer.Serialize(metadata)).ConfigureAwait(false);
+                _cachedMetadata = metadata;
+                _masterKey = mek;
+                if (enableBiometrics)
+                    await EnableBiometricsAsync(true).ConfigureAwait(false);
+            }
+            finally
             {
-                await EnableBiometricsAsync(true).ConfigureAwait(false);
+                CryptographicOperations.ZeroMemory(kek);
+                if (!ReferenceEquals(_masterKey, mek)) CryptographicOperations.ZeroMemory(mek);
             }
         }
         catch
@@ -255,24 +249,27 @@ public class AppLockService : IAppLockService
             var salt = RandomNumberGenerator.GetBytes(16);
             var iterations = 200_000;
             var kek = DeriveKeyBytes(newPassword, salt, iterations);
-            var verifier = CreateVerifier(kek);
-
-            // Re-encrypt EXISTING MEK with new KEK
-            var encryptedMek = EncryptAesGcm(_masterKey, kek);
-
-            var newMetadata = new AppLockMetadata
+            try
             {
-                Salt = Convert.ToBase64String(salt),
-                Iterations = iterations,
-                Verifier = Convert.ToBase64String(verifier),
-                EncryptedMasterKey = Convert.ToBase64String(encryptedMek),
-                MasterKeyVerifier = Convert.ToBase64String(CreateVerifier(_masterKey)),
-                BiometricEncryptedMasterKey = _cachedMetadata?.BiometricEncryptedMasterKey
-            };
+                var verifier = CreateVerifier(kek);
+                var encryptedMek = EncryptAesGcm(_masterKey, kek);
+                var newMetadata = new AppLockMetadata
+                {
+                    Salt = Convert.ToBase64String(salt),
+                    Iterations = iterations,
+                    Verifier = Convert.ToBase64String(verifier),
+                    EncryptedMasterKey = Convert.ToBase64String(encryptedMek),
+                    MasterKeyVerifier = Convert.ToBase64String(CreateVerifier(_masterKey)),
+                    BiometricEncryptedMasterKey = _cachedMetadata?.BiometricEncryptedMasterKey
+                };
 
-            var json = JsonSerializer.Serialize(newMetadata);
-            await SecureStorage.Default.SetAsync(AppLockStorageKey, json).ConfigureAwait(false);
-            _cachedMetadata = newMetadata;
+                await SecureStorage.Default.SetAsync(AppLockStorageKey, JsonSerializer.Serialize(newMetadata)).ConfigureAwait(false);
+                _cachedMetadata = newMetadata;
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(kek);
+            }
         }
         catch
         {
@@ -353,7 +350,7 @@ public class AppLockService : IAppLockService
     public byte[] GetMasterKey()
     {
         if (_masterKey == null) throw new InvalidOperationException("App is locked.");
-        return _masterKey;
+        return _masterKey.ToArray();
     }
 
     private async Task LoadMetadataIfNeededAsync()
@@ -449,14 +446,16 @@ public class AppLockService : IAppLockService
 
     public byte[] EncryptWithMasterKey(byte[] data)
     {
-        if (_masterKey == null) throw new InvalidOperationException("App is locked.");
-        return EncryptAesGcm(data, _masterKey);
+        var key = GetMasterKey();
+        try { return EncryptAesGcm(data, key); }
+        finally { CryptographicOperations.ZeroMemory(key); }
     }
 
     public byte[] DecryptWithMasterKey(byte[] data)
     {
-        if (_masterKey == null) throw new InvalidOperationException("App is locked.");
-        return DecryptAesGcm(data, _masterKey);
+        var key = GetMasterKey();
+        try { return DecryptAesGcm(data, key); }
+        finally { CryptographicOperations.ZeroMemory(key); }
     }
 
     private class AppLockMetadata

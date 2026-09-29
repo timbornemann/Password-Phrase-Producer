@@ -926,15 +926,15 @@ public class DataVaultService
     private Task<byte[]> EncryptAsync(byte[] data, CancellationToken cancellationToken)
     {
         var key = GetUnlockedKey();
-        var result = EncryptWithKey(data, key);
-        return Task.FromResult(result);
+        try { return Task.FromResult(EncryptWithKey(data, key)); }
+        finally { CryptographicOperations.ZeroMemory(key); }
     }
 
     private Task<byte[]> DecryptAsync(byte[] data, CancellationToken cancellationToken)
     {
         var key = GetUnlockedKey();
-        var result = DecryptWithKey(data, key);
-        return Task.FromResult(result);
+        try { return Task.FromResult(DecryptWithKey(data, key)); }
+        finally { CryptographicOperations.ZeroMemory(key); }
     }
 
     private async Task<byte[]> ReadEncryptedFileAsync(CancellationToken cancellationToken)

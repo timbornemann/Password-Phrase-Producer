@@ -31,10 +31,16 @@ public class SecureFileService : ISecureFileService
             if (_appLockService.IsUnlocked)
             {
                 var masterKey = _appLockService.GetMasterKey();
-                var encrypted = Encrypt(bytes, masterKey);
-
-                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-                await AtomicFile.WriteAsync(path, encrypted, cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    var encrypted = Encrypt(bytes, masterKey);
+                    Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                    await AtomicFile.WriteAsync(path, encrypted, cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(masterKey);
+                }
             }
             else if (await _appLockService.IsConfiguredAsync().ConfigureAwait(false))
             {
@@ -76,7 +82,8 @@ public class SecureFileService : ISecureFileService
                 try
                 {
                     var masterKey = _appLockService.GetMasterKey();
-                    return Decrypt(fileContent, masterKey);
+                    try { return Decrypt(fileContent, masterKey); }
+                    finally { CryptographicOperations.ZeroMemory(masterKey); }
                 }
                 catch (Exception ex)
                 {
