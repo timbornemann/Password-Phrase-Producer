@@ -705,6 +705,8 @@ public partial class SettingsPage : ContentPage
             return;
         }
 
+        if (!await ConfirmResetIdentityAsync()) return;
+
         await ExecuteSettingsActionAsync(async () =>
         {
             await _viewModel.ResetPasswordVaultAsync();
@@ -727,6 +729,8 @@ public partial class SettingsPage : ContentPage
         {
             return;
         }
+
+        if (!await ConfirmResetIdentityAsync()) return;
 
         await ExecuteSettingsActionAsync(async () =>
         {
@@ -751,12 +755,27 @@ public partial class SettingsPage : ContentPage
             return;
         }
 
+        if (!await ConfirmResetIdentityAsync()) return;
+
         await ExecuteSettingsActionAsync(async () =>
         {
             await _viewModel.ResetAuthenticatorAsync();
             var successPopup = new SuccessPopup("Erfolg", "Der 2FA-Tresor wurde erfolgreich zurückgesetzt.", "OK");
             await this.ShowPopupAsync(successPopup);
         });
+    }
+
+    private async Task<bool> ConfirmResetIdentityAsync()
+    {
+        var password = await DisplayPasswordPromptAsync(
+            "App-Passwort bestätigen",
+            "Gib dein App-Passwort ein, um den Tresor endgültig zurückzusetzen.",
+            "Bestätigen",
+            "Abbrechen");
+        if (string.IsNullOrEmpty(password)) return false;
+        if (await _viewModel.VerifyAppPasswordAsync(password)) return true;
+        await DisplayAlert("Fehler", "Das App-Passwort ist falsch.", "OK");
+        return false;
     }
 
     private async void OnSyncAccessModeToggled(object sender, ToggledEventArgs e)

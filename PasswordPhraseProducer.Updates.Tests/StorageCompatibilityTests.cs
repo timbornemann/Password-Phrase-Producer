@@ -22,6 +22,24 @@ internal static class SecureStorage
 public sealed class StorageCompatibilityTests
 {
     [Fact]
+    public async Task PasswordVerificationDoesNotUnlockTheApp()
+    {
+        SecureStorage.Default.Clear();
+        try
+        {
+            var appLock = new AppLockService(new DisabledBiometrics());
+            await appLock.SetupAsync("sufficiently long app password", false);
+            appLock.Lock();
+
+            Assert.False(await appLock.VerifyPasswordAsync("wrong password"));
+            Assert.False(appLock.IsUnlocked);
+            Assert.True(await appLock.VerifyPasswordAsync("sufficiently long app password"));
+            Assert.False(appLock.IsUnlocked);
+        }
+        finally { SecureStorage.Default.Clear(); }
+    }
+
+    [Fact]
     public async Task ExistingAppPasswordAndEncryptedFilesSurviveReplacementOfServiceInstances()
     {
         SecureStorage.Default.Clear();

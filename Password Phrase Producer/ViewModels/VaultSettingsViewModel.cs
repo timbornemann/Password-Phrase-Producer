@@ -1595,6 +1595,9 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         await RefreshVaultStateAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    public Task<bool> VerifyAppPasswordAsync(string password)
+        => _appLockService.VerifyPasswordAsync(password);
+
     public async Task ResetDataVaultAsync(CancellationToken cancellationToken = default)
     {
         await _dataVaultService.ResetVaultAsync(cancellationToken).ConfigureAwait(false);

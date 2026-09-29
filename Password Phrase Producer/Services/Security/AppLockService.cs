@@ -10,6 +10,7 @@ public interface IAppLockService
     bool IsUnlocked { get; }
     Task<bool> IsConfiguredAsync();
     Task<bool> UnlockAsync(string password);
+    Task<bool> VerifyPasswordAsync(string password);
     Task<bool> UnlockWithBiometricsAsync();
     Task SetupAsync(string password, bool enableBiometrics);
     Task ChangePasswordAsync(string currentPassword, string newPassword);
@@ -119,6 +120,39 @@ public class AppLockService : IAppLockService
         {
             dataOperation.Failed();
             throw;
+        }
+    }
+
+    public async Task<bool> VerifyPasswordAsync(string password)
+    {
+        if (string.IsNullOrWhiteSpace(password)) return false;
+        await LoadMetadataIfNeededAsync().ConfigureAwait(false);
+        if (_cachedMetadata is null) return false;
+
+        byte[]? kek = null;
+        byte[]? masterKey = null;
+        try
+        {
+            var salt = Convert.FromBase64String(_cachedMetadata.Salt);
+            var expectedVerifier = Convert.FromBase64String(_cachedMetadata.Verifier);
+            if (salt.Length != 16 || expectedVerifier.Length != 32 ||
+                _cachedMetadata.Iterations is < 10_000 or > 1_000_000) return false;
+
+            kek = DeriveKeyBytes(password, salt, _cachedMetadata.Iterations);
+            var actualVerifier = CreateVerifier(kek);
+            if (!CryptographicOperations.FixedTimeEquals(actualVerifier, expectedVerifier)) return false;
+
+            masterKey = DecryptAesGcm(Convert.FromBase64String(_cachedMetadata.EncryptedMasterKey), kek);
+            return masterKey.Length == KeySize;
+        }
+        catch (Exception ex) when (ex is FormatException or CryptographicException or InvalidDataException or ArgumentException)
+        {
+            return false;
+        }
+        finally
+        {
+            if (kek is not null) CryptographicOperations.ZeroMemory(kek);
+            if (masterKey is not null) CryptographicOperations.ZeroMemory(masterKey);
         }
     }
 
