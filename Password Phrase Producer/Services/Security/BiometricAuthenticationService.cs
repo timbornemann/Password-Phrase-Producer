@@ -25,18 +25,9 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
             return Task.FromResult(false);
         }
 
-        int status;
-        if (OperatingSystem.IsAndroidVersionAtLeast(30))
-        {
-            status = manager.CanAuthenticate((int)(AndroidX.Biometric.BiometricManager.Authenticators.BiometricStrong |
-                                                    AndroidX.Biometric.BiometricManager.Authenticators.BiometricWeak));
-        }
-        else
-        {
-#pragma warning disable CA1416 // Validate platform compatibility
-            status = manager.CanAuthenticate();
-#pragma warning restore CA1416 // Validate platform compatibility
-        }
+        // CryptoObject-backed keys require a strong biometric. A weak sensor
+        // must not make the settings UI offer a flow that cannot unlock keys.
+        var status = manager.CanAuthenticate((int)AndroidX.Biometric.BiometricManager.Authenticators.BiometricStrong);
 
         return Task.FromResult(status == AndroidX.Biometric.BiometricManager.BiometricSuccess);
     }
@@ -157,10 +148,7 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
                     .SetNegativeButtonText("Abbrechen")
                     .SetConfirmationRequired(false);
 
-                if (OperatingSystem.IsAndroidVersionAtLeast(30))
-                {
-                    promptInfoBuilder.SetAllowedAuthenticators((int)(AndroidX.Biometric.BiometricManager.Authenticators.BiometricStrong));
-                }
+                promptInfoBuilder.SetAllowedAuthenticators((int)AndroidX.Biometric.BiometricManager.Authenticators.BiometricStrong);
 
                 var promptInfo = promptInfoBuilder.Build();
 
@@ -335,8 +323,9 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
 
     public async Task<byte[]> EncryptAsync(byte[] data, CancellationToken cancellationToken = default)
     {
-        // 1. Ensure Key Exists with Policy
-        EnsureKeyExists();
+        if (!await AuthenticateAsync("Biometrie einrichten", cancellationToken).ConfigureAwait(false))
+            throw new UnauthorizedAccessException("Windows Hello wurde abgebrochen oder ist fehlgeschlagen.");
+        EnsureKeyExists(createIfMissing: true);
         
         // 2. Use AesCng with Named Key
         using var aes = new System.Security.Cryptography.AesCng(WindowsKeyName, System.Security.Cryptography.CngProvider.MicrosoftSoftwareKeyStorageProvider);
@@ -372,8 +361,9 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
         var cipherText = new byte[data.Length - ivLength];
         Buffer.BlockCopy(data, ivLength, cipherText, 0, cipherText.Length);
         
-        // 1. Ensure Key Exists
-        EnsureKeyExists();
+        if (!await AuthenticateAsync("Tresor entsperren", cancellationToken).ConfigureAwait(false))
+            throw new UnauthorizedAccessException("Windows Hello wurde abgebrochen oder ist fehlgeschlagen.");
+        EnsureKeyExists(createIfMissing: false);
         
         using var aes = new System.Security.Cryptography.AesCng(WindowsKeyName, System.Security.Cryptography.CngProvider.MicrosoftSoftwareKeyStorageProvider);
         aes.KeySize = 256;
@@ -395,13 +385,18 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
         }
     }
 
-    private void EnsureKeyExists()
+    private void EnsureKeyExists(bool createIfMissing)
     {
-        // Check if exists
         if (System.Security.Cryptography.CngKey.Exists(WindowsKeyName, System.Security.Cryptography.CngProvider.MicrosoftSoftwareKeyStorageProvider))
         {
+            using var existing = System.Security.Cryptography.CngKey.Open(WindowsKeyName, System.Security.Cryptography.CngProvider.MicrosoftSoftwareKeyStorageProvider);
+            if (existing.UIPolicy?.ProtectionLevel != System.Security.Cryptography.CngUIProtectionLevels.ForceHighProtection)
+                throw new UnauthorizedAccessException("Der biometrische Schlüssel hat keine erzwungene Geräteauthentifizierung.");
             return;
         }
+
+        if (!createIfMissing)
+            throw new UnauthorizedAccessException("Der biometrische Geräteschlüssel fehlt.");
         
         // Create new
         var keyCreationParams = new System.Security.Cryptography.CngKeyCreationParameters

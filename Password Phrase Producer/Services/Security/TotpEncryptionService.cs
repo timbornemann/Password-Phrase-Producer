@@ -1,7 +1,6 @@
 using PasswordPhraseProducer.Updates;
 using System.IO;
 using System.Security.Cryptography;
-using System.Text;
 using Microsoft.Maui.Storage;
 using Password_Phrase_Producer.Services.Storage;
 
@@ -13,6 +12,8 @@ namespace Password_Phrase_Producer.Services.Security;
 public class TotpEncryptionService
 {
     private const string KeyFileName = "totp.key";
+    private const string DataFileName = "totp_data.json.enc";
+    private const string BiometricKeyStorageKey = "TotpBiometricKey_V1";
     private static readonly byte[] KeyFileHeader = { (byte)'T', (byte)'O', (byte)'T', (byte)'P', 0x01 };
     private const int NonceLength = 12;
     private const int TagLength = 16;
@@ -24,7 +25,9 @@ public class TotpEncryptionService
     private const int Pbkdf2Iterations = 200_000;
 
     private readonly ISecureFileService _secureFileService;
+    private readonly IBiometricAuthenticationService _biometricService;
     private readonly string _keyFilePath;
+    private readonly string _dataFilePath;
     private readonly object _keyStateLock = new();
     private long _lockGeneration;
     private byte[]? _unlockedKey;
@@ -56,10 +59,21 @@ public class TotpEncryptionService
         }
     }
 
-    public TotpEncryptionService(ISecureFileService secureFileService)
+    public TotpEncryptionService(ISecureFileService secureFileService, IBiometricAuthenticationService biometricService)
     {
         _secureFileService = secureFileService;
+        _biometricService = biometricService;
         _keyFilePath = Path.Combine(FileSystem.AppDataDirectory, KeyFileName);
+        _dataFilePath = Path.Combine(FileSystem.AppDataDirectory, DataFileName);
+    }
+
+    public async Task<bool> HasBiometricKeyAsync()
+    {
+        if (!await HasPasswordAsync().ConfigureAwait(false)) return false;
+        var stored = await SecureStorage.Default.GetAsync(BiometricKeyStorageKey).ConfigureAwait(false);
+        if (!TotpBiometricKeyRecord.TryParse(stored, out var record) || record is null) return false;
+        var keyFile = await _secureFileService.ReadAllBytesAsync(_keyFilePath).ConfigureAwait(false);
+        return record.MatchesKeyFile(keyFile);
     }
 
     /// <summary>
@@ -75,7 +89,10 @@ public class TotpEncryptionService
             NewPasswordPolicy.Validate(password, nameof(password));
 
             StartupDataGuard.RequireNewStore(_keyFilePath);
-            StartupDataGuard.RequireNewStore(Path.Combine(FileSystem.AppDataDirectory, "totp_data.json.enc"));
+            StartupDataGuard.RequireNewStore(_dataFilePath);
+
+            // A new store must never inherit biometric access from a deleted one.
+            SecureStorage.Default.Remove(BiometricKeyStorageKey);
 
             // Generate a new master key
             var masterKey = new byte[32]; // 256-bit key
@@ -174,6 +191,15 @@ public class TotpEncryptionService
                         CryptographicOperations.ZeroMemory(decryptedKey);
                     return false;
                 }
+                try
+                {
+                    await VerifyDataFileAsync(decryptedKey).ConfigureAwait(false);
+                }
+                catch
+                {
+                    CryptographicOperations.ZeroMemory(decryptedKey);
+                    return false;
+                }
                 lock (_keyStateLock)
                 {
                     if (_lockGeneration != generation)
@@ -190,6 +216,107 @@ public class TotpEncryptionService
             catch
             {
                 return false;
+            }
+        }
+        catch
+        {
+            dataOperation.Failed();
+            throw;
+        }
+    }
+
+    public async Task<bool> UnlockWithBiometricsAsync(CancellationToken cancellationToken = default)
+    {
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        long generation;
+        lock (_keyStateLock) generation = _lockGeneration;
+        try
+        {
+            if (!await HasPasswordAsync().ConfigureAwait(false)) return false;
+            var stored = await SecureStorage.Default.GetAsync(BiometricKeyStorageKey).ConfigureAwait(false);
+            if (!TotpBiometricKeyRecord.TryParse(stored, out var record) || record is null) return false;
+
+            var keyFile = await _secureFileService.ReadAllBytesAsync(_keyFilePath, cancellationToken).ConfigureAwait(false);
+            if (!record.MatchesKeyFile(keyFile)) return false;
+
+            byte[]? key = null;
+            try
+            {
+                key = await _biometricService.DecryptAsync(Convert.FromBase64String(record.EncryptedKey), cancellationToken)
+                    .ConfigureAwait(false);
+                if (!record.MatchesMasterKey(key)) return false;
+                await VerifyDataFileAsync(key, cancellationToken).ConfigureAwait(false);
+
+                lock (_keyStateLock)
+                {
+                    if (_lockGeneration != generation) return false;
+                    if (_unlockedKey is not null) CryptographicOperations.ZeroMemory(_unlockedKey);
+                    _unlockedKey = key;
+                    key = null;
+                    _isUnlocked = true;
+                    return true;
+                }
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or CryptographicException or
+                                       InvalidOperationException or InvalidDataException or FormatException)
+            {
+                return false;
+            }
+            finally
+            {
+                if (key is not null) CryptographicOperations.ZeroMemory(key);
+            }
+        }
+        catch
+        {
+            dataOperation.Failed();
+            throw;
+        }
+    }
+
+    public async Task SetBiometricUnlockAsync(bool enabled, CancellationToken cancellationToken = default)
+    {
+        using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        try
+        {
+            if (!enabled)
+            {
+                SecureStorage.Default.Remove(BiometricKeyStorageKey);
+                return;
+            }
+
+            if (!await _biometricService.IsAvailableAsync(cancellationToken).ConfigureAwait(false))
+                throw new InvalidOperationException("Biometrische Anmeldung ist auf diesem Gerät nicht verfügbar.");
+
+            byte[] key;
+            long generation;
+            lock (_keyStateLock)
+            {
+                if (!_isUnlocked || _unlockedKey is null)
+                    throw new InvalidOperationException("Der Authenticator ist gesperrt.");
+                generation = _lockGeneration;
+                key = _unlockedKey.ToArray();
+            }
+
+            try
+            {
+                var keyFile = await _secureFileService.ReadAllBytesAsync(_keyFilePath, cancellationToken).ConfigureAwait(false);
+                if (keyFile.Length == 0)
+                    throw new InvalidDataException("Der Authenticator-Schlüssel fehlt.");
+                var encrypted = await _biometricService.EncryptAsync(key, cancellationToken).ConfigureAwait(false);
+                var record = TotpBiometricKeyRecord.Create(encrypted, keyFile, key);
+                EnsureStillUnlocked(key, generation);
+                await SecureStorage.Default.SetAsync(BiometricKeyStorageKey, record.Serialize()).ConfigureAwait(false);
+                try { EnsureStillUnlocked(key, generation); }
+                catch
+                {
+                    SecureStorage.Default.Remove(BiometricKeyStorageKey);
+                    throw;
+                }
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(key);
             }
         }
         catch
@@ -216,9 +343,30 @@ public class TotpEncryptionService
 
             var masterKey = GetUnlockedKey();
             byte[] encryptedMasterKey;
-            try { encryptedMasterKey = TotpKeyFileFormat.Encrypt(masterKey, newPassword); }
+            TotpBiometricKeyRecord? biometricRecord = null;
+            try
+            {
+                encryptedMasterKey = TotpKeyFileFormat.Encrypt(masterKey, newPassword);
+                var stored = await SecureStorage.Default.GetAsync(BiometricKeyStorageKey).ConfigureAwait(false);
+                if (TotpBiometricKeyRecord.TryParse(stored, out var record) && record is not null &&
+                    record.MatchesMasterKey(masterKey))
+                    biometricRecord = record;
+            }
             finally { CryptographicOperations.ZeroMemory(masterKey); }
             await _secureFileService.WriteAllBytesAsync(_keyFilePath, encryptedMasterKey);
+            if (biometricRecord is not null)
+            {
+                try
+                {
+                    biometricRecord.RebindKeyFile(encryptedMasterKey);
+                    await SecureStorage.Default.SetAsync(BiometricKeyStorageKey, biometricRecord.Serialize()).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // The password change is committed; stale biometric access must fail closed.
+                    SecureStorage.Default.Remove(BiometricKeyStorageKey);
+                }
+            }
             // Legacy metadata is no longer needed. The V2 file remains usable even
             // if the process stops before these removals finish.
             try
@@ -269,26 +417,10 @@ public class TotpEncryptionService
             // Lock first
             Lock();
 
-            // Delete key file - Note: Delete is synchronous in interface??
-            // Wait, ISecureFileService.Delete is probably void Delete(string path). Check Step 46.
-            // Step 46: `void Delete(string path);` Yes.
-
-            // However, I need to check existence first? SecureFileService.Delete does File.Delete which doesn't throw if file missing?
-            // Actually File.Delete does not throw if file doesn't exist. But SecureFileService might throw?
-            // Let's assume it's safe or check ExistsAsync first.
-            // Sync context in Reset()? It's a sync method?
-            // The Reset() method in TotpEncryptionService is synchronous: `public void Reset()`.
-            // _secureFileService.ExistsAsync is async. I cannot call it easily here.
-            // I should probably skip the check or update Reset to be async, but that changes API.
-            // Or just call `_secureFileService.Delete(_keyFilePath)` assuming it handles it.
-            // Let's look at `SecureFileService.cs` implementation (Step 46).
-            // It's `public void Delete(string path) { if (File.Exists(path)) File.Delete(path); }` (inferred).
-            // Wait, I created Step 46. Let's check `SecureFileService` content if needed.
-            // But for now, I'll just call `_secureFileService.Delete`.
-
             _secureFileService.Delete(_keyFilePath);
 
             // Clear password preferences and metadata
+            SecureStorage.Default.Remove(BiometricKeyStorageKey);
             SecureStorage.Default.Remove(PasswordSaltStorageKey);
             SecureStorage.Default.Remove(PasswordVerifierStorageKey);
             SecureStorage.Default.Remove(PasswordIterationsStorageKey);
@@ -331,6 +463,32 @@ public class TotpEncryptionService
         var key = GetUnlockedKey();
         try { return DecryptWithKey(ciphertext, key); }
         finally { CryptographicOperations.ZeroMemory(key); }
+    }
+
+    private void EnsureStillUnlocked(byte[] key, long generation)
+    {
+        lock (_keyStateLock)
+        {
+            if (!_isUnlocked || _unlockedKey is null || _lockGeneration != generation ||
+                !CryptographicOperations.FixedTimeEquals(_unlockedKey, key))
+                throw new OperationCanceledException("Der Authenticator wurde während der Biometrie-Einrichtung gesperrt.");
+        }
+    }
+
+    private async Task VerifyDataFileAsync(byte[] key, CancellationToken cancellationToken = default)
+    {
+        if (!File.Exists(_dataFilePath)) return;
+        var encrypted = await File.ReadAllBytesAsync(_dataFilePath, cancellationToken).ConfigureAwait(false);
+        var plain = DecryptWithKey(encrypted, key);
+        try
+        {
+            if (plain.Length == 0)
+                throw new InvalidDataException("Die Authenticator-Datei enthält keinen gültigen Snapshot.");
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(plain);
+        }
     }
 
     #region Private Helpers
