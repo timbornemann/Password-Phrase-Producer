@@ -65,7 +65,7 @@ public partial class AuthenticatorPinPage : ContentPage
 
     private async void OnUnlockClicked(object sender, EventArgs e)
     {
-        var password = PinEntry.Text?.Trim();
+        var password = PinEntry.Text;
         
         if (string.IsNullOrWhiteSpace(password))
         {
@@ -76,7 +76,7 @@ public partial class AuthenticatorPinPage : ContentPage
         if (_isSetupMode)
         {
             // Setup mode: verify password confirmation
-            var confirmPassword = ConfirmPinEntry.Text?.Trim();
+            var confirmPassword = ConfirmPinEntry.Text;
             
             if (string.IsNullOrWhiteSpace(confirmPassword))
             {
