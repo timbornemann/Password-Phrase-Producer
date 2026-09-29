@@ -18,9 +18,10 @@ public interface ISyncFileService
     Task<Stream> OpenReadAsync(string path);
 
     /// <summary>
-    /// Opens the file for writing (overwriting).
+    /// Replaces the sync file with complete contents. Implementations should
+    /// publish atomically when the storage provider supports it.
     /// </summary>
-    Task<Stream> OpenWriteAsync(string path);
+    Task WriteAllBytesAsync(string path, byte[] contents, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Creates a new file (via system picker) and requests persistent permission.

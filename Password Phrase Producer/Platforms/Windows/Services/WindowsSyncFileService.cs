@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Storage;
+using PasswordPhraseProducer.Updates;
 using Password_Phrase_Producer.Services.Storage;
 
 namespace Password_Phrase_Producer.Platforms.Windows.Services;
@@ -53,10 +54,8 @@ public class WindowsSyncFileService : ISyncFileService
         return Task.FromResult<Stream>(File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
     }
 
-    public Task<Stream> OpenWriteAsync(string path)
-    {
-        return Task.FromResult<Stream>(File.Open(path, FileMode.Create, FileAccess.Write, FileShare.ReadWrite));
-    }
+    public Task WriteAllBytesAsync(string path, byte[] contents, CancellationToken cancellationToken = default) =>
+        AtomicFile.WriteAsync(path, contents, cancellationToken);
 
     public Task<bool> ExistsAsync(string path)
     {

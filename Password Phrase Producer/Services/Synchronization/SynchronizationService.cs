@@ -662,10 +662,11 @@ public class SynchronizationService : ISynchronizationService
         var lengthBytes = BitConverter.GetBytes(length);
         var magicBytes = Encoding.UTF8.GetBytes(MagicHeader);
 
-        using var stream = await _syncFileService.OpenWriteAsync(path);
-        await stream.WriteAsync(magicBytes, 0, magicBytes.Length);
-        await stream.WriteAsync(lengthBytes, 0, lengthBytes.Length);
-        await stream.WriteAsync(jsonBytes, 0, jsonBytes.Length);
+        var fileBytes = new byte[magicBytes.Length + lengthBytes.Length + jsonBytes.Length];
+        Buffer.BlockCopy(magicBytes, 0, fileBytes, 0, magicBytes.Length);
+        Buffer.BlockCopy(lengthBytes, 0, fileBytes, magicBytes.Length, lengthBytes.Length);
+        Buffer.BlockCopy(jsonBytes, 0, fileBytes, magicBytes.Length + lengthBytes.Length, jsonBytes.Length);
+        await _syncFileService.WriteAllBytesAsync(path, fileBytes);
         // Any extra bytes after this (from failed truncation) will be ignored by the reader.
     }
 

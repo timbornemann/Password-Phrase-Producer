@@ -74,7 +74,7 @@ public class AndroidSyncFileService : ISyncFileService
         return Task.FromResult(stream);
     }
 
-    public Task<Stream> OpenWriteAsync(string path)
+    public async Task WriteAllBytesAsync(string path, byte[] contents, CancellationToken cancellationToken = default)
     {
         var uri = AndroidUri.Parse(path);
         try
@@ -82,7 +82,11 @@ public class AndroidSyncFileService : ISyncFileService
             var stream = TryOpenOutputStream(uri);
             if (stream == null) throw new FileNotFoundException("Could not open output stream for URI", path);
 
-            return Task.FromResult(stream);
+            await using (stream)
+            {
+                await stream.WriteAsync(contents, cancellationToken);
+                await stream.FlushAsync(cancellationToken);
+            }
         }
         catch (Exception ex)
         {
