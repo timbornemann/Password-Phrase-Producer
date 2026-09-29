@@ -164,22 +164,53 @@ public class PasswordVaultService
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(password);
 
-            var metadata = await GetPasswordMetadataAsync(cancellationToken).ConfigureAwait(false);
-            if (string.IsNullOrEmpty(metadata.Salt) || string.IsNullOrEmpty(metadata.Verifier))
+            var storedMetadata = await GetPasswordMetadataAsync(cancellationToken).ConfigureAwait(false);
+            var vaultFile = await ReadVaultFileAsync(cancellationToken).ConfigureAwait(false);
+            var fileMetadata = !string.IsNullOrWhiteSpace(vaultFile.PasswordSalt) &&
+                               !string.IsNullOrWhiteSpace(vaultFile.PasswordVerifier)
+                ? new PasswordMetadata(vaultFile.PasswordSalt, vaultFile.PasswordVerifier,
+                    vaultFile.Pbkdf2Iterations.GetValueOrDefault(Pbkdf2Iterations))
+                : null;
+
+            byte[]? key = null;
+            PasswordMetadata? selectedMetadata = null;
+            foreach (var candidate in new[] { storedMetadata, fileMetadata }.OfType<PasswordMetadata>().Distinct())
             {
-                return false;
+                if (string.IsNullOrEmpty(candidate.Salt) || string.IsNullOrEmpty(candidate.Verifier)) continue;
+                var candidateKey = DeriveKey(password, Convert.FromBase64String(candidate.Salt), candidate.Iterations);
+                var verifier = CreateVerifier(candidateKey);
+                if (CryptographicOperations.FixedTimeEquals(verifier, Convert.FromBase64String(candidate.Verifier)))
+                {
+                    try
+                    {
+                        // The verifier alone is insufficient when a password rotation was interrupted.
+                        if (vaultFile.Cipher.Length > 0)
+                            Array.Clear(DecryptWithKey(vaultFile.Cipher, candidateKey));
+                        key = candidateKey;
+                        selectedMetadata = candidate;
+                        break;
+                    }
+                    catch (CryptographicException) { }
+                }
+                Array.Clear(candidateKey);
             }
 
-            var salt = Convert.FromBase64String(metadata.Salt);
-            var iterations = metadata.Iterations;
-            var key = DeriveKey(password, salt, iterations);
-            var expectedVerifier = Convert.FromBase64String(metadata.Verifier);
-            var actualVerifier = CreateVerifier(key);
+            if (key is null || selectedMetadata is null) return false;
 
-            if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
+            // The file and OS secure store can be out of step after an interrupted rotation.
+            // Repair the self-contained file first; it remains recoverable if this process stops.
+            if (vaultFile.RawContent.Length > 0 && fileMetadata != selectedMetadata)
             {
-                Array.Clear(key);
-                return false;
+                var repaired = await CreateVaultFileContentAsync(vaultFile.Cipher, cancellationToken, selectedMetadata)
+                    .ConfigureAwait(false);
+                await WriteVaultFileInternalAsync(repaired.RawContent, cancellationToken).ConfigureAwait(false);
+            }
+            if (storedMetadata != selectedMetadata)
+            {
+                await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, selectedMetadata.Salt!).ConfigureAwait(false);
+                await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, selectedMetadata.Verifier!).ConfigureAwait(false);
+                await SetStoredPbkdf2IterationsAsync(selectedMetadata.Iterations).ConfigureAwait(false);
+                SecureStorage.Default.Remove(BiometricKeyStorageKey);
             }
 
             _encryptionKey = key;
@@ -246,7 +277,9 @@ public class PasswordVaultService
 
                 try
                 {
-                    await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+                    await SaveEntriesInternalAsync(entries, cancellationToken,
+                        new PasswordMetadata(Convert.ToBase64String(newSalt), Convert.ToBase64String(newVerifier), Pbkdf2Iterations))
+                        .ConfigureAwait(false);
                 }
                 catch
                 {
@@ -311,6 +344,27 @@ public class PasswordVaultService
                     SecureStorage.Default.Remove(BiometricKeyStorageKey);
                     Array.Clear(key);
                     return false;
+                }
+
+                var vaultFile = await ReadVaultFileAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    if (vaultFile.Cipher.Length > 0)
+                        Array.Clear(DecryptWithKey(vaultFile.Cipher, key));
+                }
+                catch (CryptographicException)
+                {
+                    SecureStorage.Default.Remove(BiometricKeyStorageKey);
+                    Array.Clear(key);
+                    return false;
+                }
+                if (vaultFile.RawContent.Length > 0 &&
+                    (vaultFile.PasswordSalt != metadata.Salt || vaultFile.PasswordVerifier != metadata.Verifier ||
+                     vaultFile.Pbkdf2Iterations != metadata.Iterations))
+                {
+                    var repaired = await CreateVaultFileContentAsync(vaultFile.Cipher, cancellationToken, metadata)
+                        .ConfigureAwait(false);
+                    await WriteVaultFileInternalAsync(repaired.RawContent, cancellationToken).ConfigureAwait(false);
                 }
 
                 _encryptionKey = key;
@@ -842,7 +896,8 @@ public class PasswordVaultService
         }
     }
 
-    private async Task SaveEntriesInternalAsync(IList<PasswordVaultEntry> entries, CancellationToken cancellationToken)
+    private async Task SaveEntriesInternalAsync(IList<PasswordVaultEntry> entries, CancellationToken cancellationToken,
+        PasswordMetadata? metadataOverride = null)
     {
         var ordered = entries
             .OrderBy(e => e.DisplayCategory, StringComparer.CurrentCultureIgnoreCase)
@@ -861,7 +916,7 @@ public class PasswordVaultService
         try
         {
             var encrypted = await EncryptAsync(plainBytes, cancellationToken).ConfigureAwait(false);
-            var vaultFile = await CreateVaultFileContentAsync(encrypted, cancellationToken).ConfigureAwait(false);
+            var vaultFile = await CreateVaultFileContentAsync(encrypted, cancellationToken, metadataOverride).ConfigureAwait(false);
 
             await WriteVaultFileInternalAsync(vaultFile.RawContent, cancellationToken).ConfigureAwait(false);
             UpdateStoredEntryCount(ordered.Count);
@@ -960,13 +1015,17 @@ public class PasswordVaultService
         return new VaultFileContent(rawContent, null, null, null, rawContent);
     }
 
-    private async Task<VaultFileContent> CreateVaultFileContentAsync(byte[] cipher, CancellationToken cancellationToken)
+    private async Task<VaultFileContent> CreateVaultFileContentAsync(byte[] cipher, CancellationToken cancellationToken,
+        PasswordMetadata? metadataOverride = null)
     {
-        var salt = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false)
+        var existing = metadataOverride is null
+            ? await ReadVaultFileAsync(cancellationToken).ConfigureAwait(false)
+            : VaultFileContent.Empty;
+        var salt = metadataOverride?.Salt ?? existing.PasswordSalt ?? await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false)
                    ?? throw new InvalidOperationException("Kein Master-Passwort konfiguriert.");
-        var verifier = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey).ConfigureAwait(false)
+        var verifier = metadataOverride?.Verifier ?? existing.PasswordVerifier ?? await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey).ConfigureAwait(false)
                       ?? throw new InvalidOperationException("Kein Master-Passwort konfiguriert.");
-        var iterations = await GetStoredPbkdf2IterationsAsync().ConfigureAwait(false);
+        var iterations = metadataOverride?.Iterations ?? existing.Pbkdf2Iterations ?? await GetStoredPbkdf2IterationsAsync().ConfigureAwait(false);
 
         var dto = new EncryptedVaultFileDto
         {
