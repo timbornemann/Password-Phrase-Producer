@@ -851,7 +851,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
 
         var backup = new FullBackupDto
         {
-            Version = 2,
+            Version = 3,
             CreatedAt = DateTimeOffset.UtcNow
         };
 
@@ -879,11 +879,13 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             backup.AuthenticatorEncrypted = JsonSerializer.Deserialize<PortableBackupDto>(authBackupJson, _jsonOptions);
         }
 
+        FullBackupIntegrity.Seal(backup, filePassword, _jsonOptions);
         var json = JsonSerializer.Serialize(backup, _jsonOptions);
         return Encoding.UTF8.GetBytes(json);
     }
 
-    public async Task RestoreFullBackupAsync(Stream backupStream, string filePassword, CancellationToken cancellationToken = default)
+    public async Task<bool> RestoreFullBackupAsync(Stream backupStream, string filePassword,
+        Func<Task<bool>>? approveLegacyBackup = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(backupStream);
         ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);
@@ -892,8 +894,20 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         var backup = JsonSerializer.Deserialize<FullBackupDto>(json, _jsonOptions)
                      ?? throw new InvalidOperationException("Ungültiges Backup-Format.");
 
-        if (backup.Version != 2 || backup.Authenticator is not null)
-            throw new InvalidDataException("Nicht unterstütztes oder unverschlüsseltes Gesamtbackup.");
+        if (backup.Version == 3)
+        {
+            FullBackupIntegrity.Verify(backup, filePassword, _jsonOptions);
+        }
+        else if (backup.Version == 2 && backup.Authenticator is null &&
+                 (backup.PasswordVault is not null || backup.DataVault is not null || backup.AuthenticatorEncrypted is not null))
+        {
+            if (approveLegacyBackup is null || !await approveLegacyBackup().ConfigureAwait(false))
+                return false;
+        }
+        else
+        {
+            throw new InvalidDataException("Nicht unterstütztes oder leeres Gesamtbackup.");
+        }
         if (backup.PasswordVault is not null && !_vaultService.IsUnlocked ||
             backup.DataVault is not null && !_dataVaultService.IsUnlocked ||
             backup.AuthenticatorEncrypted is not null && !_totpEncryptionService.IsUnlocked)
@@ -942,6 +956,8 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             using var authStream = new MemoryStream(Encoding.UTF8.GetBytes(authJson));
             await _totpService.ImportWithFilePasswordAsync(authStream, filePassword, cancellationToken).ConfigureAwait(false);
         }
+
+        return true;
 
     }
 

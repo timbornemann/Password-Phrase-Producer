@@ -26,6 +26,8 @@ public partial class SettingsPage : ContentPage
 
     private async Task<bool> EnsureVaultUnlockedAsync()
     {
+        if (!_viewModel.IsPasswordVaultConfigured)
+            return true;
         if (_viewModel.IsVaultUnlocked)
         {
             return true;
@@ -92,6 +94,8 @@ public partial class SettingsPage : ContentPage
 
     private async Task<bool> EnsureDataVaultUnlockedAsync()
     {
+        if (!_viewModel.IsDataVaultConfigured)
+            return true;
         if (_viewModel.IsDataVaultUnlocked)
         {
             return true;
@@ -331,10 +335,12 @@ public partial class SettingsPage : ContentPage
 
                 try
                 {
-                    await ImportFullBackupAsync();
-                    await _viewModel.RefreshVaultStateAsync();
-                    await _viewModel.RefreshDataVaultStateAsync();
-                    success = true;
+                    success = await ImportFullBackupAsync();
+                    if (success)
+                    {
+                        await _viewModel.RefreshVaultStateAsync();
+                        await _viewModel.RefreshDataVaultStateAsync();
+                    }
                 }
                 finally
                 {
@@ -550,7 +556,7 @@ public partial class SettingsPage : ContentPage
         }
     }
 
-    private async Task ImportFullBackupAsync()
+    private async Task<bool> ImportFullBackupAsync()
     {
         var file = await FilePicker.Default.PickAsync(new PickOptions
         {
@@ -559,7 +565,7 @@ public partial class SettingsPage : ContentPage
 
         if (file is null)
         {
-            return;
+            return false;
         }
 
         var filePassword = await DisplayPasswordPromptAsync(
@@ -570,11 +576,14 @@ public partial class SettingsPage : ContentPage
 
         if (string.IsNullOrEmpty(filePassword))
         {
-            return;
+            return false;
         }
 
         await using var stream = await file.OpenReadAsync();
-        await _viewModel.RestoreFullBackupAsync(stream, filePassword);
+        return await _viewModel.RestoreFullBackupAsync(stream, filePassword,
+            () => DisplayAlert("Älteres Gesamtbackup",
+                "Dieses Backup schützt die Liste seiner Tresore nicht gegen nachträgliches Entfernen. Importiere es nur, wenn du seiner Herkunft und Vollständigkeit vertraust.",
+                "Trotzdem importieren", "Abbrechen"));
     }
 
     private async Task ImportDataVaultEncryptedAsync()
