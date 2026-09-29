@@ -50,4 +50,12 @@ public static class VaultNavigationCoordinator
             }
         }
     }
+
+    public static void ClearAllPending()
+    {
+        lock (SyncRoot)
+        {
+            _pendingRequest = null;
+        }
+    }
 }

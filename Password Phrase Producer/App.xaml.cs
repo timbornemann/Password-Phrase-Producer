@@ -4,6 +4,7 @@ using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using Password_Phrase_Producer.Services.Security;
+using Password_Phrase_Producer.Services.Vault;
 using Password_Phrase_Producer.Views.Security;
 using Password_Phrase_Producer.Services.Updates;
 using PasswordPhraseProducer.Updates;
@@ -54,6 +55,10 @@ namespace Password_Phrase_Producer
             if (_appLockService.CheckLockTimeout())
             {
                 _appLockService.Lock();
+                _serviceProvider.GetRequiredService<PasswordVaultService>().Lock();
+                _serviceProvider.GetRequiredService<DataVaultService>().Lock();
+                _serviceProvider.GetRequiredService<TotpEncryptionService>().Lock();
+                VaultNavigationCoordinator.ClearAllPending();
 
                 // Force navigation to login page if locked
                 MainThread.BeginInvokeOnMainThread(() =>
