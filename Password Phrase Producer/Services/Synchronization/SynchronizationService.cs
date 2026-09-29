@@ -731,9 +731,16 @@ public class SynchronizationService : ISynchronizationService
         Buffer.BlockCopy(data, 12, cipher, 0, cipherSize);
 
         var plain = new byte[cipherSize];
-        using var aes = new AesGcm(key, 16);
-        aes.Decrypt(nonce, cipher, tag, plain);
-
-        return plain;
+        try
+        {
+            using var aes = new AesGcm(key, 16);
+            aes.Decrypt(nonce, cipher, tag, plain);
+            return plain;
+        }
+        catch
+        {
+            CryptographicOperations.ZeroMemory(plain);
+            throw;
+        }
     }
 }

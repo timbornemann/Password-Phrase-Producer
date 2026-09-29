@@ -538,10 +538,17 @@ public class AppLockService : IAppLockService
         System.Buffer.BlockCopy(data, NonceSize + AuthTagLength, ciphertext, 0, cipherLength);
 
         var plaintext = new byte[cipherLength];
-        using var aes = new AesGcm(key, AuthTagLength);
-        aes.Decrypt(nonce, ciphertext, tag, plaintext);
-
-        return plaintext;
+        try
+        {
+            using var aes = new AesGcm(key, AuthTagLength);
+            aes.Decrypt(nonce, ciphertext, tag, plaintext);
+            return plaintext;
+        }
+        catch
+        {
+            CryptographicOperations.ZeroMemory(plaintext);
+            throw;
+        }
     }
 
     public byte[] EncryptWithMasterKey(byte[] data)

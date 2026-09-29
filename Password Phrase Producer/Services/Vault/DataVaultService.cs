@@ -1301,9 +1301,17 @@ public class DataVaultService
         Buffer.BlockCopy(data, nonceLength + cipherLength, tag, 0, tagLength);
 
         var plain = new byte[cipherLength];
-        using var aes = new AesGcm(key, tagLength);
-        aes.Decrypt(nonce, cipher, tag, plain);
-        return plain;
+        try
+        {
+            using var aes = new AesGcm(key, tagLength);
+            aes.Decrypt(nonce, cipher, tag, plain);
+            return plain;
+        }
+        catch
+        {
+            CryptographicOperations.ZeroMemory(plain);
+            throw;
+        }
     }
 
     public async Task<MergeResult<PasswordVaultEntry>> MergeEntriesAsync(

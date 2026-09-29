@@ -425,9 +425,17 @@ public class TotpEncryptionService
             Buffer.BlockCopy(data, KeyFileHeader.Length + nonce.Length + cipher.Length, tag, 0, tag.Length);
 
             var plain = new byte[cipherLength];
-            using var aes = new AesGcm(key, tag.Length);
-            aes.Decrypt(nonce, cipher, tag, plain);
-            return plain;
+            try
+            {
+                using var aes = new AesGcm(key, tag.Length);
+                aes.Decrypt(nonce, cipher, tag, plain);
+                return plain;
+            }
+            catch
+            {
+                CryptographicOperations.ZeroMemory(plain);
+                throw;
+            }
         }
         catch (CryptographicException ex)
         {
