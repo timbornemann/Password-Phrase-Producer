@@ -25,6 +25,7 @@ public class DataVaultPageViewModel : INotifyPropertyChanged
     private readonly IBiometricAuthenticationService _biometricAuthenticationService;
     private bool _isBusy;
     private bool _isListening;
+    private long _lifecycleGeneration;
     private bool _isUnlocked;
     private bool _isNewVault;
     private bool _canUseBiometric;
@@ -203,6 +204,7 @@ public class DataVaultPageViewModel : INotifyPropertyChanged
         }
 
         MessagingCenter.Subscribe<DataVaultService>(this, DataVaultMessages.EntriesChanged, OnVaultEntriesChanged);
+        _vaultService.Locked += OnVaultLocked;
         _isListening = true;
     }
 
@@ -211,22 +213,50 @@ public class DataVaultPageViewModel : INotifyPropertyChanged
         if (_isListening)
         {
             MessagingCenter.Unsubscribe<DataVaultService>(this, DataVaultMessages.EntriesChanged);
+            _vaultService.Locked -= OnVaultLocked;
             _isListening = false;
         }
 
+        Interlocked.Increment(ref _lifecycleGeneration);
         _vaultService.Lock();
+        ClearSensitiveState();
+    }
+
+    private void OnVaultLocked(object? sender, EventArgs e)
+    {
+        var generation = Interlocked.Increment(ref _lifecycleGeneration);
+        void ClearIfStillLocked()
+        {
+            if (generation == Interlocked.Read(ref _lifecycleGeneration) && !_vaultService.IsUnlocked)
+                ClearSensitiveState();
+        }
+        if (MainThread.IsMainThread) ClearIfStillLocked();
+        else MainThread.BeginInvokeOnMainThread(ClearIfStillLocked);
+    }
+
+    private void ClearSensitiveState()
+    {
         IsUnlocked = false;
         _hasAttemptedAutoBiometric = false;
+        Password = string.Empty;
+        ConfirmPassword = string.Empty;
+        _searchQuery = string.Empty;
+        OnPropertyChanged(nameof(SearchQuery));
         _allEntries.Clear();
         _availableCategories.Clear();
-        MainThread.BeginInvokeOnMainThread(() =>
+        void ClearUi()
         {
+            var previousGroups = EntryGroups;
             EntryGroups = new ObservableCollection<VaultEntryGroup>();
+            foreach (var group in previousGroups) group.Clear();
+            previousGroups.Clear();
             CategoryFilterOptions.Clear();
             CategoryFilterOptions.Add(AllCategoriesFilter);
             _selectedCategory = AllCategoriesFilter;
             OnPropertyChanged(nameof(SelectedCategory));
-        });
+        }
+        if (MainThread.IsMainThread) ClearUi();
+        else MainThread.BeginInvokeOnMainThread(ClearUi);
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -248,9 +278,11 @@ public class DataVaultPageViewModel : INotifyPropertyChanged
 
         try
         {
+            var generation = Interlocked.Read(ref _lifecycleGeneration);
             IsBusy = true;
             var entries = await _vaultService.GetEntriesAsync(cancellationToken);
-            UpdateEntries(entries);
+            if (_isListening && _vaultService.IsUnlocked && generation == Interlocked.Read(ref _lifecycleGeneration))
+                UpdateEntries(entries, generation);
         }
         catch (InvalidDataException ex)
         {
@@ -423,6 +455,11 @@ public class DataVaultPageViewModel : INotifyPropertyChanged
     {
         Password = string.Empty;
         ConfirmPassword = string.Empty;
+        if (!_isListening || !_vaultService.IsUnlocked)
+        {
+            ClearSensitiveState();
+            return;
+        }
         UnlockError = null;
         IsUnlocked = true;
         IsNewVault = false;
@@ -430,8 +467,9 @@ public class DataVaultPageViewModel : INotifyPropertyChanged
         await ReloadAsync(cancellationToken, allowWhileBusy: true);
     }
 
-    private void UpdateEntries(IEnumerable<PasswordVaultEntry> entries)
+    private void UpdateEntries(IEnumerable<PasswordVaultEntry> entries, long generation)
     {
+        if (!_vaultService.IsUnlocked || generation != Interlocked.Read(ref _lifecycleGeneration)) return;
         var ordered = entries
             .OrderBy(e => e.DisplayCategory, StringComparer.CurrentCultureIgnoreCase)
             .ThenBy(e => e.Label, StringComparer.CurrentCultureIgnoreCase)
@@ -447,6 +485,7 @@ public class DataVaultPageViewModel : INotifyPropertyChanged
 
         MainThread.BeginInvokeOnMainThread(() =>
         {
+            if (!_isListening || !_vaultService.IsUnlocked || generation != Interlocked.Read(ref _lifecycleGeneration)) return;
             UpdateCategoryFiltersOnMainThread();
             ApplyFiltersOnMainThread();
         });
@@ -454,10 +493,11 @@ public class DataVaultPageViewModel : INotifyPropertyChanged
 
     private async void OnVaultEntriesChanged(DataVaultService sender)
     {
+        if (!_isListening) return;
         try
         {
             await EnsureAccessStateAsync();
-            if (IsUnlocked)
+            if (_isListening && IsUnlocked)
             {
                 await ReloadAsync();
             }

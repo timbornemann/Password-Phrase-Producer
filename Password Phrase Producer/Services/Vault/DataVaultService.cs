@@ -71,6 +71,8 @@ public class DataVaultService
 
     public bool IsUnlocked { get { lock (_keyStateLock) return _encryptionKey is not null; } }
 
+    public event EventHandler? Locked;
+
     public async Task<bool> HasMasterPasswordAsync(CancellationToken cancellationToken = default)
     {
         var metadata = await GetPasswordMetadataAsync(cancellationToken).ConfigureAwait(false);
@@ -97,6 +99,7 @@ public class DataVaultService
             _encryptionKey = null;
             _activePasswordMetadata = null;
         }
+        Locked?.Invoke(this, EventArgs.Empty);
     }
 
     public async Task SetMasterPasswordAsync(string password, bool enableBiometrics, CancellationToken cancellationToken = default)
