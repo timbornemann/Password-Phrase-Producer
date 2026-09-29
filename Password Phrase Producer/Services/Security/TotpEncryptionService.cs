@@ -26,6 +26,7 @@ public class TotpEncryptionService
 
     private readonly ISecureFileService _secureFileService;
     private readonly IBiometricAuthenticationService _biometricService;
+    private readonly IUnlockAttemptGate _attemptGate;
     private readonly string _keyFilePath;
     private readonly string _dataFilePath;
     private readonly object _keyStateLock = new();
@@ -59,10 +60,13 @@ public class TotpEncryptionService
         }
     }
 
-    public TotpEncryptionService(ISecureFileService secureFileService, IBiometricAuthenticationService biometricService)
+    public TotpEncryptionService(ISecureFileService secureFileService, IBiometricAuthenticationService biometricService,
+        IUnlockAttemptGate? attemptGate = null)
     {
         _secureFileService = secureFileService;
         _biometricService = biometricService;
+        _attemptGate = attemptGate ?? new UnlockAttemptGate(new SecureUnlockAttemptStore());
+        _attemptGate.LockedOut += access => { if (access == ProtectedAccess.Authenticator) Lock(); };
         _keyFilePath = Path.Combine(FileSystem.AppDataDirectory, KeyFileName);
         _dataFilePath = Path.Combine(FileSystem.AppDataDirectory, DataFileName);
     }
@@ -133,7 +137,10 @@ public class TotpEncryptionService
     /// <summary>
     /// Unlock with password
     /// </summary>
-    public async Task<bool> UnlockWithPasswordAsync(string password)
+    public Task<bool> UnlockWithPasswordAsync(string password) =>
+        _attemptGate.RunPasswordAsync(ProtectedAccess.Authenticator, () => UnlockWithPasswordCoreAsync(password));
+
+    private async Task<bool> UnlockWithPasswordCoreAsync(string password)
     {
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
         long generation;
@@ -225,7 +232,11 @@ public class TotpEncryptionService
         }
     }
 
-    public async Task<bool> UnlockWithBiometricsAsync(CancellationToken cancellationToken = default)
+    public Task<bool> UnlockWithBiometricsAsync(CancellationToken cancellationToken = default) =>
+        _attemptGate.RunBiometricAsync(ProtectedAccess.Authenticator,
+            () => UnlockWithBiometricsCoreAsync(cancellationToken));
+
+    private async Task<bool> UnlockWithBiometricsCoreAsync(CancellationToken cancellationToken)
     {
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
         long generation;
@@ -256,6 +267,10 @@ public class TotpEncryptionService
                     _isUnlocked = true;
                     return true;
                 }
+            }
+            catch (BiometricAuthenticationException)
+            {
+                throw;
             }
             catch (Exception ex) when (ex is UnauthorizedAccessException or CryptographicException or
                                        InvalidOperationException or InvalidDataException or FormatException)

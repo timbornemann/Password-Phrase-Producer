@@ -47,6 +47,7 @@ public class PasswordVaultService
     };
 
     private readonly IBiometricAuthenticationService _biometricService;
+    private readonly IUnlockAttemptGate _attemptGate;
     private readonly Services.Storage.ISecureFileService _secureFileService;
     private readonly VaultMergeService _vaultMergeService;
     private readonly Services.Synchronization.ISynchronizationService _syncService;
@@ -60,12 +61,15 @@ public class PasswordVaultService
         IBiometricAuthenticationService biometricService,
         Services.Storage.ISecureFileService secureFileService,
         VaultMergeService vaultMergeService,
-        Services.Synchronization.ISynchronizationService syncService)
+        Services.Synchronization.ISynchronizationService syncService,
+        IUnlockAttemptGate? attemptGate = null)
     {
         _biometricService = biometricService;
         _secureFileService = secureFileService;
         _vaultMergeService = vaultMergeService;
         _syncService = syncService;
+        _attemptGate = attemptGate ?? new UnlockAttemptGate(new SecureUnlockAttemptStore());
+        _attemptGate.LockedOut += access => { if (access == ProtectedAccess.PasswordVault) Lock(); };
         _vaultFilePath = Path.Combine(FileSystem.AppDataDirectory, VaultFileName);
     }
 
@@ -153,7 +157,8 @@ public class PasswordVaultService
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            return await UnlockInternalAsync(password, syncAfterUnlock: true, cancellationToken).ConfigureAwait(false);
+            return await _attemptGate.RunPasswordAsync(ProtectedAccess.PasswordVault,
+                () => UnlockInternalAsync(password, syncAfterUnlock: true, cancellationToken)).ConfigureAwait(false);
         }
         catch
         {
@@ -162,12 +167,13 @@ public class PasswordVaultService
         }
     }
 
-    public Task<bool> UnlockWithoutSyncAsync(string password, CancellationToken cancellationToken = default)
+    public async Task<bool> UnlockWithoutSyncAsync(string password, CancellationToken cancellationToken = default)
     {
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            return UnlockInternalAsync(password, syncAfterUnlock: false, cancellationToken);
+            return await _attemptGate.RunPasswordAsync(ProtectedAccess.PasswordVault,
+                () => UnlockInternalAsync(password, syncAfterUnlock: false, cancellationToken)).ConfigureAwait(false);
         }
         catch
         {
@@ -312,7 +318,12 @@ public class PasswordVaultService
         try
         {
             EnsureUnlocked();
-            VerifyCurrentMasterPassword(currentPassword);
+            if (!await _attemptGate.RunPasswordAsync(ProtectedAccess.PasswordVault, () =>
+                {
+                    try { VerifyCurrentMasterPassword(currentPassword); return Task.FromResult(true); }
+                    catch (UnauthorizedAccessException) { return Task.FromResult(false); }
+                }).ConfigureAwait(false))
+                throw new UnauthorizedAccessException("Das aktuelle Master-Passwort ist falsch oder der Tresor ist gesperrt.");
             NewPasswordPolicy.Validate(newPassword, nameof(newPassword));
 
             await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -366,7 +377,11 @@ public class PasswordVaultService
         }
     }
 
-    public async Task<bool> TryUnlockWithStoredKeyAsync(CancellationToken cancellationToken = default)
+    public Task<bool> TryUnlockWithStoredKeyAsync(CancellationToken cancellationToken = default) =>
+        _attemptGate.RunBiometricAsync(ProtectedAccess.PasswordVault,
+            () => TryUnlockWithStoredKeyCoreAsync(cancellationToken));
+
+    private async Task<bool> TryUnlockWithStoredKeyCoreAsync(CancellationToken cancellationToken)
     {
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
         long generation;

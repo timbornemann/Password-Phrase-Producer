@@ -36,6 +36,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<TotpEncryptionService>();
         builder.Services.AddSingleton<TotpService>();
         builder.Services.AddSingleton<IBiometricAuthenticationService, BiometricAuthenticationService>();
+        builder.Services.AddSingleton<IUnlockAttemptStore, SecureUnlockAttemptStore>();
+        builder.Services.AddSingleton<IUnlockAttemptGate, UnlockAttemptGate>();
         builder.Services.AddTransient<VaultPageViewModel>();
         builder.Services.AddTransient<DataVaultPageViewModel>();
         builder.Services.AddTransient<VaultSettingsViewModel>();

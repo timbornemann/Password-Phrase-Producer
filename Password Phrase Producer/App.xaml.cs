@@ -17,11 +17,25 @@ namespace Password_Phrase_Producer
         private readonly IAppLockService _appLockService;
         private bool _storageChecked;
 
-        public App(IServiceProvider serviceProvider, IAppLockService appLockService)
+        public App(IServiceProvider serviceProvider, IAppLockService appLockService, IUnlockAttemptGate attemptGate)
         {
             InitializeComponent();
             _serviceProvider = serviceProvider;
             _appLockService = appLockService;
+            attemptGate.LockedOut += access =>
+            {
+                if (access != ProtectedAccess.App) return;
+                _appLockService.Lock();
+                _serviceProvider.GetRequiredService<PasswordVaultService>().Lock();
+                _serviceProvider.GetRequiredService<DataVaultService>().Lock();
+                _serviceProvider.GetRequiredService<TotpEncryptionService>().Lock();
+                VaultNavigationCoordinator.ClearAllPending();
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    if (MainPage is not AppLoginPage)
+                        MainPage = _serviceProvider.GetRequiredService<AppLoginPage>();
+                });
+            };
 
             // Initial splash/loading state
             MainPage = CreateSplashPage();

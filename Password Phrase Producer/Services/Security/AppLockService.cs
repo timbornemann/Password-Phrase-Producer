@@ -31,6 +31,7 @@ public class AppLockService : IAppLockService
     private const int NewPbkdf2Iterations = 600_000;
 
     private readonly IBiometricAuthenticationService _biometricService;
+    private readonly IUnlockAttemptGate _attemptGate;
     private readonly object _keyStateLock = new();
     private byte[]? _masterKey;
     private long _lockGeneration;
@@ -38,9 +39,11 @@ public class AppLockService : IAppLockService
 
     public bool IsUnlocked { get { lock (_keyStateLock) return _masterKey != null; } }
 
-    public AppLockService(IBiometricAuthenticationService biometricService)
+    public AppLockService(IBiometricAuthenticationService biometricService, IUnlockAttemptGate? attemptGate = null)
     {
         _biometricService = biometricService;
+        _attemptGate = attemptGate ?? new UnlockAttemptGate(new SecureUnlockAttemptStore());
+        _attemptGate.LockedOut += access => { if (access == ProtectedAccess.App) Lock(); };
     }
 
     public async Task<bool> IsConfiguredAsync()
@@ -55,7 +58,10 @@ public class AppLockService : IAppLockService
         await LoadMetadataIfNeededAsync().ConfigureAwait(false);
     }
 
-    public async Task<bool> UnlockAsync(string password)
+    public Task<bool> UnlockAsync(string password) =>
+        _attemptGate.RunPasswordAsync(ProtectedAccess.App, () => UnlockCoreAsync(password));
+
+    private async Task<bool> UnlockCoreAsync(string password)
     {
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
         long generation;
@@ -131,7 +137,10 @@ public class AppLockService : IAppLockService
         }
     }
 
-    public async Task<bool> VerifyPasswordAsync(string password)
+    public Task<bool> VerifyPasswordAsync(string password) =>
+        _attemptGate.RunPasswordAsync(ProtectedAccess.App, () => VerifyPasswordCoreAsync(password));
+
+    private async Task<bool> VerifyPasswordCoreAsync(string password)
     {
         if (string.IsNullOrWhiteSpace(password)) return false;
         await LoadMetadataIfNeededAsync().ConfigureAwait(false);
@@ -164,7 +173,10 @@ public class AppLockService : IAppLockService
         }
     }
 
-    public async Task<bool> UnlockWithBiometricsAsync()
+    public Task<bool> UnlockWithBiometricsAsync() =>
+        _attemptGate.RunBiometricAsync(ProtectedAccess.App, UnlockWithBiometricsCoreAsync);
+
+    private async Task<bool> UnlockWithBiometricsCoreAsync()
     {
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
         long generation;
@@ -198,6 +210,10 @@ public class AppLockService : IAppLockService
                     _masterKey = masterKey;
                     return true;
                 }
+            }
+            catch (BiometricAuthenticationException)
+            {
+                throw;
             }
             catch (UnauthorizedAccessException)
             {
@@ -293,6 +309,9 @@ public class AppLockService : IAppLockService
             await LoadMetadataIfNeededAsync().ConfigureAwait(false);
             if (_cachedMetadata is null)
                 throw new InvalidOperationException("App lock is not configured.");
+
+            if (!await VerifyPasswordAsync(currentPassword).ConfigureAwait(false))
+                throw new UnauthorizedAccessException("Current password incorrect or temporarily locked.");
 
             var oldSalt = Convert.FromBase64String(_cachedMetadata.Salt);
             if (oldSalt.Length != 16 || _cachedMetadata.Iterations is < 10_000 or > 1_000_000)
