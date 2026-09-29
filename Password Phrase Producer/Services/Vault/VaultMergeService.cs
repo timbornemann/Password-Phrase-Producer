@@ -47,6 +47,10 @@ public class VaultMergeService
         where T : IIdentifiable, ITimestamped
     {
         var result = new MergeResult<T>();
+        existing = (existing ?? Array.Empty<T>()).GroupBy(entry => entry.Id)
+            .Select(group => group.Aggregate((best, next) => next.ModifiedAt > best.ModifiedAt ? next : best)).ToList();
+        incoming = (incoming ?? Array.Empty<T>()).GroupBy(entry => entry.Id)
+            .Select(group => group.Aggregate((best, next) => next.ModifiedAt > best.ModifiedAt ? next : best)).ToList();
         
         // Handle null or empty inputs defensively
         if (existing is null || existing.Count == 0)
@@ -135,6 +139,10 @@ public class VaultMergeService
         Func<T, DateTimeOffset> timestampSelector)
     {
         var result = new MergeResult<T>();
+        existing = (existing ?? Array.Empty<T>()).GroupBy(idSelector)
+            .Select(group => group.Aggregate((best, next) => timestampSelector(next) > timestampSelector(best) ? next : best)).ToList();
+        incoming = (incoming ?? Array.Empty<T>()).GroupBy(idSelector)
+            .Select(group => group.Aggregate((best, next) => timestampSelector(next) > timestampSelector(best) ? next : best)).ToList();
         
         // Handle null or empty inputs defensively
         if (existing is null || existing.Count == 0)
