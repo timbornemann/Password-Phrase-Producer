@@ -228,7 +228,10 @@ public class VaultPageViewModel : INotifyPropertyChanged
         void ClearIfStillLocked()
         {
             if (generation == Interlocked.Read(ref _lifecycleGeneration) && !_vaultService.IsUnlocked)
+            {
                 ClearSensitiveState();
+                _hasAttemptedAutoBiometric = true;
+            }
         }
         if (MainThread.IsMainThread) ClearIfStillLocked();
         else MainThread.BeginInvokeOnMainThread(ClearIfStillLocked);
@@ -236,6 +239,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
 
     private void ClearSensitiveState()
     {
+        var generation = Interlocked.Read(ref _lifecycleGeneration);
         IsUnlocked = false;
         _hasAttemptedAutoBiometric = false;
         Password = string.Empty;
@@ -246,6 +250,8 @@ public class VaultPageViewModel : INotifyPropertyChanged
         _availableCategories.Clear();
         void ClearUi()
         {
+            if (generation != Interlocked.Read(ref _lifecycleGeneration) ||
+                (_isListening && _vaultService.IsUnlocked)) return;
             var previousGroups = EntryGroups;
             EntryGroups = new ObservableCollection<VaultEntryGroup>();
             foreach (var group in previousGroups) group.Clear();
@@ -334,10 +340,15 @@ public class VaultPageViewModel : INotifyPropertyChanged
 
     public async Task EnsureAccessStateAsync(CancellationToken cancellationToken = default)
     {
+        var generation = Interlocked.Read(ref _lifecycleGeneration);
+        if (!_isListening) return;
         IsUnlocked = _vaultService.IsUnlocked;
         IsNewVault = !await _vaultService.HasMasterPasswordAsync(cancellationToken);
+        if (!_isListening || generation != Interlocked.Read(ref _lifecycleGeneration)) return;
         CanUseBiometric = await _biometricAuthenticationService.IsAvailableAsync(cancellationToken);
+        if (!_isListening || generation != Interlocked.Read(ref _lifecycleGeneration)) return;
         IsBiometricConfigured = CanUseBiometric && await _vaultService.HasBiometricKeyAsync(cancellationToken);
+        if (!_isListening || generation != Interlocked.Read(ref _lifecycleGeneration)) return;
         EnableBiometric = IsBiometricConfigured;
         UnlockError = null;
 
@@ -347,6 +358,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
             _availableCategories.Clear();
             MainThread.BeginInvokeOnMainThread(() =>
             {
+                if (generation != Interlocked.Read(ref _lifecycleGeneration) || _vaultService.IsUnlocked) return;
                 EntryGroups = new ObservableCollection<VaultEntryGroup>();
                 CategoryFilterOptions.Clear();
                 CategoryFilterOptions.Add(AllCategoriesFilter);
@@ -356,6 +368,7 @@ public class VaultPageViewModel : INotifyPropertyChanged
 
             if (CanUseBiometric && IsBiometricConfigured && !_hasAttemptedAutoBiometric)
             {
+                if (!_isListening || generation != Interlocked.Read(ref _lifecycleGeneration)) return;
                 _hasAttemptedAutoBiometric = true;
                 await UnlockWithBiometricAsync(cancellationToken).ConfigureAwait(false);
             }
