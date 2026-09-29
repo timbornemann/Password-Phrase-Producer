@@ -51,6 +51,8 @@ public class DataVaultService
     private readonly VaultMergeService _vaultMergeService;
     private readonly Services.Synchronization.ISynchronizationService _syncService;
     private readonly string _vaultFilePath;
+    private readonly object _keyStateLock = new();
+    private long _lockGeneration;
     private byte[]? _encryptionKey;
     private PasswordMetadata? _activePasswordMetadata;
 
@@ -67,7 +69,7 @@ public class DataVaultService
         _vaultFilePath = Path.Combine(FileSystem.AppDataDirectory, VaultFileName);
     }
 
-    public bool IsUnlocked => _encryptionKey is not null;
+    public bool IsUnlocked { get { lock (_keyStateLock) return _encryptionKey is not null; } }
 
     public async Task<bool> HasMasterPasswordAsync(CancellationToken cancellationToken = default)
     {
@@ -88,19 +90,20 @@ public class DataVaultService
 
     public void Lock()
     {
-        if (_encryptionKey is null)
+        lock (_keyStateLock)
         {
-            return;
+            _lockGeneration++;
+            if (_encryptionKey is not null) CryptographicOperations.ZeroMemory(_encryptionKey);
+            _encryptionKey = null;
+            _activePasswordMetadata = null;
         }
-
-        Array.Clear(_encryptionKey);
-        _encryptionKey = null;
-        _activePasswordMetadata = null;
     }
 
     public async Task SetMasterPasswordAsync(string password, bool enableBiometrics, CancellationToken cancellationToken = default)
     {
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        long generation;
+        lock (_keyStateLock) generation = _lockGeneration;
         try
         {
             NewPasswordPolicy.Validate(password, nameof(password));
@@ -115,8 +118,16 @@ public class DataVaultService
             await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, Convert.ToBase64String(verifier)).ConfigureAwait(false);
             await SetStoredPbkdf2IterationsAsync(Pbkdf2Iterations).ConfigureAwait(false);
 
-            _encryptionKey = key;
-            _activePasswordMetadata = new PasswordMetadata(Convert.ToBase64String(salt), Convert.ToBase64String(verifier), Pbkdf2Iterations);
+            lock (_keyStateLock)
+            {
+                if (_lockGeneration != generation)
+                {
+                    CryptographicOperations.ZeroMemory(key);
+                    throw new OperationCanceledException("Der Tresor wurde während der Einrichtung gesperrt.");
+                }
+                _encryptionKey = key;
+                _activePasswordMetadata = new PasswordMetadata(Convert.ToBase64String(salt), Convert.ToBase64String(verifier), Pbkdf2Iterations);
+            }
             UpdateStoredEntryCount(0);
 
             if (enableBiometrics)
@@ -166,6 +177,8 @@ public class DataVaultService
     private async Task<bool> UnlockInternalAsync(string password, bool syncAfterUnlock, CancellationToken cancellationToken)
     {
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        long generation;
+        lock (_keyStateLock) generation = _lockGeneration;
         try
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(password);
@@ -227,8 +240,17 @@ public class DataVaultService
                 SecureStorage.Default.Remove(BiometricKeyStorageKey);
             }
 
-            _encryptionKey = key;
-            _activePasswordMetadata = selectedMetadata;
+            lock (_keyStateLock)
+            {
+                if (_lockGeneration != generation)
+                {
+                    CryptographicOperations.ZeroMemory(key);
+                    return false;
+                }
+                if (_encryptionKey is not null) CryptographicOperations.ZeroMemory(_encryptionKey);
+                _encryptionKey = key;
+                _activePasswordMetadata = selectedMetadata;
+            }
 
             if (syncAfterUnlock && await _syncService.IsConfiguredAsync().ConfigureAwait(false))
             {
@@ -271,6 +293,8 @@ public class DataVaultService
     public async Task ChangeMasterPasswordAsync(string newPassword, bool enableBiometrics, CancellationToken cancellationToken = default)
     {
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        long generation;
+        lock (_keyStateLock) generation = _lockGeneration;
         try
         {
             EnsureUnlocked();
@@ -282,43 +306,37 @@ public class DataVaultService
                 var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
 
                 var newSalt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
-                var newKey = DeriveKey(newPassword, newSalt, Pbkdf2Iterations);
+                byte[]? newKey = DeriveKey(newPassword, newSalt, Pbkdf2Iterations);
                 var newVerifier = CreateVerifier(newKey);
-
-                var previousKey = _encryptionKey;
                 var newMetadata = new PasswordMetadata(Convert.ToBase64String(newSalt), Convert.ToBase64String(newVerifier), Pbkdf2Iterations);
-                _encryptionKey = newKey;
 
                 try
                 {
-                    await SaveEntriesInternalAsync(entries, cancellationToken, newMetadata)
+                    await SaveEntriesInternalAsync(entries, cancellationToken, newMetadata, newKey)
                         .ConfigureAwait(false);
-                }
-                catch
-                {
-                    _encryptionKey = previousKey;
-                    Array.Clear(newKey);
-                    throw;
-                }
+                    lock (_keyStateLock)
+                    {
+                        if (_lockGeneration == generation && _encryptionKey is not null)
+                        {
+                            CryptographicOperations.ZeroMemory(_encryptionKey);
+                            _encryptionKey = newKey;
+                            _activePasswordMetadata = newMetadata;
+                            newKey = null;
+                        }
+                    }
 
-                _activePasswordMetadata = newMetadata;
+                    await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, Convert.ToBase64String(newSalt)).ConfigureAwait(false);
+                    await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, Convert.ToBase64String(newVerifier)).ConfigureAwait(false);
+                    await SetStoredPbkdf2IterationsAsync(Pbkdf2Iterations).ConfigureAwait(false);
 
-                await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, Convert.ToBase64String(newSalt)).ConfigureAwait(false);
-                await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, Convert.ToBase64String(newVerifier)).ConfigureAwait(false);
-                await SetStoredPbkdf2IterationsAsync(Pbkdf2Iterations).ConfigureAwait(false);
-
-                if (enableBiometrics)
-                {
-                    await SetBiometricUnlockAsync(true, cancellationToken).ConfigureAwait(false);
+                    if (enableBiometrics && IsUnlocked)
+                        await SetBiometricUnlockAsync(true, cancellationToken).ConfigureAwait(false);
+                    else
+                        SecureStorage.Default.Remove(BiometricKeyStorageKey);
                 }
-                else
+                finally
                 {
-                    SecureStorage.Default.Remove(BiometricKeyStorageKey);
-                }
-
-                if (previousKey is not null)
-                {
-                    Array.Clear(previousKey);
+                    if (newKey is not null) CryptographicOperations.ZeroMemory(newKey);
                 }
             }
             finally
@@ -336,6 +354,8 @@ public class DataVaultService
     public async Task<bool> TryUnlockWithStoredKeyAsync(CancellationToken cancellationToken = default)
     {
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        long generation;
+        lock (_keyStateLock) generation = _lockGeneration;
         try
         {
             var storedKeyBase64 = await SecureStorage.Default.GetAsync(BiometricKeyStorageKey).ConfigureAwait(false);
@@ -383,8 +403,17 @@ public class DataVaultService
                     await WriteVaultFileInternalAsync(repaired.RawContent, cancellationToken).ConfigureAwait(false);
                 }
 
-                _encryptionKey = key;
-                _activePasswordMetadata = metadata;
+                lock (_keyStateLock)
+                {
+                    if (_lockGeneration != generation)
+                    {
+                        CryptographicOperations.ZeroMemory(key);
+                        return false;
+                    }
+                    if (_encryptionKey is not null) CryptographicOperations.ZeroMemory(_encryptionKey);
+                    _encryptionKey = key;
+                    _activePasswordMetadata = metadata;
+                }
 
                 if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
                 {
@@ -485,14 +514,27 @@ public class DataVaultService
 
             if (enabled)
             {
+                var key = GetUnlockedKey();
                 try
                 {
-                    var encrypted = await _biometricService.EncryptAsync(_encryptionKey!, cancellationToken).ConfigureAwait(false);
+                    var encrypted = await _biometricService.EncryptAsync(key, cancellationToken).ConfigureAwait(false);
+                    bool stillActive;
+                    lock (_keyStateLock)
+                        stillActive = _encryptionKey is not null && CryptographicOperations.FixedTimeEquals(_encryptionKey, key);
+                    if (!stillActive)
+                    {
+                        SecureStorage.Default.Remove(BiometricKeyStorageKey);
+                        return;
+                    }
                     await SecureStorage.Default.SetAsync(BiometricKeyStorageKey, Convert.ToBase64String(encrypted)).ConfigureAwait(false);
                 }
                 catch (Exception)
                 {
                      SecureStorage.Default.Remove(BiometricKeyStorageKey);
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(key);
                 }
             }
             else
@@ -912,7 +954,7 @@ public class DataVaultService
     }
 
     private async Task SaveEntriesInternalAsync(IList<PasswordVaultEntry> entries, CancellationToken cancellationToken,
-        PasswordMetadata? metadataOverride = null)
+        PasswordMetadata? metadataOverride = null, byte[]? encryptionKeyOverride = null)
     {
         var ordered = entries
             .OrderBy(e => e.DisplayCategory, StringComparer.CurrentCultureIgnoreCase)
@@ -930,7 +972,9 @@ public class DataVaultService
         var plainBytes = Encoding.UTF8.GetBytes(json);
         try
         {
-            var encrypted = await EncryptAsync(plainBytes, cancellationToken).ConfigureAwait(false);
+            var encrypted = encryptionKeyOverride is null
+                ? await EncryptAsync(plainBytes, cancellationToken).ConfigureAwait(false)
+                : EncryptWithKey(plainBytes, encryptionKeyOverride);
             var vaultFile = await CreateVaultFileContentAsync(encrypted, cancellationToken, metadataOverride).ConfigureAwait(false);
 
             await WriteVaultFileInternalAsync(vaultFile.RawContent, cancellationToken).ConfigureAwait(false);
@@ -1165,12 +1209,12 @@ public class DataVaultService
 
     internal byte[] GetUnlockedKey()
     {
-        if (_encryptionKey is null)
+        lock (_keyStateLock)
         {
-            throw new InvalidOperationException("Der Datentresor ist gesperrt.");
+            if (_encryptionKey is null)
+                throw new InvalidOperationException("Der Datentresor ist gesperrt.");
+            return _encryptionKey.ToArray();
         }
-
-        return _encryptionKey.ToArray();
     }
 
     private void EnsureUnlocked()

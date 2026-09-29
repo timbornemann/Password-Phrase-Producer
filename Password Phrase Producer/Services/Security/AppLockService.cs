@@ -31,10 +31,12 @@ public class AppLockService : IAppLockService
     private const int NewPbkdf2Iterations = 600_000;
 
     private readonly IBiometricAuthenticationService _biometricService;
+    private readonly object _keyStateLock = new();
     private byte[]? _masterKey;
+    private long _lockGeneration;
     private AppLockMetadata? _cachedMetadata;
 
-    public bool IsUnlocked => _masterKey != null;
+    public bool IsUnlocked { get { lock (_keyStateLock) return _masterKey != null; } }
 
     public AppLockService(IBiometricAuthenticationService biometricService)
     {
@@ -56,6 +58,8 @@ public class AppLockService : IAppLockService
     public async Task<bool> UnlockAsync(string password)
     {
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        long generation;
+        lock (_keyStateLock) generation = _lockGeneration;
         try
         {
             await LoadMetadataIfNeededAsync().ConfigureAwait(false);
@@ -99,9 +103,17 @@ public class AppLockService : IAppLockService
                         _cachedMetadata.MasterKeyVerifier = previousVerifier;
                     }
                 }
-                Lock();
-                _masterKey = masterKey;
-                return true;
+                lock (_keyStateLock)
+                {
+                    if (_lockGeneration != generation)
+                    {
+                        CryptographicOperations.ZeroMemory(masterKey);
+                        return false;
+                    }
+                    if (_masterKey is not null) CryptographicOperations.ZeroMemory(_masterKey);
+                    _masterKey = masterKey;
+                    return true;
+                }
             }
             catch
             {
@@ -155,6 +167,8 @@ public class AppLockService : IAppLockService
     public async Task<bool> UnlockWithBiometricsAsync()
     {
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        long generation;
+        lock (_keyStateLock) generation = _lockGeneration;
         try
         {
             await LoadMetadataIfNeededAsync().ConfigureAwait(false);
@@ -173,9 +187,17 @@ public class AppLockService : IAppLockService
                     CryptographicOperations.ZeroMemory(masterKey);
                     return false;
                 }
-                Lock();
-                _masterKey = masterKey;
-                return true;
+                lock (_keyStateLock)
+                {
+                    if (_lockGeneration != generation)
+                    {
+                        CryptographicOperations.ZeroMemory(masterKey);
+                        return false;
+                    }
+                    if (_masterKey is not null) CryptographicOperations.ZeroMemory(_masterKey);
+                    _masterKey = masterKey;
+                    return true;
+                }
             }
             catch (UnauthorizedAccessException)
             {
@@ -197,6 +219,8 @@ public class AppLockService : IAppLockService
     public async Task SetupAsync(string password, bool enableBiometrics)
     {
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        long generation;
+        lock (_keyStateLock) generation = _lockGeneration;
         try
         {
             await LoadMetadataIfNeededAsync().ConfigureAwait(false);
@@ -229,7 +253,12 @@ public class AppLockService : IAppLockService
 
                 await SecureStorage.Default.SetAsync(AppLockStorageKey, JsonSerializer.Serialize(metadata)).ConfigureAwait(false);
                 _cachedMetadata = metadata;
-                _masterKey = mek;
+                lock (_keyStateLock)
+                {
+                    if (_lockGeneration != generation)
+                        throw new OperationCanceledException("Die App wurde während der Einrichtung gesperrt.");
+                    _masterKey = mek;
+                }
                 if (enableBiometrics)
                     await EnableBiometricsAsync(true).ConfigureAwait(false);
             }
@@ -249,6 +278,8 @@ public class AppLockService : IAppLockService
     public async Task ChangePasswordAsync(string currentPassword, string newPassword)
     {
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        long generation;
+        lock (_keyStateLock) generation = _lockGeneration;
         try
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(currentPassword);
@@ -307,10 +338,13 @@ public class AppLockService : IAppLockService
 
                     await SecureStorage.Default.SetAsync(AppLockStorageKey, JsonSerializer.Serialize(newMetadata)).ConfigureAwait(false);
                     _cachedMetadata = newMetadata;
-                    if (_masterKey is null)
+                    lock (_keyStateLock)
                     {
-                        _masterKey = verifiedMasterKey;
-                        verifiedMasterKey = null;
+                        if (_masterKey is null && _lockGeneration == generation)
+                        {
+                            _masterKey = verifiedMasterKey;
+                            verifiedMasterKey = null;
+                        }
                     }
                 }
                 finally
@@ -342,9 +376,22 @@ public class AppLockService : IAppLockService
 
             if (enable)
             {
-                _cachedMetadata.MasterKeyVerifier = Convert.ToBase64String(CreateVerifier(_masterKey));
-                var bioEncryptedMek = await _biometricService.EncryptAsync(_masterKey);
-                _cachedMetadata.BiometricEncryptedMasterKey = Convert.ToBase64String(bioEncryptedMek);
+                var masterKey = GetMasterKey();
+                try
+                {
+                    var bioEncryptedMek = await _biometricService.EncryptAsync(masterKey);
+                    lock (_keyStateLock)
+                    {
+                        if (_masterKey is null || !CryptographicOperations.FixedTimeEquals(_masterKey, masterKey))
+                            throw new OperationCanceledException("Die App wurde während der Biometrie-Einrichtung gesperrt.");
+                    }
+                    _cachedMetadata.MasterKeyVerifier = Convert.ToBase64String(CreateVerifier(masterKey));
+                    _cachedMetadata.BiometricEncryptedMasterKey = Convert.ToBase64String(bioEncryptedMek);
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(masterKey);
+                }
             }
             else
             {
@@ -369,17 +416,24 @@ public class AppLockService : IAppLockService
 
     public void Lock()
     {
-        if (_masterKey != null)
+        lock (_keyStateLock)
         {
-            Array.Clear(_masterKey);
-            _masterKey = null;
+            _lockGeneration++;
+            if (_masterKey != null)
+            {
+                CryptographicOperations.ZeroMemory(_masterKey);
+                _masterKey = null;
+            }
         }
     }
 
     public byte[] GetMasterKey()
     {
-        if (_masterKey == null) throw new InvalidOperationException("App is locked.");
-        return _masterKey.ToArray();
+        lock (_keyStateLock)
+        {
+            if (_masterKey == null) throw new InvalidOperationException("App is locked.");
+            return _masterKey.ToArray();
+        }
     }
 
     private async Task LoadMetadataIfNeededAsync()

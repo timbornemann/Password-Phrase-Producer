@@ -146,6 +146,28 @@ public sealed class StorageCompatibilityTests
         finally { SecureStorage.Default.Clear(); }
     }
 
+    [Fact]
+    public async Task LockInvalidatesBiometricUnlockAlreadyInProgress()
+    {
+        SecureStorage.Default.Clear();
+        try
+        {
+            var biometrics = new DelayedBiometrics();
+            var appLock = new AppLockService(biometrics);
+            await appLock.SetupAsync("a sufficiently long app password", true);
+            appLock.Lock();
+
+            var pendingUnlock = appLock.UnlockWithBiometricsAsync();
+            await biometrics.DecryptStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            appLock.Lock();
+            biometrics.ReleaseDecrypt.SetResult();
+
+            Assert.False(await pendingUnlock);
+            Assert.False(appLock.IsUnlocked);
+        }
+        finally { SecureStorage.Default.Clear(); }
+    }
+
     private sealed class DisabledBiometrics : IBiometricAuthenticationService
     {
         public Task<bool> IsAvailableAsync(CancellationToken ct = default) => Task.FromResult(false);
@@ -165,6 +187,21 @@ public sealed class StorageCompatibilityTests
             var output = data.ToArray();
             if (Corrupt) output[0] ^= 1;
             return Task.FromResult(output);
+        }
+    }
+
+    private sealed class DelayedBiometrics : IBiometricAuthenticationService
+    {
+        public TaskCompletionSource DecryptStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource ReleaseDecrypt { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Task<bool> IsAvailableAsync(CancellationToken ct = default) => Task.FromResult(true);
+        public Task<bool> AuthenticateAsync(string reason, CancellationToken ct = default) => Task.FromResult(true);
+        public Task<byte[]> EncryptAsync(byte[] data, CancellationToken ct = default) => Task.FromResult(data.ToArray());
+        public async Task<byte[]> DecryptAsync(byte[] data, CancellationToken ct = default)
+        {
+            DecryptStarted.SetResult();
+            await ReleaseDecrypt.Task;
+            return data.ToArray();
         }
     }
 }

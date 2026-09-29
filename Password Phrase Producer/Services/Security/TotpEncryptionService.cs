@@ -25,10 +25,12 @@ public class TotpEncryptionService
 
     private readonly ISecureFileService _secureFileService;
     private readonly string _keyFilePath;
+    private readonly object _keyStateLock = new();
+    private long _lockGeneration;
     private byte[]? _unlockedKey;
     private bool _isUnlocked;
 
-    public bool IsUnlocked => _isUnlocked;
+    public bool IsUnlocked { get { lock (_keyStateLock) return _isUnlocked; } }
 
     /// <summary>
     /// True when a password (previously called PIN) has been configured.
@@ -66,6 +68,8 @@ public class TotpEncryptionService
     public async Task SetupPasswordAsync(string password)
     {
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        long generation;
+        lock (_keyStateLock) generation = _lockGeneration;
         try
         {
             NewPasswordPolicy.Validate(password, nameof(password));
@@ -91,8 +95,16 @@ public class TotpEncryptionService
                 CryptographicOperations.ZeroMemory(masterKey);
                 throw;
             }
-            _unlockedKey = masterKey;
-            _isUnlocked = true;
+            lock (_keyStateLock)
+            {
+                if (_lockGeneration != generation)
+                {
+                    CryptographicOperations.ZeroMemory(masterKey);
+                    throw new OperationCanceledException("Der Authenticator wurde während der Einrichtung gesperrt.");
+                }
+                _unlockedKey = masterKey;
+                _isUnlocked = true;
+            }
         }
         catch
         {
@@ -107,6 +119,8 @@ public class TotpEncryptionService
     public async Task<bool> UnlockWithPasswordAsync(string password)
     {
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        long generation;
+        lock (_keyStateLock) generation = _lockGeneration;
         try
         {
             if (!await HasPasswordAsync().ConfigureAwait(false))
@@ -160,11 +174,18 @@ public class TotpEncryptionService
                         CryptographicOperations.ZeroMemory(decryptedKey);
                     return false;
                 }
-                Lock();
-                _unlockedKey = decryptedKey;
-                _isUnlocked = true;
-
-                return true;
+                lock (_keyStateLock)
+                {
+                    if (_lockGeneration != generation)
+                    {
+                        CryptographicOperations.ZeroMemory(decryptedKey);
+                        return false;
+                    }
+                    if (_unlockedKey is not null) CryptographicOperations.ZeroMemory(_unlockedKey);
+                    _unlockedKey = decryptedKey;
+                    _isUnlocked = true;
+                    return true;
+                }
             }
             catch
             {
@@ -191,14 +212,12 @@ public class TotpEncryptionService
                 throw new InvalidOperationException("Falsches Passwort.");
             }
 
-            if (_unlockedKey == null)
-            {
-                throw new InvalidOperationException("Kein Schlüssel vorhanden.");
-            }
-
             NewPasswordPolicy.Validate(newPassword, nameof(newPassword));
 
-            var encryptedMasterKey = TotpKeyFileFormat.Encrypt(_unlockedKey, newPassword);
+            var masterKey = GetUnlockedKey();
+            byte[] encryptedMasterKey;
+            try { encryptedMasterKey = TotpKeyFileFormat.Encrypt(masterKey, newPassword); }
+            finally { CryptographicOperations.ZeroMemory(masterKey); }
             await _secureFileService.WriteAllBytesAsync(_keyFilePath, encryptedMasterKey);
             // Legacy metadata is no longer needed. The V2 file remains usable even
             // if the process stops before these removals finish.
@@ -225,12 +244,13 @@ public class TotpEncryptionService
     /// </summary>
     public void Lock()
     {
-        if (_unlockedKey != null)
+        lock (_keyStateLock)
         {
-            Array.Clear(_unlockedKey, 0, _unlockedKey.Length);
+            _lockGeneration++;
+            if (_unlockedKey != null) CryptographicOperations.ZeroMemory(_unlockedKey);
             _unlockedKey = null;
+            _isUnlocked = false;
         }
-        _isUnlocked = false;
     }
 
     /// <summary>
@@ -280,11 +300,12 @@ public class TotpEncryptionService
     /// </summary>
     public byte[] GetUnlockedKey()
     {
-        if (!_isUnlocked || _unlockedKey == null)
+        lock (_keyStateLock)
         {
-            throw new InvalidOperationException("Der Authenticator ist gesperrt.");
+            if (!_isUnlocked || _unlockedKey == null)
+                throw new InvalidOperationException("Der Authenticator ist gesperrt.");
+            return _unlockedKey.ToArray();
         }
-        return _unlockedKey.ToArray();
     }
 
     /// <summary>
