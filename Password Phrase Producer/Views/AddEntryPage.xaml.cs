@@ -1,6 +1,8 @@
 using Camera.MAUI;
 using Camera.MAUI.ZXingHelper;
 using Microsoft.Maui.ApplicationModel;
+using System.Security.Cryptography;
+using System.Text;
 using Password_Phrase_Producer.Models;
 using Password_Phrase_Producer.Services;
 using Password_Phrase_Producer.Services.Qr;
@@ -29,8 +31,9 @@ public partial class AddEntryPage : ContentPage
     private bool _cameraRunning;
     private bool _busy;
     private bool _closing;
+    private bool _discardWhenIdle;
     private int _cameraIndex = -1;
-    private string? _lastFeedbackText;
+    private byte[]? _lastFeedbackDigest;
     private DateTime _lastFeedbackAt;
     private CancellationTokenSource? _statusResetCts;
 
@@ -48,6 +51,7 @@ public partial class AddEntryPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        _discardWhenIdle = false;
 
         if (!_initialized)
         {
@@ -71,6 +75,10 @@ public partial class AddEntryPage : ContentPage
     protected override async void OnDisappearing()
     {
         base.OnDisappearing();
+        EntrySecret.Text = string.Empty;
+        _lastFeedbackDigest = null;
+        if (_busy) _discardWhenIdle = true;
+        else _collector.Discard();
         await StopScanningAsync();
     }
 
@@ -130,9 +138,10 @@ public partial class AddEntryPage : ContentPage
             return;
         }
 
+        byte[]? secretBytes = null;
         try
         {
-            var secretBytes = OtpNet.Base32Encoding.ToBytes(secretStr);
+            secretBytes = OtpNet.Base32Encoding.ToBytes(secretStr);
             var entry = new TotpEntry
             {
                 Issuer = issuer ?? "",
@@ -150,6 +159,11 @@ public partial class AddEntryPage : ContentPage
         catch
         {
             await DisplayAlert("Fehler", "Ungültiges Secret Format (Base32).", "OK");
+        }
+        finally
+        {
+            if (secretBytes is not null)
+                CryptographicOperations.ZeroMemory(secretBytes);
         }
     }
 
@@ -491,6 +505,11 @@ public partial class AddEntryPage : ContentPage
         finally
         {
             _busy = false;
+            if (_discardWhenIdle)
+            {
+                _collector.Discard();
+                _discardWhenIdle = false;
+            }
         }
 
         if (texts is null)
@@ -605,6 +624,11 @@ public partial class AddEntryPage : ContentPage
         finally
         {
             _busy = false;
+            if (_discardWhenIdle)
+            {
+                _collector.Discard();
+                _discardWhenIdle = false;
+            }
         }
     }
 
@@ -618,6 +642,7 @@ public partial class AddEntryPage : ContentPage
 
     private async Task ShowScanFeedbackAsync(OtpScanResult result, string text, bool fromCamera)
     {
+        var digest = GetFeedbackDigest(text);
         if (result.Status == OtpScanStatus.BatchPartial)
         {
             PerformHaptic();
@@ -627,18 +652,20 @@ public partial class AddEntryPage : ContentPage
                 $"Teil {_collector.ScannedParts} von {_collector.BatchSize} erkannt",
                 "Blättere im Google Authenticator zum nächsten QR-Code – er wird automatisch hinzugefügt.",
                 SuccessColor);
-            _lastFeedbackText = text;
+            _lastFeedbackDigest = digest;
             _lastFeedbackAt = DateTime.UtcNow;
             return;
         }
 
         // The camera reports the same code many times per second; do not flicker.
-        if (fromCamera && text == _lastFeedbackText && DateTime.UtcNow - _lastFeedbackAt < TimeSpan.FromSeconds(3))
+        if (fromCamera && _lastFeedbackDigest is { } previous &&
+            CryptographicOperations.FixedTimeEquals(digest, previous) &&
+            DateTime.UtcNow - _lastFeedbackAt < TimeSpan.FromSeconds(3))
         {
             return;
         }
 
-        _lastFeedbackText = text;
+        _lastFeedbackDigest = digest;
         _lastFeedbackAt = DateTime.UtcNow;
 
         var (title, hint, color) = result.Status switch
@@ -665,6 +692,13 @@ public partial class AddEntryPage : ContentPage
         }
 
         SetStatus(title, hint, color, resetAfter: TimeSpan.FromSeconds(3));
+    }
+
+    private static byte[] GetFeedbackDigest(string text)
+    {
+        var bytes = Encoding.UTF8.GetBytes(text);
+        try { return SHA256.HashData(bytes); }
+        finally { CryptographicOperations.ZeroMemory(bytes); }
     }
 
     private void UpdateBatchPanel()
@@ -708,6 +742,11 @@ public partial class AddEntryPage : ContentPage
         finally
         {
             _busy = false;
+            if (_discardWhenIdle)
+            {
+                _collector.Discard();
+                _discardWhenIdle = false;
+            }
         }
     }
 
@@ -730,7 +769,9 @@ public partial class AddEntryPage : ContentPage
             return false;
         }
 
-        _collector.Reset();
+        _collector.Discard();
+        foreach (var account in accounts)
+            CryptographicOperations.ZeroMemory(account.Secret);
 
         if (result.Added.Count > 0)
         {

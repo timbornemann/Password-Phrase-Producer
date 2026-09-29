@@ -72,7 +72,7 @@ public sealed class OtpScanCollector
         if (_batchId != batch.BatchId)
         {
             // A different export was started, discard the parts of the previous one.
-            Reset();
+            Discard();
             _batchId = batch.BatchId;
         }
 
@@ -98,5 +98,12 @@ public sealed class OtpScanCollector
         _batchParts.Clear();
         _batchId = null;
         BatchSize = 0;
+    }
+
+    public void Discard()
+    {
+        foreach (var account in _batchParts.Values.SelectMany(part => part))
+            System.Security.Cryptography.CryptographicOperations.ZeroMemory(account.Secret);
+        Reset();
     }
 }

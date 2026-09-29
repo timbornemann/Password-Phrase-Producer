@@ -189,11 +189,26 @@ public class OtpScanCollectorTests
     {
         var collector = new OtpScanCollector();
         collector.Add(MigrationTestData.CreateUri(new[] { MigrationTestData.Simple("old") }, batchSize: 2, batchIndex: 0, batchId: 1));
+        var oldSecret = collector.PendingAccounts.Single().Secret;
 
         var result = collector.Add(MigrationTestData.CreateUri(new[] { MigrationTestData.Simple("new") }, batchSize: 2, batchIndex: 0, batchId: 2));
 
         Assert.Equal(OtpScanStatus.BatchPartial, result.Status);
         Assert.Equal(new[] { "new" }, collector.PendingAccounts.Select(a => a.AccountName));
+        Assert.All(oldSecret, value => Assert.Equal((byte)0, value));
+    }
+
+    [Fact]
+    public void DiscardWipesPendingSecrets()
+    {
+        var collector = new OtpScanCollector();
+        collector.Add(MigrationTestData.CreateUri(new[] { MigrationTestData.Simple("pending") }, batchSize: 2, batchIndex: 0, batchId: 1));
+        var secret = collector.PendingAccounts.Single().Secret;
+
+        collector.Discard();
+
+        Assert.False(collector.HasPendingBatch);
+        Assert.All(secret, value => Assert.Equal((byte)0, value));
     }
 
     [Theory]
