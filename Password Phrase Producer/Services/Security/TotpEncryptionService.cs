@@ -256,6 +256,8 @@ public class TotpEncryptionService
 
     public event EventHandler? Locked;
 
+    internal long LockGeneration { get { lock (_keyStateLock) return _lockGeneration; } }
+
     /// <summary>
     /// Reset the service by deleting all stored data and passwords
     /// </summary>

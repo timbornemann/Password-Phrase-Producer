@@ -8,7 +8,7 @@ public class TotpEntryDto
     public Guid Id { get; set; }
     public string Issuer { get; set; } = string.Empty;
     public string AccountName { get; set; } = string.Empty;
-    public string Secret { get; set; } = string.Empty;
+    public byte[] Secret { get; set; } = Array.Empty<byte>();
     public string Algorithm { get; set; } = "Sha1";
     public int Digits { get; set; } = 6;
     public int Period { get; set; } = 30;
@@ -22,7 +22,7 @@ public class TotpEntryDto
             Id = model.Id,
             Issuer = model.Issuer,
             AccountName = model.AccountName,
-            Secret = model.Secret != null ? Convert.ToBase64String(model.Secret) : string.Empty,
+            Secret = model.Secret ?? Array.Empty<byte>(),
             Algorithm = model.Algorithm.ToString(),
             Digits = model.Digits,
             Period = model.Period,
@@ -38,7 +38,7 @@ public class TotpEntryDto
             Id = Id,
             Issuer = Issuer,
             AccountName = AccountName,
-            Secret = !string.IsNullOrEmpty(Secret) ? Convert.FromBase64String(Secret) : null,
+            Secret = Secret is { Length: > 0 } ? Secret : null,
             Algorithm = Enum.TryParse<TotpAlgorithm>(Algorithm, out var alg) ? alg : TotpAlgorithm.Sha1,
             Digits = Digits,
             Period = Period,

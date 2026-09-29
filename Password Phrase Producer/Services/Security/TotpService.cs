@@ -55,12 +55,13 @@ public class TotpService
             {
                  return new List<TotpEntry>();
             }
+            var generation = _encryptionService.LockGeneration;
 
             await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-                if (!_encryptionService.IsUnlocked)
+                if (!_encryptionService.IsUnlocked || generation != _encryptionService.LockGeneration)
                 {
                     foreach (var entry in entries)
                     {
@@ -336,10 +337,9 @@ public class TotpService
                 throw new InvalidDataException("Die Authenticator-Datei enthält keinen gültigen Snapshot.");
             }
 
-            var json = Encoding.UTF8.GetString(decryptedBytes);
             try
             {
-                var snapshot = JsonSerializer.Deserialize<TotpSnapshotDto>(json, _jsonOptions);
+                var snapshot = JsonSerializer.Deserialize<TotpSnapshotDto>(decryptedBytes, _jsonOptions);
                 if (snapshot?.Entries is null)
                     throw new InvalidDataException("Die Authenticator-Datei enthält keine Einträge-Liste.");
                 return snapshot.Entries.Select(e => e.ToModel()).ToList();
@@ -373,8 +373,7 @@ public class TotpService
             ExportedAt = DateTimeOffset.UtcNow
         };
 
-        var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
-        var bytes = Encoding.UTF8.GetBytes(json);
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(snapshot, _jsonOptions);
 
         try
         {
@@ -418,8 +417,7 @@ public class TotpService
                     ExportedAt = DateTimeOffset.UtcNow
                 };
 
-                var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
-                var plainBytes = Encoding.UTF8.GetBytes(json);
+                var plainBytes = JsonSerializer.SerializeToUtf8Bytes(snapshot, _jsonOptions);
 
                 try
                 {
@@ -441,7 +439,7 @@ public class TotpService
                             CreatedAt = DateTimeOffset.UtcNow
                         };
 
-                        return Encoding.UTF8.GetBytes(JsonSerializer.Serialize(exportDto, _jsonOptions));
+                        return JsonSerializer.SerializeToUtf8Bytes(exportDto, _jsonOptions);
                     }
                     finally
                     {
@@ -512,8 +510,7 @@ public class TotpService
             try
             {
                 // 3. Klardaten in Tresor einfügen
-                var jsonString = Encoding.UTF8.GetString(plainBytes);
-                var snapshot = JsonSerializer.Deserialize<TotpSnapshotDto>(jsonString, _jsonOptions)
+                var snapshot = JsonSerializer.Deserialize<TotpSnapshotDto>(plainBytes, _jsonOptions)
                               ?? throw new InvalidOperationException("Ungültiges Snapshot-Format.");
 
                 if (snapshot.Entries is null)

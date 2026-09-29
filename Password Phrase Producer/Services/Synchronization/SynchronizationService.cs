@@ -662,8 +662,7 @@ public class SynchronizationService : ISynchronizationService
 
     private async Task WriteVaultFileAsync(string path, ExternalVaultHeader header, ExternalVaultContent content, byte[] key)
     {
-        var plainJson = JsonSerializer.Serialize(content, _jsonOptions);
-        var plainBytes = Encoding.UTF8.GetBytes(plainJson);
+        var plainBytes = JsonSerializer.SerializeToUtf8Bytes(content, _jsonOptions);
         byte[] encryptedBytes;
         try { encryptedBytes = EncryptWithKey(plainBytes, key); }
         finally { CryptographicOperations.ZeroMemory(plainBytes); }

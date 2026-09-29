@@ -522,16 +522,21 @@ public class PasswordVaultService
         try
         {
             EnsureUnlocked();
+            long generation;
+            lock (_keyStateLock) generation = _lockGeneration;
 
             await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-                return entries
+                var visibleEntries = entries
                     .Where(e => !e.IsDeleted) // Filter out soft-deleted items
                     .OrderBy(e => e.DisplayCategory, StringComparer.CurrentCultureIgnoreCase)
                     .ThenBy(e => e.Label, StringComparer.CurrentCultureIgnoreCase)
                     .ToList();
+                lock (_keyStateLock)
+                    return _lockGeneration == generation && _encryptionKey is not null
+                        ? visibleEntries : Array.Empty<PasswordVaultEntry>();
             }
             finally
             {
@@ -806,8 +811,7 @@ public class PasswordVaultService
                     ExportedAt = DateTimeOffset.UtcNow
                 };
 
-                var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
-                var plainBytes = Encoding.UTF8.GetBytes(json);
+                var plainBytes = JsonSerializer.SerializeToUtf8Bytes(snapshot, _jsonOptions);
 
                 try
                 {
@@ -827,7 +831,7 @@ public class PasswordVaultService
                             CreatedAt = DateTimeOffset.UtcNow
                         };
 
-                        return Encoding.UTF8.GetBytes(JsonSerializer.Serialize(exportDto, _jsonOptions));
+                        return JsonSerializer.SerializeToUtf8Bytes(exportDto, _jsonOptions);
                     }
                     finally
                     {
@@ -936,8 +940,7 @@ public class PasswordVaultService
                 throw new InvalidDataException("Die Tresor-Datei enthält keinen gültigen Snapshot.");
             }
 
-            var json = Encoding.UTF8.GetString(decryptedBytes);
-            var snapshot = JsonSerializer.Deserialize<PasswordVaultSnapshotDto>(json, _jsonOptions);
+            var snapshot = JsonSerializer.Deserialize<PasswordVaultSnapshotDto>(decryptedBytes, _jsonOptions);
 
             if (snapshot?.Entries is null)
             {
@@ -976,8 +979,7 @@ public class PasswordVaultService
             ExportedAt = DateTimeOffset.UtcNow
         };
 
-        var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
-        var plainBytes = Encoding.UTF8.GetBytes(json);
+        var plainBytes = JsonSerializer.SerializeToUtf8Bytes(snapshot, _jsonOptions);
         try
         {
             var encrypted = encryptionKeyOverride is null
