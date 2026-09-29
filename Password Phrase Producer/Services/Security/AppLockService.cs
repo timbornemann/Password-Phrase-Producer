@@ -261,6 +261,7 @@ public class AppLockService : IAppLockService
             if (oldSalt.Length != 16 || _cachedMetadata.Iterations is < 10_000 or > 1_000_000)
                 throw new InvalidDataException("Ungültige App-Schlüsselableitung.");
             var oldKek = DeriveKeyBytes(currentPassword, oldSalt, _cachedMetadata.Iterations);
+            byte[]? verifiedMasterKey = null;
             try
             {
                 var expectedVerifier = Convert.FromBase64String(_cachedMetadata.Verifier);
@@ -268,41 +269,58 @@ public class AppLockService : IAppLockService
                 if (!CryptographicOperations.FixedTimeEquals(actualVerifier, expectedVerifier))
                     throw new UnauthorizedAccessException("Current password incorrect.");
 
-                if (_masterKey is null)
-                {
-                    var oldEncryptedMek = Convert.FromBase64String(_cachedMetadata.EncryptedMasterKey);
-                    _masterKey = DecryptAesGcm(oldEncryptedMek, oldKek);
-                }
+                var oldEncryptedMek = Convert.FromBase64String(_cachedMetadata.EncryptedMasterKey);
+                verifiedMasterKey = DecryptAesGcm(oldEncryptedMek, oldKek);
+                if (verifiedMasterKey.Length != KeySize ||
+                    _masterKey is not null && !CryptographicOperations.FixedTimeEquals(_masterKey, verifiedMasterKey))
+                    throw new InvalidDataException("Der aktive App-Schlüssel stimmt nicht mit dem Passwortschutz überein.");
+            }
+            catch
+            {
+                if (verifiedMasterKey is not null) CryptographicOperations.ZeroMemory(verifiedMasterKey);
+                throw;
             }
             finally
             {
                 CryptographicOperations.ZeroMemory(oldKek);
             }
 
-            // Generate new Salt/KEK for new password
-            var salt = RandomNumberGenerator.GetBytes(16);
-            var iterations = NewPbkdf2Iterations;
-            var kek = DeriveKeyBytes(newPassword, salt, iterations);
             try
             {
-                var verifier = CreateVerifier(kek);
-                var encryptedMek = EncryptAesGcm(_masterKey, kek);
-                var newMetadata = new AppLockMetadata
+                // Always rewrap the MEK authenticated by the old password.
+                var salt = RandomNumberGenerator.GetBytes(16);
+                var iterations = NewPbkdf2Iterations;
+                var kek = DeriveKeyBytes(newPassword, salt, iterations);
+                try
                 {
-                    Salt = Convert.ToBase64String(salt),
-                    Iterations = iterations,
-                    Verifier = Convert.ToBase64String(verifier),
-                    EncryptedMasterKey = Convert.ToBase64String(encryptedMek),
-                    MasterKeyVerifier = Convert.ToBase64String(CreateVerifier(_masterKey)),
-                    BiometricEncryptedMasterKey = _cachedMetadata?.BiometricEncryptedMasterKey
-                };
+                    var verifier = CreateVerifier(kek);
+                    var encryptedMek = EncryptAesGcm(verifiedMasterKey!, kek);
+                    var newMetadata = new AppLockMetadata
+                    {
+                        Salt = Convert.ToBase64String(salt),
+                        Iterations = iterations,
+                        Verifier = Convert.ToBase64String(verifier),
+                        EncryptedMasterKey = Convert.ToBase64String(encryptedMek),
+                        MasterKeyVerifier = Convert.ToBase64String(CreateVerifier(verifiedMasterKey!)),
+                        BiometricEncryptedMasterKey = _cachedMetadata?.BiometricEncryptedMasterKey
+                    };
 
-                await SecureStorage.Default.SetAsync(AppLockStorageKey, JsonSerializer.Serialize(newMetadata)).ConfigureAwait(false);
-                _cachedMetadata = newMetadata;
+                    await SecureStorage.Default.SetAsync(AppLockStorageKey, JsonSerializer.Serialize(newMetadata)).ConfigureAwait(false);
+                    _cachedMetadata = newMetadata;
+                    if (_masterKey is null)
+                    {
+                        _masterKey = verifiedMasterKey;
+                        verifiedMasterKey = null;
+                    }
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(kek);
+                }
             }
             finally
             {
-                CryptographicOperations.ZeroMemory(kek);
+                if (verifiedMasterKey is not null) CryptographicOperations.ZeroMemory(verifiedMasterKey);
             }
         }
         catch
