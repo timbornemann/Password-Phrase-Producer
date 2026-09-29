@@ -478,15 +478,8 @@ public partial class AddEntryPage : ContentPage
         {
             texts = await Task.Run(async () =>
             {
-                // Copy into memory: picker streams are not always seekable.
-                using var memory = new MemoryStream();
-                await using (var stream = await file.OpenReadAsync())
-                {
-                    await stream.CopyToAsync(memory);
-                }
-
-                memory.Position = 0;
-                var image = QrImageLoader.Load(memory);
+                await using var stream = await file.OpenReadAsync();
+                var image = QrImageLoader.Load(stream);
                 return image is null ? null : new QrCodeDecoder().DecodeImage(image.Value);
             });
         }

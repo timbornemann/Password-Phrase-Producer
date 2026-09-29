@@ -8,10 +8,47 @@ namespace Password_Phrase_Producer.Services.Qr;
 public static class QrImageLoader
 {
     private const int MaxDimension = 3000;
+    private const int MaxSourceDimension = 10000;
+    private const long MaxSourcePixels = 20_000_000;
+    private const int MaxEncodedBytes = 16 * 1024 * 1024;
 
     public static GrayImage? Load(Stream stream)
     {
-        using var source = SKBitmap.Decode(stream);
+        ArgumentNullException.ThrowIfNull(stream);
+
+        // Picker streams may be non-seekable. Bound the encoded input before a native
+        // decoder sees it, then inspect its dimensions before allocating a bitmap.
+        using var buffer = new MemoryStream();
+        var chunk = new byte[81920];
+        int count;
+        while ((count = stream.Read(chunk, 0, Math.Min(chunk.Length, MaxEncodedBytes + 1 - (int)buffer.Length))) > 0)
+        {
+            buffer.Write(chunk, 0, count);
+            if (buffer.Length > MaxEncodedBytes)
+            {
+                throw new InvalidDataException("Das QR-Bild ist zu groß.");
+            }
+        }
+
+        using var data = SKData.CreateCopy(buffer.ToArray());
+        using var codec = SKCodec.Create(data);
+        if (codec is null)
+        {
+            return null;
+        }
+
+        var info = codec.Info;
+        if (info.Width <= 0 || info.Height <= 0)
+        {
+            return null;
+        }
+        if (info.Width > MaxSourceDimension || info.Height > MaxSourceDimension
+            || (long)info.Width * info.Height > MaxSourcePixels)
+        {
+            throw new InvalidDataException("Die Auflösung des QR-Bilds ist zu groß.");
+        }
+
+        using var source = SKBitmap.Decode(codec);
         if (source is null || source.Width <= 0 || source.Height <= 0)
         {
             return null;
