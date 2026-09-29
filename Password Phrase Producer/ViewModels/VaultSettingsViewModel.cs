@@ -849,6 +849,11 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);
 
+        if (await _vaultService.HasMasterPasswordAsync(cancellationToken).ConfigureAwait(false) && !_vaultService.IsUnlocked ||
+            await _dataVaultService.HasMasterPasswordAsync(cancellationToken).ConfigureAwait(false) && !_dataVaultService.IsUnlocked ||
+            await _totpEncryptionService.HasPasswordAsync().ConfigureAwait(false) && !_totpEncryptionService.IsUnlocked)
+            throw new InvalidOperationException("Für ein Gesamtbackup müssen alle eingerichteten Tresore entsperrt sein.");
+
         var backup = new FullBackupDto
         {
             Version = 3,
