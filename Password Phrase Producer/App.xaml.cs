@@ -36,37 +36,21 @@ namespace Password_Phrase_Producer
 
         protected override void OnSleep()
         {
+            // Remove secrets and sensitive pages before the OS can retain an app preview.
+            _appLockService.Lock();
+            _serviceProvider.GetRequiredService<PasswordVaultService>().Lock();
+            _serviceProvider.GetRequiredService<DataVaultService>().Lock();
+            _serviceProvider.GetRequiredService<TotpEncryptionService>().Lock();
+            VaultNavigationCoordinator.ClearAllPending();
+            MainPage = CreateSplashPage();
             base.OnSleep();
             _serviceProvider.GetRequiredService<UpdateLifecycle>().Stop();
-            // Notify service of backgrounding to start timer
-            _appLockService.OnAppBackgrounded();
-
-            // NOTE: We do NOT lock immediately anymore to allow for a grace period.
-            // We also do NOT replace the MainPage with a splash screen, so the app
-            // state is preserved in the task switcher.
         }
 
         protected override async void OnResume()
         {
             base.OnResume();
             _serviceProvider.GetRequiredService<UpdateLifecycle>().Start();
-
-            // Check if the background grace period has expired
-            if (_appLockService.CheckLockTimeout())
-            {
-                _appLockService.Lock();
-                _serviceProvider.GetRequiredService<PasswordVaultService>().Lock();
-                _serviceProvider.GetRequiredService<DataVaultService>().Lock();
-                _serviceProvider.GetRequiredService<TotpEncryptionService>().Lock();
-                VaultNavigationCoordinator.ClearAllPending();
-
-                // Force navigation to login page if locked
-                MainThread.BeginInvokeOnMainThread(() =>
-                {
-                    var appLoginPage = _serviceProvider.GetRequiredService<AppLoginPage>();
-                    MainPage = appLoginPage;
-                });
-            }
 
             await InitializeNavigationAsync();
         }
