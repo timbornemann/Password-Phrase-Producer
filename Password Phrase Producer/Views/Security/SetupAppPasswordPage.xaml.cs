@@ -37,6 +37,9 @@ public partial class SetupAppPasswordPage : ContentPage
         {
             await _appLockService.SetupAsync(password, BiometricSwitch.IsToggled);
             Application.Current.MainPage = new AppShell();
+            if (BiometricSwitch.IsToggled && !await _appLockService.IsBiometricConfiguredAsync())
+                await Application.Current.MainPage.DisplayAlert("Biometrie nicht verfügbar",
+                    "Das App-Passwort ist eingerichtet. Biometrisches Entsperren konnte nicht aktiviert werden und kann später in den Einstellungen erneut versucht werden.", "OK");
         }
         catch (Exception ex)
         {

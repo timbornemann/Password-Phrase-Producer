@@ -56,6 +56,22 @@ public sealed class StorageCompatibilityTests
     }
 
     [Fact]
+    public async Task OptionalBiometricFailureDoesNotInvalidateAppPasswordSetup()
+    {
+        SecureStorage.Default.Clear();
+        try
+        {
+            var appLock = new AppLockService(new DisabledBiometrics());
+            await appLock.SetupAsync("sufficiently long app password", true);
+            Assert.True(await appLock.IsConfiguredAsync());
+            Assert.False(await appLock.IsBiometricConfiguredAsync());
+            appLock.Lock();
+            Assert.True(await appLock.UnlockAsync("sufficiently long app password"));
+        }
+        finally { SecureStorage.Default.Clear(); }
+    }
+
+    [Fact]
     public async Task ExistingAppPasswordAndEncryptedFilesSurviveReplacementOfServiceInstances()
     {
         SecureStorage.Default.Clear();

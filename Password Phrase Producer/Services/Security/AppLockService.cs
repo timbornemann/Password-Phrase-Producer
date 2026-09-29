@@ -260,7 +260,13 @@ public class AppLockService : IAppLockService
                     _masterKey = mek;
                 }
                 if (enableBiometrics)
-                    await EnableBiometricsAsync(true).ConfigureAwait(false);
+                {
+                    try { await EnableBiometricsAsync(true).ConfigureAwait(false); }
+                    catch
+                    {
+                        // Password protection was already committed. Biometrics are optional.
+                    }
+                }
             }
             finally
             {
@@ -374,6 +380,16 @@ public class AppLockService : IAppLockService
             if (_cachedMetadata == null) await LoadMetadataIfNeededAsync();
             if (_cachedMetadata == null) throw new InvalidOperationException("No metadata found.");
 
+            var updatedMetadata = new AppLockMetadata
+            {
+                Salt = _cachedMetadata.Salt,
+                Iterations = _cachedMetadata.Iterations,
+                Verifier = _cachedMetadata.Verifier,
+                EncryptedMasterKey = _cachedMetadata.EncryptedMasterKey,
+                MasterKeyVerifier = _cachedMetadata.MasterKeyVerifier,
+                BiometricEncryptedMasterKey = _cachedMetadata.BiometricEncryptedMasterKey
+            };
+
             if (enable)
             {
                 var masterKey = GetMasterKey();
@@ -385,8 +401,8 @@ public class AppLockService : IAppLockService
                         if (_masterKey is null || !CryptographicOperations.FixedTimeEquals(_masterKey, masterKey))
                             throw new OperationCanceledException("Die App wurde während der Biometrie-Einrichtung gesperrt.");
                     }
-                    _cachedMetadata.MasterKeyVerifier = Convert.ToBase64String(CreateVerifier(masterKey));
-                    _cachedMetadata.BiometricEncryptedMasterKey = Convert.ToBase64String(bioEncryptedMek);
+                    updatedMetadata.MasterKeyVerifier = Convert.ToBase64String(CreateVerifier(masterKey));
+                    updatedMetadata.BiometricEncryptedMasterKey = Convert.ToBase64String(bioEncryptedMek);
                 }
                 finally
                 {
@@ -395,11 +411,12 @@ public class AppLockService : IAppLockService
             }
             else
             {
-                _cachedMetadata.BiometricEncryptedMasterKey = null;
+                updatedMetadata.BiometricEncryptedMasterKey = null;
             }
 
-            var json = JsonSerializer.Serialize(_cachedMetadata);
+            var json = JsonSerializer.Serialize(updatedMetadata);
             await SecureStorage.Default.SetAsync(AppLockStorageKey, json).ConfigureAwait(false);
+            _cachedMetadata = updatedMetadata;
         }
         catch
         {
