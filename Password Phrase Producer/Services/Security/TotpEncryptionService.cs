@@ -68,10 +68,7 @@ public class TotpEncryptionService
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            if (string.IsNullOrWhiteSpace(password))
-            {
-                throw new ArgumentException("Passwort darf nicht leer sein.", nameof(password));
-            }
+            NewPasswordPolicy.Validate(password, nameof(password));
 
             StartupDataGuard.RequireNewStore(_keyFilePath);
             StartupDataGuard.RequireNewStore(Path.Combine(FileSystem.AppDataDirectory, "totp_data.json.enc"));
@@ -199,10 +196,7 @@ public class TotpEncryptionService
                 throw new InvalidOperationException("Kein Schlüssel vorhanden.");
             }
 
-            if (string.IsNullOrWhiteSpace(newPassword))
-            {
-                throw new ArgumentException("Passwort darf nicht leer sein.", nameof(newPassword));
-            }
+            NewPasswordPolicy.Validate(newPassword, nameof(newPassword));
 
             var encryptedMasterKey = TotpKeyFileFormat.Encrypt(_unlockedKey, newPassword);
             await _secureFileService.WriteAllBytesAsync(_keyFilePath, encryptedMasterKey);

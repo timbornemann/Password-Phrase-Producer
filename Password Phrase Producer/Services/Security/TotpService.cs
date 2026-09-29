@@ -384,7 +384,7 @@ public class TotpService
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);
+            NewPasswordPolicy.Validate(filePassword, nameof(filePassword));
             EnsureUnlocked();
 
             const int KeySizeBytes = 32;

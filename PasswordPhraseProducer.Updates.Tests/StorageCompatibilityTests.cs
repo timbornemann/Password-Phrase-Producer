@@ -75,7 +75,7 @@ public sealed class StorageCompatibilityTests
         {
             var biometrics = new CorruptibleBiometrics();
             var appLock = new AppLockService(biometrics);
-            await appLock.SetupAsync("app password", true);
+            await appLock.SetupAsync("a sufficiently long app password", true);
             appLock.Lock();
 
             biometrics.Corrupt = true;
@@ -92,7 +92,7 @@ public sealed class StorageCompatibilityTests
             await SecureStorage.Default.SetAsync("AppLockMetadata_V1", metadata.ToJsonString());
             appLock = new AppLockService(biometrics);
             Assert.False(await appLock.UnlockWithBiometricsAsync());
-            Assert.True(await appLock.UnlockAsync("app password"));
+            Assert.True(await appLock.UnlockAsync("a sufficiently long app password"));
             appLock.Lock();
             Assert.True(await appLock.UnlockWithBiometricsAsync());
 
@@ -102,7 +102,7 @@ public sealed class StorageCompatibilityTests
             await SecureStorage.Default.SetAsync("AppLockMetadata_V1", metadata.ToJsonString());
             appLock = new AppLockService(biometrics);
             Assert.False(await appLock.UnlockWithBiometricsAsync());
-            Assert.True(await appLock.UnlockAsync("app password"));
+            Assert.True(await appLock.UnlockAsync("a sufficiently long app password"));
             appLock.Lock();
             Assert.True(await appLock.UnlockWithBiometricsAsync());
         }

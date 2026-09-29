@@ -100,7 +100,7 @@ public class DataVaultService
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            ArgumentException.ThrowIfNullOrWhiteSpace(password);
+            NewPasswordPolicy.Validate(password, nameof(password));
 
             StartupDataGuard.RequireNewStore(_vaultFilePath);
 
@@ -258,7 +258,7 @@ public class DataVaultService
         try
         {
             EnsureUnlocked();
-            ArgumentException.ThrowIfNullOrWhiteSpace(newPassword);
+            NewPasswordPolicy.Validate(newPassword, nameof(newPassword));
 
             await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
@@ -718,7 +718,7 @@ public class DataVaultService
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);
+            NewPasswordPolicy.Validate(filePassword, nameof(filePassword));
             EnsureUnlocked();
 
             await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);

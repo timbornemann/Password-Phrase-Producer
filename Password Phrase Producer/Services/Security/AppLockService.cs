@@ -167,10 +167,10 @@ public class AppLockService : IAppLockService
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            ArgumentException.ThrowIfNullOrWhiteSpace(password);
             await LoadMetadataIfNeededAsync().ConfigureAwait(false);
             if (_cachedMetadata is not null)
                 throw new InvalidOperationException("App lock is already configured.");
+            NewPasswordPolicy.Validate(password, nameof(password));
 
             // Generate new Master Encryption Key (MEK)
             var mek = RandomNumberGenerator.GetBytes(KeySize);
@@ -220,7 +220,7 @@ public class AppLockService : IAppLockService
         try
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(currentPassword);
-            ArgumentException.ThrowIfNullOrWhiteSpace(newPassword);
+            NewPasswordPolicy.Validate(newPassword, nameof(newPassword));
             await LoadMetadataIfNeededAsync().ConfigureAwait(false);
             if (_cachedMetadata is null)
                 throw new InvalidOperationException("App lock is not configured.");
