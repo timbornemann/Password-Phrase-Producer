@@ -50,6 +50,14 @@ public sealed class StorageCompatibilityTests
                     Assert.Equal(ciphertext[fixture.Key], File.ReadAllBytes(Path.Combine(directory, fixture.Key)));
                 }
             }
+            await Assert.ThrowsAsync<InvalidOperationException>(() => appLock.SetupAsync("replacement", false));
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => appLock.ChangePasswordAsync("wrong-password", "new-master-password"));
+            await appLock.ChangePasswordAsync("persisted-master-password", "new-master-password");
+            appLock.Lock();
+            Assert.False(await appLock.UnlockAsync("persisted-master-password"));
+            Assert.True(await appLock.UnlockAsync("new-master-password"));
+            foreach (var fixture in fixtures)
+                Assert.Equal(fixture.Value, await files.ReadAllBytesAsync(Path.Combine(directory, fixture.Key)));
             File.Delete(Path.Combine(directory, "totp.key"));
             await Assert.ThrowsAsync<InvalidDataException>(() => StartupDataGuard.VerifyAsync(directory, SecureStorage.Default.GetAsync));
             Assert.Equal(ciphertext["totp_data.json.enc"], File.ReadAllBytes(Path.Combine(directory, "totp_data.json.enc")));

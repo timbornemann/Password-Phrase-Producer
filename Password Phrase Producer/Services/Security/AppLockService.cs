@@ -138,6 +138,9 @@ public class AppLockService : IAppLockService
         try
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(password);
+            await LoadMetadataIfNeededAsync().ConfigureAwait(false);
+            if (_cachedMetadata is not null)
+                throw new InvalidOperationException("App lock is already configured.");
 
             // Generate new Master Encryption Key (MEK)
             var mek = RandomNumberGenerator.GetBytes(KeySize);
@@ -164,12 +167,11 @@ public class AppLockService : IAppLockService
                 BiometricEncryptedMasterKey = null
             };
 
-            _cachedMetadata = metadata;
-            _masterKey = mek; // Logged in immediately
-
             // Save initial metadata
             var json = JsonSerializer.Serialize(metadata);
             await SecureStorage.Default.SetAsync(AppLockStorageKey, json).ConfigureAwait(false);
+            _cachedMetadata = metadata;
+            _masterKey = mek; // Logged in immediately
 
             // Enable biometrics if requested
             if (enableBiometrics)
@@ -189,13 +191,30 @@ public class AppLockService : IAppLockService
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            if (!IsUnlocked || _masterKey == null)
+            ArgumentException.ThrowIfNullOrWhiteSpace(currentPassword);
+            ArgumentException.ThrowIfNullOrWhiteSpace(newPassword);
+            await LoadMetadataIfNeededAsync().ConfigureAwait(false);
+            if (_cachedMetadata is null)
+                throw new InvalidOperationException("App lock is not configured.");
+
+            var oldSalt = Convert.FromBase64String(_cachedMetadata.Salt);
+            var oldKek = DeriveKeyBytes(currentPassword, oldSalt, _cachedMetadata.Iterations);
+            try
             {
-                // If not unlocked, try to unlock first (this requires currentPassword is correct)
-                if (!await UnlockAsync(currentPassword))
-                {
+                var expectedVerifier = Convert.FromBase64String(_cachedMetadata.Verifier);
+                var actualVerifier = CreateVerifier(oldKek);
+                if (!CryptographicOperations.FixedTimeEquals(actualVerifier, expectedVerifier))
                     throw new UnauthorizedAccessException("Current password incorrect.");
+
+                if (_masterKey is null)
+                {
+                    var oldEncryptedMek = Convert.FromBase64String(_cachedMetadata.EncryptedMasterKey);
+                    _masterKey = DecryptAesGcm(oldEncryptedMek, oldKek);
                 }
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(oldKek);
             }
 
             // Generate new Salt/KEK for new password
@@ -206,8 +225,6 @@ public class AppLockService : IAppLockService
 
             // Re-encrypt EXISTING MEK with new KEK
             var encryptedMek = EncryptAesGcm(_masterKey, kek);
-
-            if (_cachedMetadata == null) await LoadMetadataIfNeededAsync();
 
             var newMetadata = new AppLockMetadata
             {
