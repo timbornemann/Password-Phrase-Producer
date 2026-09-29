@@ -13,7 +13,7 @@ public static class TotpKeyFileFormat
     private const int NonceLength = 12;
     private const int MasterKeyLength = 32;
     private const int TagLength = 16;
-    private const int Iterations = 200_000;
+    private const int Iterations = 600_000;
     private const int HeaderLength = 5;
     private const int FileLength = HeaderLength + SaltLength + sizeof(int) + VerifierLength + NonceLength + MasterKeyLength + TagLength;
 

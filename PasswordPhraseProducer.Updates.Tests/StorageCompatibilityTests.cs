@@ -32,6 +32,9 @@ public sealed class StorageCompatibilityTests
             var biometrics = new DisabledBiometrics();
             var appLock = new AppLockService(biometrics);
             await appLock.SetupAsync("persisted-master-password", false);
+            var metadataJson = await SecureStorage.Default.GetAsync("AppLockMetadata_V1");
+            using (var metadataDocument = System.Text.Json.JsonDocument.Parse(metadataJson!))
+                Assert.Equal(600_000, metadataDocument.RootElement.GetProperty("Iterations").GetInt32());
             var files = new SecureFileService(appLock);
             var fixtures = StartupDataGuard.DataFiles.ToDictionary(n => n, _ => RandomNumberGenerator.GetBytes(150));
             foreach (var fixture in fixtures) await files.WriteAllBytesAsync(Path.Combine(directory, fixture.Key), fixture.Value);

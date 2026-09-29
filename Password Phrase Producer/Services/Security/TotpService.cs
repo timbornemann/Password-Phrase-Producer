@@ -389,7 +389,7 @@ public class TotpService
 
             const int KeySizeBytes = 32;
             const int SaltSizeBytes = 16;
-            const int Pbkdf2Iterations = 200_000;
+            const int Pbkdf2Iterations = 600_000;
 
             await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try

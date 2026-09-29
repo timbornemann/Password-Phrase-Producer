@@ -13,6 +13,7 @@ public sealed class TotpKeyFileFormatTests
         var file = TotpKeyFileFormat.Encrypt(masterKey, "correct password");
 
         Assert.True(TotpKeyFileFormat.IsV2(file));
+        Assert.Equal(600_000, System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(file.AsSpan(21, 4)));
         Assert.True(TotpKeyFileFormat.TryDecrypt(file, "correct password", out var recovered));
         Assert.Equal(masterKey, recovered);
         Assert.False(TotpKeyFileFormat.TryDecrypt(file, "wrong password", out _));

@@ -49,7 +49,7 @@ public class SynchronizationService : ISynchronizationService
     private const string SyncAccessModeKey = "SyncAccessMode";
     private const int KeySize = 32;
     private const int SaltSize = 16;
-    private const int Iterations = 200_000;
+    private const int Iterations = 600_000;
 
     private readonly ISyncFileService _syncFileService;
     private readonly IAppLockService _appLockService;

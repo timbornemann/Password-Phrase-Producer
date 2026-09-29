@@ -29,6 +29,7 @@ public class AppLockService : IAppLockService
     private const int AuthTagLength = 16;
     private const int KeySize = 32; // 256 bits
     private const int NonceSize = 12; // 96 bits
+    private const int NewPbkdf2Iterations = 600_000;
 
     private readonly IBiometricAuthenticationService _biometricService;
     private byte[]? _masterKey;
@@ -65,6 +66,7 @@ public class AppLockService : IAppLockService
 
             var salt = Convert.FromBase64String(_cachedMetadata.Salt);
             var iterations = _cachedMetadata.Iterations;
+            if (salt.Length != 16 || iterations is < 10_000 or > 1_000_000) return false;
 
             var kek = DeriveKeyBytes(password, salt, iterations);
             try
@@ -177,7 +179,7 @@ public class AppLockService : IAppLockService
 
             // Generate Salt
             var salt = RandomNumberGenerator.GetBytes(16);
-            var iterations = 200_000;
+            var iterations = NewPbkdf2Iterations;
 
             // Derive KEK (Key Encryption Key)
             var kek = DeriveKeyBytes(password, salt, iterations);
@@ -226,6 +228,8 @@ public class AppLockService : IAppLockService
                 throw new InvalidOperationException("App lock is not configured.");
 
             var oldSalt = Convert.FromBase64String(_cachedMetadata.Salt);
+            if (oldSalt.Length != 16 || _cachedMetadata.Iterations is < 10_000 or > 1_000_000)
+                throw new InvalidDataException("Ungültige App-Schlüsselableitung.");
             var oldKek = DeriveKeyBytes(currentPassword, oldSalt, _cachedMetadata.Iterations);
             try
             {
@@ -247,7 +251,7 @@ public class AppLockService : IAppLockService
 
             // Generate new Salt/KEK for new password
             var salt = RandomNumberGenerator.GetBytes(16);
-            var iterations = 200_000;
+            var iterations = NewPbkdf2Iterations;
             var kek = DeriveKeyBytes(newPassword, salt, iterations);
             try
             {

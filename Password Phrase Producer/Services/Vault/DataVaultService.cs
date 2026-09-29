@@ -33,7 +33,8 @@ public class DataVaultService
 
     private const int KeySizeBytes = 32;
     private const int SaltSizeBytes = 16;
-    private const int Pbkdf2Iterations = 200_000;
+    private const int Pbkdf2Iterations = 600_000;
+    private const int LegacyPbkdf2Iterations = 200_000;
     private const int VaultFileFormatVersion = 1;
 
     private const string LastEntryCountStorageKey = "DataVaultLastEntryCount";
@@ -171,7 +172,7 @@ public class DataVaultService
             var fileMetadata = !string.IsNullOrWhiteSpace(vaultFile.PasswordSalt) &&
                                !string.IsNullOrWhiteSpace(vaultFile.PasswordVerifier)
                 ? new PasswordMetadata(vaultFile.PasswordSalt, vaultFile.PasswordVerifier,
-                    vaultFile.Pbkdf2Iterations.GetValueOrDefault(Pbkdf2Iterations))
+                    vaultFile.Pbkdf2Iterations.GetValueOrDefault(LegacyPbkdf2Iterations))
                 : null;
 
             byte[]? key = null;
@@ -179,9 +180,20 @@ public class DataVaultService
             foreach (var candidate in new[] { storedMetadata, fileMetadata }.OfType<PasswordMetadata>().Distinct())
             {
                 if (string.IsNullOrEmpty(candidate.Salt) || string.IsNullOrEmpty(candidate.Verifier)) continue;
-                var candidateKey = DeriveKey(password, Convert.FromBase64String(candidate.Salt), candidate.Iterations);
+                byte[] candidateSalt;
+                byte[] expectedVerifier;
+                try
+                {
+                    candidateSalt = Convert.FromBase64String(candidate.Salt);
+                    expectedVerifier = Convert.FromBase64String(candidate.Verifier);
+                }
+                catch (FormatException) { continue; }
+                if (candidateSalt.Length != SaltSizeBytes || expectedVerifier.Length != 32 ||
+                    candidate.Iterations is < 10_000 or > 1_000_000) continue;
+
+                var candidateKey = DeriveKey(password, candidateSalt, candidate.Iterations);
                 var verifier = CreateVerifier(candidateKey);
-                if (CryptographicOperations.FixedTimeEquals(verifier, Convert.FromBase64String(candidate.Verifier)))
+                if (CryptographicOperations.FixedTimeEquals(verifier, expectedVerifier))
                 {
                     try
                     {
@@ -1118,7 +1130,7 @@ public class DataVaultService
         {
             var vaultIterations = vaultFile.Pbkdf2Iterations.HasValue && vaultFile.Pbkdf2Iterations.Value > 0
                 ? vaultFile.Pbkdf2Iterations.Value
-                : Pbkdf2Iterations;
+                : LegacyPbkdf2Iterations;
             return new PasswordMetadata(vaultFile.PasswordSalt, vaultFile.PasswordVerifier, vaultIterations);
         }
 
@@ -1139,7 +1151,7 @@ public class DataVaultService
         await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, content.PasswordVerifier).ConfigureAwait(false);
         var iterations = content.Pbkdf2Iterations.HasValue && content.Pbkdf2Iterations.Value > 0
             ? content.Pbkdf2Iterations.Value
-            : Pbkdf2Iterations;
+            : LegacyPbkdf2Iterations;
         await SetStoredPbkdf2IterationsAsync(iterations).ConfigureAwait(false);
         SecureStorage.Default.Remove(BiometricKeyStorageKey);
     }
@@ -1170,17 +1182,18 @@ public class DataVaultService
     private async Task<int> GetStoredPbkdf2IterationsAsync()
     {
         var storedValue = await SecureStorage.Default.GetAsync(PasswordIterationsStorageKey).ConfigureAwait(false);
-        if (int.TryParse(storedValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var iterations) && iterations > 0)
+        if (int.TryParse(storedValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var iterations) &&
+            iterations is >= 10_000 and <= 1_000_000)
         {
             return iterations;
         }
 
-        return Pbkdf2Iterations;
+        return LegacyPbkdf2Iterations;
     }
 
     private static Task SetStoredPbkdf2IterationsAsync(int iterations)
     {
-        var effective = iterations > 0 ? iterations : Pbkdf2Iterations;
+        var effective = iterations is >= 10_000 and <= 1_000_000 ? iterations : LegacyPbkdf2Iterations;
         return SecureStorage.Default.SetAsync(PasswordIterationsStorageKey, effective.ToString(CultureInfo.InvariantCulture));
     }
 
