@@ -19,9 +19,13 @@ public partial class PasswordAnalysisPanel : ContentView
     {
         currentResult = analysisResult;
 
-        strengthLabel.Text = $"Stärke: {analysisResult.StrengthLabel} ({analysisResult.StrengthScore:F0}%)";
-        strengthBar.Progress = Math.Clamp(analysisResult.StrengthScore / 100d, 0d, 1d);
-        entropyLabel.Text = $"Entropie: {analysisResult.Entropy:F1} Bit";
+        var measured = !double.IsNaN(analysisResult.Entropy);
+        strengthLabel.Text = measured
+            ? $"Stärke: {analysisResult.StrengthLabel} ({analysisResult.StrengthScore:F0}%)"
+            : "Stärke: nicht messbar";
+        scoreGrid.IsVisible = measured;
+        strengthBar.Progress = measured ? Math.Clamp(analysisResult.StrengthScore / 100d, 0d, 1d) : 0;
+        entropyLabel.Text = measured ? $"Entropie: {analysisResult.Entropy:F1} Bit" : "Entropie: nicht bestimmbar";
         characterSetLabel.Text = $"Zeichenräume: {analysisResult.CharacterSetSize} · Gruppen: {analysisResult.CharacterGroupCount}";
 
         if (analysisResult.Suggestions.Count > 0)
@@ -45,6 +49,7 @@ public partial class PasswordAnalysisPanel : ContentView
         analysisBorder.IsVisible = false;
         IsVisible = false;
         strengthBar.Progress = 0;
+        scoreGrid.IsVisible = true;
         strengthLabel.Text = "Stärke: -";
         entropyLabel.Text = "Entropie: -";
         characterSetLabel.Text = "Zeichenräume: -";
@@ -62,7 +67,9 @@ public partial class PasswordAnalysisPanel : ContentView
         var breakdown = currentResult.Breakdown;
         var builder = new StringBuilder();
         builder.AppendLine($"Passwortlänge: {currentResult.Length}");
-        builder.AppendLine($"Entropie: {currentResult.Entropy:F2} Bit");
+        builder.AppendLine(double.IsNaN(currentResult.Entropy)
+            ? "Entropie: aus dem Ergebnis nicht bestimmbar"
+            : $"Entropie: {currentResult.Entropy:F2} Bit");
         builder.AppendLine($"Zeichensatz: {currentResult.CharacterSetSize} mögliche Zeichen");
         builder.AppendLine();
         builder.AppendLine("Zeichenklassen:");

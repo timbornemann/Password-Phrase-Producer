@@ -10,6 +10,23 @@ internal class RandomPasswordTechnique : IRandomPasswordTechnique
     private const string Digits = "0123456789";
     private const string Special = "!@#$%^&*()_+-=[]{};:,.<>?/";
 
+    internal static double MinimumEntropyBits(int length, bool includeUppercase, bool includeLowercase,
+        bool includeDigits, bool includeSpecial)
+    {
+        if (length <= 0) return 0;
+        var selected = new[]
+        {
+            includeLowercase ? Lowercase.Length : 0,
+            includeUppercase ? Uppercase.Length : 0,
+            includeDigits ? Digits.Length : 0,
+            includeSpecial ? Special.Length : 0
+        };
+        var total = selected.Sum();
+        if (total == 0) total = Lowercase.Length;
+        var required = selected.Where(size => size > 0).Take(length).ToArray();
+        return required.Sum(size => Math.Log2(size)) + (length - required.Length) * Math.Log2(total);
+    }
+
     public string GeneratePassword(int length, bool includeUppercase, bool includeLowercase, bool includeDigits, bool includeSpecial, string? seed = null)
     {
         if (length <= 0)

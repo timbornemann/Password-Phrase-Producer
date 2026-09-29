@@ -5,9 +5,6 @@ namespace Password_Phrase_Producer.Services.EntropyAnalyzer;
 
 public sealed class PasswordEntropyAnalyzer : IPasswordEntropyAnalyzer
 {
-    private const double TargetEntropy = 120d;
-    private const double MaxLengthReference = 24d;
-
     public EntropyAnalysisResult Analyze(string password)
     {
         if (string.IsNullOrWhiteSpace(password))
@@ -55,20 +52,21 @@ public sealed class PasswordEntropyAnalyzer : IPasswordEntropyAnalyzer
         int characterSetSize = CalculateCharacterSpace(uppercase, lowercase, digits, symbols, uniqueCharacters.Count);
         int characterGroups = CountCharacterGroups(uppercase, lowercase, digits, symbols);
 
-        double entropy = CalculateEntropy(length, characterSetSize);
-        double score = CalculateScore(entropy, length, characterGroups);
-        string strengthLabel = GetStrengthLabel(score);
-
-        var suggestions = BuildSuggestions(length, uppercase, lowercase, digits, symbols, uniqueCharacters.Count);
+        // Appearance alone does not reveal how a password was generated. Deterministic
+        // transformations can look random while having almost no unpredictable entropy.
+        var suggestions = new[]
+        {
+            "Aus Länge und Zeichenarten allein lässt sich keine Stärke berechnen. Nutze für neue Passwörter den Zufallsgenerator."
+        };
 
         var breakdown = new CharacterBreakdown(uppercase, lowercase, digits, symbols, spaces);
 
         return new EntropyAnalysisResult(
             normalizedPassword,
             length,
-            Math.Round(entropy, 2, MidpointRounding.AwayFromZero),
-            Math.Round(score, 1, MidpointRounding.AwayFromZero),
-            strengthLabel,
+            double.NaN,
+            0,
+            "Nicht messbar",
             characterSetSize,
             characterGroups,
             breakdown,
@@ -135,87 +133,4 @@ public sealed class PasswordEntropyAnalyzer : IPasswordEntropyAnalyzer
         return groups;
     }
 
-    private static double CalculateEntropy(int length, int characterSetSize)
-    {
-        if (length == 0 || characterSetSize <= 1)
-        {
-            return 0d;
-        }
-
-        return length * Math.Log(characterSetSize, 2);
-    }
-
-    private static double CalculateScore(double entropy, int length, int characterGroups)
-    {
-        double entropyComponent = Math.Min(entropy / TargetEntropy, 1d);
-        double lengthComponent = Math.Min(length / MaxLengthReference, 1d);
-        double varietyComponent = Math.Min(characterGroups / 4d, 1d);
-
-        double weighted = (entropyComponent * 0.5) + (lengthComponent * 0.2) + (varietyComponent * 0.3);
-
-        return weighted * 100d;
-    }
-
-    private static string GetStrengthLabel(double score)
-    {
-        if (score >= 80d)
-        {
-            return "Stark";
-        }
-
-        if (score >= 55d)
-        {
-            return "Solide";
-        }
-
-        return "Schwach";
-    }
-
-    private static IReadOnlyList<string> BuildSuggestions(
-        int length,
-        int uppercase,
-        int lowercase,
-        int digits,
-        int symbols,
-        int uniqueCharacters)
-    {
-        var suggestions = new List<string>();
-
-        if (length < 12)
-        {
-            suggestions.Add("Verlängere die Passphrase auf mindestens 12 Zeichen.");
-        }
-
-        if (uppercase == 0)
-        {
-            suggestions.Add("Füge Großbuchstaben hinzu, um den Zeichensatz zu erweitern.");
-        }
-
-        if (lowercase == 0)
-        {
-            suggestions.Add("Integriere Kleinbuchstaben für eine bessere Mischung.");
-        }
-
-        if (digits == 0)
-        {
-            suggestions.Add("Nutze Ziffern, um mehr Kombinationen zu ermöglichen.");
-        }
-
-        if (symbols == 0)
-        {
-            suggestions.Add("Sonderzeichen erhöhen die Komplexität deutlich.");
-        }
-
-        if (uniqueCharacters < length / 2)
-        {
-            suggestions.Add("Vermeide zu viele Wiederholungen von Zeichen.");
-        }
-
-        if (suggestions.Count == 0)
-        {
-            suggestions.Add("Großartig! Deine Passphrase wirkt bereits sehr robust.");
-        }
-
-        return suggestions;
-    }
 }

@@ -46,7 +46,17 @@ public partial class RandomPasswordTechniqueUiPage : PasswordGeneratorContentVie
             }
             else if (analysisPanel is not null)
             {
-                var analysis = entropyAnalyzer.Analyze(result);
+                var bits = RandomPasswordTechnique.MinimumEntropyBits(length,
+                    includeUppercase, includeLowercase, includeDigits, includeSpecial);
+                var analysis = entropyAnalyzer.Analyze(result) with
+                {
+                    Entropy = Math.Round(bits, 2),
+                    StrengthScore = Math.Min(bits / 80d, 1d) * 100d,
+                    StrengthLabel = bits >= 80 ? "Stark" : bits >= 50 ? "Solide" : "Schwach",
+                    Suggestions = bits >= 80
+                        ? new[] { "Die Angabe ist eine konservative Untergrenze aus dem Zufallsverfahren." }
+                        : new[] { "Erhöhe die Länge, um mehr zufällige Möglichkeiten zu erhalten." }
+                };
                 analysisPanel.Update(analysis);
             }
         }

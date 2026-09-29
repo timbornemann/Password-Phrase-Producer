@@ -1,6 +1,7 @@
 using Password_Phrase_Producer.PasswordGenerationTechniques.DicewareTechnique;
 using Password_Phrase_Producer.PasswordGenerationTechniques.RandomPasswordTechnique;
 using Password_Phrase_Producer.PasswordGenerationTechniques.SymbolInjectionTechnique;
+using Password_Phrase_Producer.Services.EntropyAnalyzer;
 using Xunit;
 
 namespace PasswordPhraseProducer.Updates.Tests;
@@ -56,5 +57,22 @@ public sealed class PasswordGenerationSecurityTests
         var selected = phrase.Split('!')[0].Split('-');
         Assert.Equal(6, selected.Length);
         Assert.All(selected, word => Assert.Contains(word, words));
+    }
+
+    [Fact]
+    public void AppearanceDoesNotClaimEntropyForDeterministicResults()
+    {
+        var analysis = new PasswordEntropyAnalyzer().Analyze("ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789!@#");
+        Assert.True(double.IsNaN(analysis.Entropy));
+        Assert.Equal("Nicht messbar", analysis.StrengthLabel);
+    }
+
+    [Fact]
+    public void RandomPasswordEstimateIsConservative()
+    {
+        var bits = RandomPasswordTechnique.MinimumEntropyBits(16, true, true, true, true);
+        Assert.InRange(bits, 80, 16 * Math.Log2(100));
+        Assert.Equal(16 * Math.Log2(26),
+            RandomPasswordTechnique.MinimumEntropyBits(16, false, true, false, false), 8);
     }
 }
