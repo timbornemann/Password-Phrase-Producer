@@ -11,8 +11,8 @@ namespace Password_Phrase_Producer.Views;
 public partial class VaultEntryDetailPage : ContentPage
 {
     private readonly TaskCompletionSource<bool> _resultSource = new();
-    private readonly PasswordVaultEntry _entry;
-    private bool _isPasswordVisible = true;
+    private PasswordVaultEntry _entry;
+    private bool _isPasswordVisible;
 
     public bool HasNotes => !string.IsNullOrWhiteSpace(_entry.Notes) || !string.IsNullOrWhiteSpace(_entry.FreeText);
 
@@ -24,6 +24,8 @@ public partial class VaultEntryDetailPage : ContentPage
         _entry = entry;
         InitializeComponent();
         BindingContext = entry;
+        PasswordLabel.Text = new string('•', Math.Min(entry.Password?.Length ?? 0, 20));
+        TogglePasswordIcon.Source = "eyeoff.png";
     }
 
     public static async Task<bool> ShowAsync(INavigation navigation, PasswordVaultEntry entry)
@@ -208,6 +210,15 @@ public partial class VaultEntryDetailPage : ContentPage
     {
         _resultSource.TrySetResult(false);
         return true;
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        _resultSource.TrySetResult(false);
+        BindingContext = null;
+        SensitivePageTextClearer.Clear(Content);
+        _entry = new PasswordVaultEntry();
     }
 }
 

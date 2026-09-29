@@ -205,6 +205,16 @@ public partial class VaultEntryEditorPage : ContentPage
         return base.OnBackButtonPressed();
     }
 
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        _resultSource.TrySetResult(null);
+        BindingContext = null;
+        SensitivePageTextClearer.Clear(Content);
+        CategorySuggestions.Clear();
+        _availableCategories.Clear();
+    }
+
     private async Task CloseAsync()
     {
         var navigationHost = Shell.Current?.Navigation

@@ -177,7 +177,7 @@
                                     </Border.StrokeShape>
                                     <Label 
                                         x:Name="PasswordLabel"
-                                        Text="{Binding Password}"
+                                        Text=""
                                         FontSize="14"
                                         FontFamily="Consolas"
                                         TextColor="#E8EBFF"
