@@ -55,7 +55,6 @@ public class SynchronizationService : ISynchronizationService
     private readonly IAppLockService _appLockService;
     private readonly VaultMergeService _vaultMergeService;
     private readonly SemaphoreSlim _fileLock = new(1, 1);
-    private byte[]? _cachedCommonKey;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
     public SynchronizationService(IAppLockService appLockService, VaultMergeService vaultMergeService, ISyncFileService syncFileService)
@@ -72,78 +71,77 @@ public class SynchronizationService : ISynchronizationService
         {
             if (string.IsNullOrWhiteSpace(path) || string.IsNullOrWhiteSpace(password))
                 throw new ArgumentException("Path and password are required.");
+            if (!_appLockService.IsUnlocked)
+                throw new InvalidOperationException("App must be unlocked to configure sync.");
 
-            var salt = RandomNumberGenerator.GetBytes(SaltSize);
-            var key = await Task.Run(() => DeriveKey(password, salt, Iterations)).ConfigureAwait(false);
-            var verifier = CreateVerifier(key);
-
-            var header = new ExternalVaultHeader
+            await _fileLock.WaitAsync().ConfigureAwait(false);
+            try
             {
-                Version = 1,
-                Salt = Convert.ToBase64String(salt),
-                Verifier = Convert.ToBase64String(verifier),
-                Iterations = Iterations
-            };
-
-            if (await _syncFileService.ExistsAsync(path)) // Abstracted check
-            {
-                // We need to check if it has content (length > 0). ISyncFileService abstraction doesn't have Length?
-                // Open stream to check.
-                using var stream = await _syncFileService.OpenReadAsync(path);
-                var firstByte = new byte[1];
-                var length = await stream.ReadAsync(firstByte);
-
-                if (length > 0)
+                var exists = await _syncFileService.ExistsAsync(path).ConfigureAwait(false);
+                var hasContent = false;
+                if (exists)
                 {
-                     try
-                     {
-                        var existingHeader = await ReadHeaderAsync(path);
-                        if (existingHeader != null)
-                        {
-                            var existingSalt = Convert.FromBase64String(existingHeader.Salt);
-                            var existingKey = await Task.Run(() => DeriveKey(password, existingSalt, existingHeader.Iterations)).ConfigureAwait(false);
-                            var expectedVerifier = Convert.FromBase64String(existingHeader.Verifier);
-                            var actualVerifier = CreateVerifier(existingKey);
+                    using var stream = await _syncFileService.OpenReadAsync(path).ConfigureAwait(false);
+                    hasContent = await stream.ReadAsync(new byte[1]).ConfigureAwait(false) > 0;
+                }
 
-                            if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
-                            {
-                                 throw new InvalidOperationException("Das angegebene Passwort stimmt nicht mit der existierenden Sync-Datei überein.");
-                            }
-
-                            key = existingKey;
-                            header = existingHeader;
-                        }
-                     }
-                     catch (Exception ex) when (ex is not InvalidOperationException)
-                     {
-                        // If parsing fails for any reason (e.g. legacy format or garbage), treat as invalid?
-                        // Or ask user to overwrite? For now, throw is safer to avoid accidental data loss.
-                        throw new InvalidOperationException("Die Datei existiert bereits, ist aber keine gültige oder lesbare Sync-Datei.", ex);
-                     }
+                byte[] key;
+                ExternalVaultHeader header;
+                if (hasContent)
+                {
+                    try
+                    {
+                        header = await ReadHeaderAsync(path).ConfigureAwait(false);
+                        var existingSalt = Convert.FromBase64String(header.Salt);
+                        key = await Task.Run(() => DeriveKey(password, existingSalt, header.Iterations)).ConfigureAwait(false);
+                    }
+                    catch (Exception ex) when (ex is not InvalidOperationException)
+                    {
+                        throw new InvalidOperationException("Die Datei existiert bereits, ist aber keine gültige Sync-Datei.", ex);
+                    }
                 }
                 else
                 {
-                    // File exists but is empty -> Initialize it
-                    var content = new ExternalVaultContent();
-                    await WriteVaultFileAsync(path, header, content, key);
+                    NewPasswordPolicy.Validate(password, nameof(password));
+                    var salt = RandomNumberGenerator.GetBytes(SaltSize);
+                    key = await Task.Run(() => DeriveKey(password, salt, Iterations)).ConfigureAwait(false);
+                    header = new ExternalVaultHeader
+                    {
+                        Version = 1,
+                        Salt = Convert.ToBase64String(salt),
+                        Verifier = Convert.ToBase64String(CreateVerifier(key)),
+                        Iterations = Iterations
+                    };
+                }
+
+                try
+                {
+                    if (hasContent)
+                    {
+                        var expectedVerifier = Convert.FromBase64String(header.Verifier);
+                        var actualVerifier = CreateVerifier(key);
+                        if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
+                            throw new InvalidOperationException("Das angegebene Passwort stimmt nicht mit der existierenden Sync-Datei überein.");
+                        // The verifier alone does not prove that the encrypted content belongs to this key.
+                        await ReadVaultFileAsync(path, key).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await WriteVaultFileAsync(path, header, new ExternalVaultContent(), key).ConfigureAwait(false);
+                    }
+
+                    var encryptedKey = _appLockService.EncryptWithMasterKey(key);
+                    await SecureStorage.Default.SetAsync(SyncKeyStorageKey, Convert.ToBase64String(encryptedKey)).ConfigureAwait(false);
+                    Preferences.Set(SyncPathKey, path);
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(key);
                 }
             }
-            else
+            finally
             {
-                var content = new ExternalVaultContent();
-                await WriteVaultFileAsync(path, header, content, key);
-            }
-
-            Preferences.Set(SyncPathKey, path);
-            if (_appLockService.IsUnlocked)
-            {
-                var encryptedKey = _appLockService.EncryptWithMasterKey(key);
-                await SecureStorage.Default.SetAsync(SyncKeyStorageKey, Convert.ToBase64String(encryptedKey));
-                _cachedCommonKey = key;
-            }
-            else
-            {
-                 throw new InvalidOperationException("App must be unlocked to configure sync.");
+                _fileLock.Release();
             }
         }
         catch
@@ -161,7 +159,6 @@ public class SynchronizationService : ISynchronizationService
             Preferences.Remove(SyncPathKey);
             Preferences.Remove(SyncAccessModeKey);
             SecureStorage.Default.Remove(SyncKeyStorageKey);
-            _cachedCommonKey = null;
             return Task.CompletedTask;
         }
         catch
@@ -206,9 +203,18 @@ public class SynchronizationService : ISynchronizationService
                 var header = await ReadHeaderAsync(path);
                 var salt = Convert.FromBase64String(header.Salt);
                 var key = DeriveKey(password, salt, header.Iterations);
-                var expectedVerifier = Convert.FromBase64String(header.Verifier);
-                var actualVerifier = CreateVerifier(key);
-                return CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier);
+                try
+                {
+                    var expectedVerifier = Convert.FromBase64String(header.Verifier);
+                    var actualVerifier = CreateVerifier(key);
+                    if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier)) return false;
+                    await ReadVaultFileAsync(path, key).ConfigureAwait(false);
+                    return true;
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(key);
+                }
             }
             catch
             {
@@ -239,17 +245,21 @@ public class SynchronizationService : ISynchronizationService
         }
     }
 
-    private async Task<byte[]> GetKeyAsync()
+    private async Task<KeyLease> GetKeyAsync()
     {
         if (!_appLockService.IsUnlocked) throw new InvalidOperationException("App locked.");
-        if (_cachedCommonKey != null) return _cachedCommonKey;
 
         var encryptedKeyStr = await SecureStorage.Default.GetAsync(SyncKeyStorageKey);
         if (string.IsNullOrEmpty(encryptedKeyStr)) throw new InvalidOperationException("Sync not configured.");
 
         var encryptedKey = Convert.FromBase64String(encryptedKeyStr);
-        _cachedCommonKey = _appLockService.DecryptWithMasterKey(encryptedKey);
-        return _cachedCommonKey;
+        return new KeyLease(_appLockService.DecryptWithMasterKey(encryptedKey));
+    }
+
+    private sealed class KeyLease(byte[] key) : IDisposable
+    {
+        public byte[] Key { get; } = key;
+        public void Dispose() => CryptographicOperations.ZeroMemory(Key);
     }
 
     private string GetPath()
@@ -289,7 +299,8 @@ public class SynchronizationService : ISynchronizationService
             var path = GetPath();
             if (!await _syncFileService.ExistsAsync(path)) return;
 
-            var key = await GetKeyAsync();
+            using var keyLease = await GetKeyAsync();
+            var key = keyLease.Key;
 
             await _fileLock.WaitAsync(cancellationToken);
             try
@@ -329,7 +340,8 @@ public class SynchronizationService : ISynchronizationService
              var path = GetPath();
             if (!await _syncFileService.ExistsAsync(path)) return;
 
-            var key = await GetKeyAsync();
+            using var keyLease = await GetKeyAsync();
+            var key = keyLease.Key;
 
             await _fileLock.WaitAsync(cancellationToken);
             try
@@ -369,7 +381,8 @@ public class SynchronizationService : ISynchronizationService
              var path = GetPath();
             if (!await _syncFileService.ExistsAsync(path)) return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
 
-            var key = await GetKeyAsync();
+            using var keyLease = await GetKeyAsync();
+            var key = keyLease.Key;
 
             await _fileLock.WaitAsync(cancellationToken);
             try
@@ -408,7 +421,8 @@ public class SynchronizationService : ISynchronizationService
              var path = GetPath();
             if (!await _syncFileService.ExistsAsync(path)) return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
 
-            var key = await GetKeyAsync();
+            using var keyLease = await GetKeyAsync();
+            var key = keyLease.Key;
 
             await _fileLock.WaitAsync(cancellationToken);
             try
@@ -447,7 +461,8 @@ public class SynchronizationService : ISynchronizationService
              var path = GetPath();
             if (!await _syncFileService.ExistsAsync(path)) return new MergeResult<TotpEntry> { MergedEntries = localEntries.ToList() };
 
-            var key = await GetKeyAsync();
+            using var keyLease = await GetKeyAsync();
+            var key = keyLease.Key;
 
             await _fileLock.WaitAsync(cancellationToken);
             try
@@ -491,7 +506,8 @@ public class SynchronizationService : ISynchronizationService
                 return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
             }
 
-            var key = await GetKeyAsync();
+            using var keyLease = await GetKeyAsync();
+            var key = keyLease.Key;
 
             await _fileLock.WaitAsync(cancellationToken);
             try
@@ -525,7 +541,8 @@ public class SynchronizationService : ISynchronizationService
                 return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
             }
 
-            var key = await GetKeyAsync();
+            using var keyLease = await GetKeyAsync();
+            var key = keyLease.Key;
 
             await _fileLock.WaitAsync(cancellationToken);
             try
@@ -559,7 +576,8 @@ public class SynchronizationService : ISynchronizationService
                 return new MergeResult<TotpEntry> { MergedEntries = localEntries.ToList() };
             }
 
-            var key = await GetKeyAsync();
+            using var keyLease = await GetKeyAsync();
+            var key = keyLease.Key;
 
             await _fileLock.WaitAsync(cancellationToken);
             try
@@ -646,7 +664,9 @@ public class SynchronizationService : ISynchronizationService
     {
         var plainJson = JsonSerializer.Serialize(content, _jsonOptions);
         var plainBytes = Encoding.UTF8.GetBytes(plainJson);
-        var encryptedBytes = EncryptWithKey(plainBytes, key);
+        byte[] encryptedBytes;
+        try { encryptedBytes = EncryptWithKey(plainBytes, key); }
+        finally { CryptographicOperations.ZeroMemory(plainBytes); }
 
         var file = new ExternalVaultFile
         {
