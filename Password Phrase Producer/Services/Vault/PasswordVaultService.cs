@@ -181,6 +181,8 @@ public class PasswordVaultService
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
         long generation;
         lock (_keyStateLock) generation = _lockGeneration;
+        byte[]? key = null;
+        var acceptedKey = false;
         try
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(password);
@@ -193,7 +195,6 @@ public class PasswordVaultService
                     vaultFile.Pbkdf2Iterations.GetValueOrDefault(LegacyPbkdf2Iterations))
                 : null;
 
-            byte[]? key = null;
             PasswordMetadata? selectedMetadata = null;
             foreach (var candidate in new[] { storedMetadata, fileMetadata }.OfType<PasswordMetadata>().Distinct())
             {
@@ -249,11 +250,12 @@ public class PasswordVaultService
             {
                 if (_lockGeneration != generation)
                 {
-                    CryptographicOperations.ZeroMemory(key);
                     return false;
                 }
                 if (_encryptionKey is not null) CryptographicOperations.ZeroMemory(_encryptionKey);
                 _encryptionKey = key;
+                key = null;
+                acceptedKey = true;
                 _activePasswordMetadata = selectedMetadata;
             }
 
@@ -292,12 +294,17 @@ public class PasswordVaultService
         }
         catch
         {
+            if (acceptedKey) Lock();
             dataOperation.Failed();
             throw;
         }
+        finally
+        {
+            if (key is not null) CryptographicOperations.ZeroMemory(key);
+        }
     }
 
-    public async Task ChangeMasterPasswordAsync(string newPassword, bool enableBiometrics, CancellationToken cancellationToken = default)
+    public async Task ChangeMasterPasswordAsync(string currentPassword, string newPassword, bool enableBiometrics, CancellationToken cancellationToken = default)
     {
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
         long generation;
@@ -305,6 +312,7 @@ public class PasswordVaultService
         try
         {
             EnsureUnlocked();
+            VerifyCurrentMasterPassword(currentPassword);
             NewPasswordPolicy.Validate(newPassword, nameof(newPassword));
 
             await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -373,10 +381,12 @@ public class PasswordVaultService
                 return false;
             }
 
+            byte[]? key = null;
+            var acceptedKey = false;
             try
             {
                 var encryptedKey = Convert.FromBase64String(storedKeyBase64);
-                var key = await _biometricService.DecryptAsync(encryptedKey, cancellationToken).ConfigureAwait(false);
+                key = await _biometricService.DecryptAsync(encryptedKey, cancellationToken).ConfigureAwait(false);
 
                 var expectedVerifier = Convert.FromBase64String(metadata.Verifier);
                 var actualVerifier = CreateVerifier(key);
@@ -384,7 +394,6 @@ public class PasswordVaultService
                 if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
                 {
                     SecureStorage.Default.Remove(BiometricKeyStorageKey);
-                    Array.Clear(key);
                     return false;
                 }
 
@@ -397,7 +406,6 @@ public class PasswordVaultService
                 catch (CryptographicException)
                 {
                     SecureStorage.Default.Remove(BiometricKeyStorageKey);
-                    Array.Clear(key);
                     return false;
                 }
                 if (vaultFile.RawContent.Length > 0 &&
@@ -413,11 +421,12 @@ public class PasswordVaultService
                 {
                     if (_lockGeneration != generation)
                     {
-                        CryptographicOperations.ZeroMemory(key);
                         return false;
                     }
                     if (_encryptionKey is not null) CryptographicOperations.ZeroMemory(_encryptionKey);
                     _encryptionKey = key;
+                    key = null;
+                    acceptedKey = true;
                     _activePasswordMetadata = metadata;
                 }
 
@@ -455,11 +464,17 @@ public class PasswordVaultService
             }
             catch (UnauthorizedAccessException)
             {
+                if (acceptedKey) Lock();
                 throw;
             }
             catch (Exception)
             {
+                if (acceptedKey) Lock();
                  return false;
+            }
+            finally
+            {
+                if (key is not null) CryptographicOperations.ZeroMemory(key);
             }
         }
         catch
@@ -472,6 +487,8 @@ public class PasswordVaultService
     public async Task SetBiometricUnlockAsync(bool enabled, CancellationToken cancellationToken = default)
     {
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        long generation;
+        lock (_keyStateLock) generation = _lockGeneration;
         try
         {
             if (!IsUnlocked)
@@ -487,17 +504,27 @@ public class PasswordVaultService
                     var encrypted = await _biometricService.EncryptAsync(key, cancellationToken).ConfigureAwait(false);
                     bool stillActive;
                     lock (_keyStateLock)
-                        stillActive = _encryptionKey is not null && CryptographicOperations.FixedTimeEquals(_encryptionKey, key);
+                        stillActive = _lockGeneration == generation && _encryptionKey is not null &&
+                                      CryptographicOperations.FixedTimeEquals(_encryptionKey, key);
                     if (!stillActive)
                     {
                         SecureStorage.Default.Remove(BiometricKeyStorageKey);
-                        return;
+                        throw new OperationCanceledException("Der Tresor wurde während der Biometrie-Einrichtung gesperrt.");
                     }
                     await SecureStorage.Default.SetAsync(BiometricKeyStorageKey, Convert.ToBase64String(encrypted)).ConfigureAwait(false);
+                    lock (_keyStateLock)
+                        stillActive = _lockGeneration == generation && _encryptionKey is not null &&
+                                      CryptographicOperations.FixedTimeEquals(_encryptionKey, key);
+                    if (!stillActive)
+                    {
+                        SecureStorage.Default.Remove(BiometricKeyStorageKey);
+                        throw new OperationCanceledException("Der Tresor wurde während der Biometrie-Einrichtung gesperrt.");
+                    }
                 }
-                catch (Exception)
+                catch
                 {
                      SecureStorage.Default.Remove(BiometricKeyStorageKey);
+                     throw;
                 }
                 finally
                 {
@@ -1251,6 +1278,30 @@ public class PasswordVaultService
     {
         var effective = iterations is >= 10_000 and <= 1_000_000 ? iterations : LegacyPbkdf2Iterations;
         return SecureStorage.Default.SetAsync(PasswordIterationsStorageKey, effective.ToString(CultureInfo.InvariantCulture));
+    }
+
+    private void VerifyCurrentMasterPassword(string currentPassword)
+    {
+        if (string.IsNullOrWhiteSpace(currentPassword))
+            throw new UnauthorizedAccessException("Das aktuelle Master-Passwort ist erforderlich.");
+
+        PasswordMetadata metadata;
+        lock (_keyStateLock)
+            metadata = _activePasswordMetadata ?? throw new InvalidOperationException("Der Tresor ist gesperrt.");
+        var salt = Convert.FromBase64String(metadata.Salt ?? string.Empty);
+        if (salt.Length != SaltSizeBytes || metadata.Iterations is < 10_000 or > 1_000_000)
+            throw new InvalidDataException("Ungültige Passwort-Metadaten.");
+
+        var derived = DeriveKey(currentPassword, salt, metadata.Iterations);
+        try
+        {
+            lock (_keyStateLock)
+            {
+                if (_encryptionKey is null || !CryptographicOperations.FixedTimeEquals(_encryptionKey, derived))
+                    throw new UnauthorizedAccessException("Das aktuelle Master-Passwort ist falsch.");
+            }
+        }
+        finally { CryptographicOperations.ZeroMemory(derived); }
     }
 
     private static byte[] DeriveKey(string password, byte[] salt, int iterations)

@@ -373,6 +373,8 @@ public class AppLockService : IAppLockService
     public async Task EnableBiometricsAsync(bool enable)
     {
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
+        long generation;
+        lock (_keyStateLock) generation = _lockGeneration;
         try
         {
             if (!IsUnlocked || _masterKey == null) throw new InvalidOperationException("Must be unlocked.");
@@ -398,7 +400,8 @@ public class AppLockService : IAppLockService
                     var bioEncryptedMek = await _biometricService.EncryptAsync(masterKey);
                     lock (_keyStateLock)
                     {
-                        if (_masterKey is null || !CryptographicOperations.FixedTimeEquals(_masterKey, masterKey))
+                        if (_lockGeneration != generation || _masterKey is null ||
+                            !CryptographicOperations.FixedTimeEquals(_masterKey, masterKey))
                             throw new OperationCanceledException("Die App wurde während der Biometrie-Einrichtung gesperrt.");
                     }
                     updatedMetadata.MasterKeyVerifier = Convert.ToBase64String(CreateVerifier(masterKey));

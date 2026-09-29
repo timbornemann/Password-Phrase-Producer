@@ -451,13 +451,7 @@
                             BackgroundColor="#1F2338"
                             IsPassword="True"
                             FontSize="13"
-                            HeightRequest="38">
-                            <Entry.Triggers>
-                                <DataTrigger TargetType="Entry" Binding="{Binding IsVaultUnlocked}" Value="True">
-                                    <Setter Property="IsVisible" Value="False" />
-                                </DataTrigger>
-                            </Entry.Triggers>
-                        </Entry>
+                            HeightRequest="38" />
                         <Entry
                             Text="{Binding NewMasterPassword}"
                             Placeholder="Neues Master-Passwort"
@@ -561,13 +555,7 @@
                             BackgroundColor="#1F2338"
                             IsPassword="True"
                             FontSize="13"
-                            HeightRequest="38">
-                            <Entry.Triggers>
-                                <DataTrigger TargetType="Entry" Binding="{Binding IsDataVaultUnlocked}" Value="True">
-                                    <Setter Property="IsVisible" Value="False" />
-                                </DataTrigger>
-                            </Entry.Triggers>
-                        </Entry>
+                            HeightRequest="38" />
                         <Entry
                             Text="{Binding NewDataVaultMasterPassword}"
                             Placeholder="Neues Master-Passwort"

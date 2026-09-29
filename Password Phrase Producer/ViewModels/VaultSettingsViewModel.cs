@@ -1077,6 +1077,12 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             IsPasswordChangeBusy = true;
             ClearPasswordFeedback();
 
+            if (string.IsNullOrWhiteSpace(CurrentMasterPassword))
+            {
+                ChangePasswordError = "Bitte gib dein aktuelles Master-Passwort ein.";
+                return;
+            }
+
             // If vault is not unlocked, try to unlock with current password
             if (!IsVaultUnlocked)
             {
@@ -1108,7 +1114,18 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
                 return;
             }
 
-            await _vaultService.ChangeMasterPasswordAsync(NewMasterPassword, EnableBiometric && CanUseBiometric).ConfigureAwait(false);
+            await _vaultService.ChangeMasterPasswordAsync(CurrentMasterPassword, NewMasterPassword, false).ConfigureAwait(false);
+            var biometricConfigured = false;
+            var biometricFailed = false;
+            if (EnableBiometric && CanUseBiometric)
+            {
+                try
+                {
+                    await _vaultService.SetBiometricUnlockAsync(true).ConfigureAwait(false);
+                    biometricConfigured = true;
+                }
+                catch { biometricFailed = true; }
+            }
 
             // Lock the vault after password change
             _vaultService.Lock();
@@ -1119,8 +1136,11 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
                 CurrentMasterPassword = string.Empty;
                 NewMasterPassword = string.Empty;
                 ConfirmMasterPassword = string.Empty;
-                ChangePasswordSuccess = "Master-Passwort wurde aktualisiert.";
-                IsBiometricConfigured = EnableBiometric && CanUseBiometric;
+                ChangePasswordSuccess = biometricFailed
+                    ? "Master-Passwort wurde aktualisiert; Biometrie konnte nicht aktiviert werden."
+                    : "Master-Passwort wurde aktualisiert.";
+                IsBiometricConfigured = biometricConfigured;
+                EnableBiometric = biometricConfigured;
             }).ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -1254,18 +1274,26 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
                 return;
             }
 
+            if (isConfigured && string.IsNullOrWhiteSpace(CurrentAppPassword))
+            {
+                ChangeAppPasswordError = "Bitte gib dein aktuelles App-Passwort ein.";
+                return;
+            }
+
             if (!isConfigured)
             {
-                await _appLockService.SetupAsync(NewAppPassword, EnableAppBiometric && CanUseAppBiometric).ConfigureAwait(false);
+                await _appLockService.SetupAsync(NewAppPassword, false).ConfigureAwait(false);
             }
             else
             {
                 await _appLockService.ChangePasswordAsync(CurrentAppPassword, NewAppPassword).ConfigureAwait(false);
             }
 
+            var biometricFailed = false;
             if (CanUseAppBiometric)
             {
-                await _appLockService.EnableBiometricsAsync(EnableAppBiometric).ConfigureAwait(false);
+                try { await _appLockService.EnableBiometricsAsync(EnableAppBiometric).ConfigureAwait(false); }
+                catch { biometricFailed = true; }
             }
 
             await MainThread.InvokeOnMainThreadAsync(async () =>
@@ -1276,7 +1304,9 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
                 CurrentAppPassword = string.Empty;
                 NewAppPassword = string.Empty;
                 ConfirmAppPassword = string.Empty;
-                ChangeAppPasswordSuccess = isConfigured ? "App-Passwort wurde aktualisiert." : "App-Passwort wurde eingerichtet.";
+                ChangeAppPasswordSuccess = biometricFailed
+                    ? "App-Passwort gespeichert; Biometrie konnte nicht geändert werden."
+                    : isConfigured ? "App-Passwort wurde aktualisiert." : "App-Passwort wurde eingerichtet.";
             }).ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -1304,6 +1334,12 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         {
             IsDataVaultPasswordChangeBusy = true;
             ClearDataVaultPasswordFeedback();
+
+            if (string.IsNullOrWhiteSpace(CurrentDataVaultMasterPassword))
+            {
+                ChangeDataVaultPasswordError = "Bitte gib dein aktuelles Master-Passwort ein.";
+                return;
+            }
 
             // If vault is not unlocked, try to unlock with current password
             if (!IsDataVaultUnlocked)
@@ -1336,7 +1372,18 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
                 return;
             }
 
-            await _dataVaultService.ChangeMasterPasswordAsync(NewDataVaultMasterPassword, EnableDataVaultBiometric && CanUseDataVaultBiometric).ConfigureAwait(false);
+            await _dataVaultService.ChangeMasterPasswordAsync(CurrentDataVaultMasterPassword, NewDataVaultMasterPassword, false).ConfigureAwait(false);
+            var biometricConfigured = false;
+            var biometricFailed = false;
+            if (EnableDataVaultBiometric && CanUseDataVaultBiometric)
+            {
+                try
+                {
+                    await _dataVaultService.SetBiometricUnlockAsync(true).ConfigureAwait(false);
+                    biometricConfigured = true;
+                }
+                catch { biometricFailed = true; }
+            }
 
             // Lock the data vault after password change
             _dataVaultService.Lock();
@@ -1347,8 +1394,11 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
                 CurrentDataVaultMasterPassword = string.Empty;
                 NewDataVaultMasterPassword = string.Empty;
                 ConfirmDataVaultMasterPassword = string.Empty;
-                ChangeDataVaultPasswordSuccess = "Master-Passwort wurde aktualisiert.";
-                IsDataVaultBiometricConfigured = EnableDataVaultBiometric && CanUseDataVaultBiometric;
+                ChangeDataVaultPasswordSuccess = biometricFailed
+                    ? "Master-Passwort wurde aktualisiert; Biometrie konnte nicht aktiviert werden."
+                    : "Master-Passwort wurde aktualisiert.";
+                IsDataVaultBiometricConfigured = biometricConfigured;
+                EnableDataVaultBiometric = biometricConfigured;
             }).ConfigureAwait(false);
         }
         catch (Exception ex)

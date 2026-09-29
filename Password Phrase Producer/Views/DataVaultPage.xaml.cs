@@ -545,6 +545,18 @@ public partial class DataVaultPage : ContentPage
 
     private async Task ChangeMasterPasswordAsync()
     {
+        var currentPassword = await DisplayPasswordPromptAsync(
+            "Master-Passwort prüfen",
+            "Bitte gib das bisherige Master-Passwort ein.",
+            "Weiter",
+            "Abbrechen");
+        if (currentPassword is null) return;
+        if (string.IsNullOrWhiteSpace(currentPassword))
+        {
+            await DisplayAlert("Fehler", "Das bisherige Master-Passwort ist erforderlich.", "OK");
+            return;
+        }
+
         var newPassword = await DisplayPasswordPromptAsync(
             "Master-Passwort ändern",
             "Bitte gib das neue Master-Passwort ein.",
@@ -591,8 +603,10 @@ public partial class DataVaultPage : ContentPage
 
         try
         {
-            await _viewModel.ChangeMasterPasswordAsync(newPassword, enableBiometric);
-            await DisplayAlert("Erfolg", "Das Master-Passwort wurde aktualisiert.", "OK");
+            var biometricReady = await _viewModel.ChangeMasterPasswordAsync(currentPassword, newPassword, enableBiometric);
+            await DisplayAlert("Erfolg", biometricReady
+                ? "Das Master-Passwort wurde aktualisiert."
+                : "Das Master-Passwort wurde aktualisiert; Biometrie konnte nicht aktiviert werden.", "OK");
         }
         catch (Exception ex)
         {

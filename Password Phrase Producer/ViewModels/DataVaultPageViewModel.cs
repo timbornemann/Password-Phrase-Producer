@@ -12,6 +12,7 @@ using System.Windows.Input;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using Password_Phrase_Producer.Models;
+using Password_Phrase_Producer.Services;
 using Password_Phrase_Producer.Services.Security;
 using Password_Phrase_Producer.Services.Vault;
 
@@ -321,14 +322,24 @@ public class DataVaultPageViewModel : INotifyPropertyChanged
         await _vaultService.DeleteEntryAsync(entry.Id, cancellationToken);
     }
 
-    public async Task ChangeMasterPasswordAsync(string newPassword, bool enableBiometric, CancellationToken cancellationToken = default)
+    public async Task<bool> ChangeMasterPasswordAsync(string currentPassword, string newPassword, bool enableBiometric, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(newPassword);
 
-        await _vaultService.ChangeMasterPasswordAsync(newPassword, enableBiometric && CanUseBiometric, cancellationToken);
-
-        EnableBiometric = enableBiometric && CanUseBiometric;
-        IsBiometricConfigured = EnableBiometric;
+        await _vaultService.ChangeMasterPasswordAsync(currentPassword, newPassword, false, cancellationToken);
+        var configured = false;
+        if (enableBiometric && CanUseBiometric)
+        {
+            try
+            {
+                await _vaultService.SetBiometricUnlockAsync(true, cancellationToken);
+                configured = true;
+            }
+            catch { /* Password rotation has already succeeded. */ }
+        }
+        EnableBiometric = configured;
+        IsBiometricConfigured = configured;
+        return !enableBiometric || configured;
     }
 
     public Task<byte[]> ExportDataVaultWithFilePasswordAsync(string filePassword, CancellationToken cancellationToken = default)
@@ -385,6 +396,7 @@ public class DataVaultPageViewModel : INotifyPropertyChanged
         {
             IsBusy = true;
             UnlockError = null;
+            var biometricFailure = false;
 
             if (string.IsNullOrWhiteSpace(Password))
             {
@@ -400,8 +412,21 @@ public class DataVaultPageViewModel : INotifyPropertyChanged
                     return;
                 }
 
-                await _vaultService.SetMasterPasswordAsync(Password, EnableBiometric && CanUseBiometric, cancellationToken);
-                IsBiometricConfigured = EnableBiometric && CanUseBiometric;
+                await _vaultService.SetMasterPasswordAsync(Password, false, cancellationToken);
+                IsBiometricConfigured = false;
+                if (EnableBiometric && CanUseBiometric)
+                {
+                    try
+                    {
+                        await _vaultService.SetBiometricUnlockAsync(true, cancellationToken);
+                        IsBiometricConfigured = true;
+                    }
+                    catch
+                    {
+                        biometricFailure = true;
+                        EnableBiometric = false;
+                    }
+                }
                 await OnUnlockedAsync(cancellationToken);
             }
             else
@@ -415,12 +440,28 @@ public class DataVaultPageViewModel : INotifyPropertyChanged
 
                 if (CanUseBiometric && EnableBiometric != IsBiometricConfigured)
                 {
-                    await _vaultService.SetBiometricUnlockAsync(EnableBiometric, cancellationToken);
-                    IsBiometricConfigured = EnableBiometric;
+                    try
+                    {
+                        await _vaultService.SetBiometricUnlockAsync(EnableBiometric, cancellationToken);
+                        IsBiometricConfigured = EnableBiometric;
+                    }
+                    catch
+                    {
+                        biometricFailure = true;
+                        IsBiometricConfigured = await _vaultService.HasBiometricKeyAsync(cancellationToken);
+                        EnableBiometric = IsBiometricConfigured;
+                    }
                 }
 
                 await OnUnlockedAsync(cancellationToken);
             }
+            if (biometricFailure)
+                await ToastService.ShowAsync("Biometrie konnte nicht geändert werden. Verwende dein Passwort.");
+        }
+        catch (Exception ex)
+        {
+            if (_vaultService.IsUnlocked) _vaultService.Lock();
+            UnlockError = ex.Message;
         }
         finally
         {
@@ -456,6 +497,11 @@ public class DataVaultPageViewModel : INotifyPropertyChanged
         catch (UnauthorizedAccessException)
         {
             UnlockError = "Die biometrische Authentifizierung wurde abgebrochen.";
+        }
+        catch (Exception ex)
+        {
+            if (_vaultService.IsUnlocked) _vaultService.Lock();
+            UnlockError = ex.Message;
         }
         finally
         {
