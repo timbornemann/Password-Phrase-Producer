@@ -14,6 +14,11 @@ public partial class AuthenticatorPinPage : ContentPage
         InitializeComponent();
         _encryptionService = encryptionService;
         _biometricService = biometricService;
+        if (OperatingSystem.IsWindows())
+        {
+            BiometricSetupLabel.Text = "Windows Hello (PIN oder Biometrie) für den Authenticator aktivieren";
+            BiometricUnlockButton.Text = "Mit Windows Hello entsperren";
+        }
         
         // Initial state (will be updated in OnAppearing)
         TitleLabel.Text = "Lade...";

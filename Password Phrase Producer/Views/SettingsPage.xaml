@@ -701,7 +701,7 @@
                             <Grid ColumnDefinitions="Auto,*">
                                 <Switch Grid.Column="0" IsToggled="{Binding EnableAuthenticatorBiometric}" />
                                 <Label Grid.Column="1"
-                                       Text="Biometrische Anmeldung für 2FA-Codes"
+                                       Text="{Binding AuthenticatorBiometricLabel}"
                                        FontSize="11"
                                        TextColor="#E8EBFF"
                                        Margin="10,0,0,0"

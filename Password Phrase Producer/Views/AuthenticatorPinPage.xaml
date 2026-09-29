@@ -92,7 +92,7 @@
 
                     <Grid x:Name="BiometricSetupRow" ColumnDefinitions="Auto,*" IsVisible="False">
                         <Switch x:Name="BiometricSetupSwitch" Grid.Column="0" />
-                        <Label Grid.Column="1"
+                        <Label x:Name="BiometricSetupLabel" Grid.Column="1"
                                Text="Biometrische Anmeldung für den Authenticator aktivieren"
                                TextColor="#E8EBFF"
                                FontSize="12"

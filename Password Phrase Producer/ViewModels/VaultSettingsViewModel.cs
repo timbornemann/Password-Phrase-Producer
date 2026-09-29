@@ -426,6 +426,10 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         private set => SetProperty(ref _canUseAuthenticatorBiometric, value);
     }
 
+    public string AuthenticatorBiometricLabel => OperatingSystem.IsWindows()
+        ? "Windows Hello (PIN oder Biometrie) für 2FA-Codes"
+        : "Biometrische Anmeldung für 2FA-Codes";
+
     public bool IsAuthenticatorBiometricConfigured
     {
         get => _isAuthenticatorBiometricConfigured;
