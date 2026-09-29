@@ -58,6 +58,8 @@ public abstract class PasswordGeneratorContentView : ContentView, IPasswordResul
         }
     }
 
+    public void ClearGeneratedPassword() => UpdateGeneratedPassword(null);
+
     /// <summary>
     /// Animates a button to provide visual feedback when clicked.
     /// </summary>

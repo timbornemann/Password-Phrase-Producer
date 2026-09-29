@@ -37,6 +37,14 @@ public partial class ModeHostPage : ContentPage
         return true;
     }
 
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        ClearAllInputFields();
+        if (ContentHost.Content is PasswordGeneratorHostView host)
+            host.ClearSensitiveState();
+    }
+
     private void ClearAllInputFields()
     {
         if (ContentHost?.Content is null)

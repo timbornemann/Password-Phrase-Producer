@@ -117,6 +117,12 @@ public class PasswordGeneratorHostView : ContentView
         UpdateButtonState();
     }
 
+    public void ClearSensitiveState()
+    {
+        _resultProvider?.ClearGeneratedPassword();
+        UpdateButtonState();
+    }
+
     private void UpdateButtonState()
     {
         var hasPassword = !string.IsNullOrWhiteSpace(_resultProvider?.LastGeneratedPassword);
@@ -329,4 +335,6 @@ public interface IPasswordResultProvider
     event EventHandler PasswordCleared;
 
     string? LastGeneratedPassword { get; }
+
+    void ClearGeneratedPassword();
 }
