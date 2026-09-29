@@ -167,6 +167,7 @@ public sealed class PasswordPromptPage : ContentPage
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
+        _passwordEntry.Text = string.Empty;
         if (!_taskCompletionSource.Task.IsCompleted)
         {
             _taskCompletionSource.TrySetResult(null);

@@ -183,5 +183,12 @@ public partial class AuthenticatorPinPage : ContentPage
         // Don't allow back button in setup mode
         return _isSetupMode;
     }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        PinEntry.Text = string.Empty;
+        ConfirmPinEntry.Text = string.Empty;
+    }
 }
 

@@ -606,12 +606,20 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
 
     public void Deactivate()
     {
-        if (!_isListening)
-        {
-            return;
-        }
-
         _isListening = false;
+        SyncPassword = string.Empty;
+        CurrentMasterPassword = string.Empty;
+        NewMasterPassword = string.Empty;
+        ConfirmMasterPassword = string.Empty;
+        CurrentDataVaultMasterPassword = string.Empty;
+        NewDataVaultMasterPassword = string.Empty;
+        ConfirmDataVaultMasterPassword = string.Empty;
+        CurrentAuthenticatorPassword = string.Empty;
+        NewAuthenticatorPassword = string.Empty;
+        ConfirmAuthenticatorPassword = string.Empty;
+        CurrentAppPassword = string.Empty;
+        NewAppPassword = string.Empty;
+        ConfirmAppPassword = string.Empty;
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)

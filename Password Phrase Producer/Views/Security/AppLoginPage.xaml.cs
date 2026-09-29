@@ -87,4 +87,10 @@ public partial class AppLoginPage : ContentPage
             ErrorLabel.IsVisible = true;
         }
     }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        PasswordEntry.Text = string.Empty;
+    }
 }

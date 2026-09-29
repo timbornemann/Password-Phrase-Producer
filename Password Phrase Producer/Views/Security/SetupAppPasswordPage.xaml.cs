@@ -52,4 +52,11 @@ public partial class SetupAppPasswordPage : ContentPage
         ErrorLabel.Text = message;
         ErrorLabel.IsVisible = true;
     }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        PasswordEntry.Text = string.Empty;
+        ConfirmPasswordEntry.Text = string.Empty;
+    }
 }
