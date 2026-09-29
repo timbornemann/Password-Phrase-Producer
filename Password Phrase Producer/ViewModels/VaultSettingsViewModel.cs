@@ -34,6 +34,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     private readonly Command _changePasswordCommand;
     private readonly Command _changeDataVaultPasswordCommand;
     private readonly Command _changeAuthenticatorPasswordCommand;
+    private readonly Command _configureAuthenticatorBiometricCommand;
     private readonly Command _changeAppPasswordCommand;
     private readonly Command _configureSyncCommand;
     private readonly Command _pickSyncFileCommand;
@@ -73,6 +74,10 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     private bool _isDataVaultPasswordChangeBusy;
 
     private bool _hasAuthenticatorPassword;
+    private bool _canUseAuthenticatorBiometric;
+    private bool _isAuthenticatorBiometricConfigured;
+    private bool _enableAuthenticatorBiometric;
+    private bool _isAuthenticatorBiometricBusy;
     private string _currentAuthenticatorPassword = string.Empty;
     private string _newAuthenticatorPassword = string.Empty;
     private string _confirmAuthenticatorPassword = string.Empty;
@@ -118,6 +123,8 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
 
         _changeAuthenticatorPasswordCommand = new Command(async () => await ChangeAuthenticatorPasswordAsync(), () => !IsAuthenticatorPasswordChangeBusy);
         ChangeAuthenticatorPasswordCommand = _changeAuthenticatorPasswordCommand;
+        _configureAuthenticatorBiometricCommand = new Command(async () => await ConfigureAuthenticatorBiometricAsync(), () => !IsAuthenticatorBiometricBusy);
+        ConfigureAuthenticatorBiometricCommand = _configureAuthenticatorBiometricCommand;
 
         _changeAppPasswordCommand = new Command(async () => await ChangeAppPasswordAsync(), () => !IsAppPasswordChangeBusy);
         ChangeAppPasswordCommand = _changeAppPasswordCommand;
@@ -136,6 +143,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     public ICommand ChangePasswordCommand { get; }
     public ICommand ChangeDataVaultPasswordCommand { get; }
     public ICommand ChangeAuthenticatorPasswordCommand { get; }
+    public ICommand ConfigureAuthenticatorBiometricCommand { get; }
     public ICommand ChangeAppPasswordCommand { get; }
     public ICommand ConfigureSyncCommand { get; }
     public ICommand PickSyncFileCommand { get; }
@@ -409,6 +417,34 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             {
                 UpdateAuthenticatorPasswordCommandState();
             }
+        }
+    }
+
+    public bool CanUseAuthenticatorBiometric
+    {
+        get => _canUseAuthenticatorBiometric;
+        private set => SetProperty(ref _canUseAuthenticatorBiometric, value);
+    }
+
+    public bool IsAuthenticatorBiometricConfigured
+    {
+        get => _isAuthenticatorBiometricConfigured;
+        private set => SetProperty(ref _isAuthenticatorBiometricConfigured, value);
+    }
+
+    public bool EnableAuthenticatorBiometric
+    {
+        get => _enableAuthenticatorBiometric;
+        set => SetProperty(ref _enableAuthenticatorBiometric, value);
+    }
+
+    public bool IsAuthenticatorBiometricBusy
+    {
+        get => _isAuthenticatorBiometricBusy;
+        private set
+        {
+            if (SetProperty(ref _isAuthenticatorBiometricBusy, value))
+                _configureAuthenticatorBiometricCommand.ChangeCanExecute();
         }
     }
 
@@ -700,13 +736,16 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
 
     public async Task RefreshAuthenticatorStateAsync(CancellationToken cancellationToken = default)
     {
-        // Fetch state asynchronously on background thread
         var hasPassword = await _totpEncryptionService.HasPasswordAsync().ConfigureAwait(false);
+        var canUseBiometric = await _biometricAuthenticationService.IsAvailableAsync(cancellationToken).ConfigureAwait(false);
+        var biometricConfigured = hasPassword && await _totpEncryptionService.HasBiometricKeyAsync().ConfigureAwait(false);
 
-        // Always use MainThread.InvokeOnMainThreadAsync to ensure we're on the UI thread
         await MainThread.InvokeOnMainThreadAsync(() =>
         {
             HasAuthenticatorPassword = hasPassword;
+            CanUseAuthenticatorBiometric = canUseBiometric;
+            IsAuthenticatorBiometricConfigured = biometricConfigured;
+            EnableAuthenticatorBiometric = biometricConfigured;
 
             // Clear fields if the authenticator is not configured yet
             if (!HasAuthenticatorPassword)
@@ -718,6 +757,57 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             ConfirmAuthenticatorPassword = string.Empty;
             ClearAuthenticatorPasswordFeedback();
         }).ConfigureAwait(false);
+    }
+
+    private async Task ConfigureAuthenticatorBiometricAsync()
+    {
+        if (IsAuthenticatorBiometricBusy) return;
+        var unlockedHere = false;
+        try
+        {
+            IsAuthenticatorBiometricBusy = true;
+            ClearAuthenticatorPasswordFeedback();
+            if (!HasAuthenticatorPassword)
+                throw new InvalidOperationException("Richte zuerst ein Authenticator-Passwort ein.");
+
+            if (EnableAuthenticatorBiometric)
+            {
+                if (!CanUseAuthenticatorBiometric)
+                    throw new InvalidOperationException("Biometrische Anmeldung ist auf diesem Gerät nicht verfügbar.");
+                if (!_totpEncryptionService.IsUnlocked)
+                {
+                    if (string.IsNullOrWhiteSpace(CurrentAuthenticatorPassword) ||
+                        !await _totpEncryptionService.UnlockWithPasswordAsync(CurrentAuthenticatorPassword).ConfigureAwait(false))
+                        throw new InvalidOperationException("Gib das aktuelle Authenticator-Passwort ein.");
+                    unlockedHere = true;
+                }
+            }
+
+            await _totpEncryptionService.SetBiometricUnlockAsync(EnableAuthenticatorBiometric).ConfigureAwait(false);
+            var configured = await _totpEncryptionService.HasBiometricKeyAsync().ConfigureAwait(false);
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                IsAuthenticatorBiometricConfigured = configured;
+                EnableAuthenticatorBiometric = configured;
+                CurrentAuthenticatorPassword = string.Empty;
+                ChangeAuthenticatorPasswordSuccess = configured
+                    ? "Biometrische Anmeldung aktiviert."
+                    : "Biometrische Anmeldung deaktiviert.";
+            }).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                ChangeAuthenticatorPasswordError = ex.Message;
+                EnableAuthenticatorBiometric = IsAuthenticatorBiometricConfigured;
+            }).ConfigureAwait(false);
+        }
+        finally
+        {
+            if (unlockedHere) _totpEncryptionService.Lock();
+            await MainThread.InvokeOnMainThreadAsync(() => IsAuthenticatorBiometricBusy = false).ConfigureAwait(false);
+        }
     }
 
     public async Task RefreshAppLockStateAsync(CancellationToken cancellationToken = default)
@@ -1093,9 +1183,13 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
                 throw new InvalidOperationException("Neue Einrichtung konnte nicht verifiziert werden.");
             }
 
+            var biometricConfigured = await _totpEncryptionService.HasBiometricKeyAsync().ConfigureAwait(false);
+
             await MainThread.InvokeOnMainThreadAsync(async () =>
             {
                 HasAuthenticatorPassword = await _totpEncryptionService.HasPasswordAsync().ConfigureAwait(false);
+                IsAuthenticatorBiometricConfigured = biometricConfigured;
+                EnableAuthenticatorBiometric = biometricConfigured;
                 NewAuthenticatorPassword = string.Empty;
                 ConfirmAuthenticatorPassword = string.Empty;
                 CurrentAuthenticatorPassword = string.Empty;

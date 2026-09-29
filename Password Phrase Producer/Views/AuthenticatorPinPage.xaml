@@ -90,6 +90,16 @@
                         ReturnType="Done"
                         Completed="OnConfirmPinEntered" />
 
+                    <Grid x:Name="BiometricSetupRow" ColumnDefinitions="Auto,*" IsVisible="False">
+                        <Switch x:Name="BiometricSetupSwitch" Grid.Column="0" />
+                        <Label Grid.Column="1"
+                               Text="Biometrische Anmeldung für den Authenticator aktivieren"
+                               TextColor="#E8EBFF"
+                               FontSize="12"
+                               Margin="10,0,0,0"
+                               VerticalOptions="Center" />
+                    </Grid>
+
                     <Label
                         x:Name="ErrorLabel"
                         Text=""
@@ -107,6 +117,15 @@
                         HeightRequest="40"
                         FontAttributes="Bold"
                         BackgroundColor="#4A5CFF"
+                        TextColor="White"
+                        CornerRadius="10" />
+                    <Button
+                        x:Name="BiometricUnlockButton"
+                        Text="Mit Biometrie entsperren"
+                        Clicked="OnBiometricUnlockClicked"
+                        IsVisible="False"
+                        HeightRequest="40"
+                        BackgroundColor="#1F2338"
                         TextColor="White"
                         CornerRadius="10" />
                 </VerticalStackLayout>

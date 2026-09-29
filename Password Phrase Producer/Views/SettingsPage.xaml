@@ -709,6 +709,35 @@
                             FontSize="13"
                             HeightRequest="38" />
 
+                        <VerticalStackLayout Spacing="6" IsVisible="{Binding HasAuthenticatorPassword}">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <Switch Grid.Column="0" IsToggled="{Binding EnableAuthenticatorBiometric}" />
+                                <Label Grid.Column="1"
+                                       Text="Biometrische Anmeldung für 2FA-Codes"
+                                       FontSize="11"
+                                       TextColor="#E8EBFF"
+                                       Margin="10,0,0,0"
+                                       VerticalOptions="Center" />
+                            </Grid>
+                            <Label Text="Zum Aktivieren bei gesperrtem Authenticator das aktuelle Passwort eingeben und Biometrie übernehmen."
+                                   FontSize="11" TextColor="#9EA3C4" />
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                <Button Text="Biometrie übernehmen"
+                                        Command="{Binding ConfigureAuthenticatorBiometricCommand}"
+                                        BackgroundColor="#1F2338"
+                                        TextColor="White"
+                                        FontSize="12"
+                                        CornerRadius="12"
+                                        Padding="12,8" />
+                                <ActivityIndicator Grid.Column="1"
+                                                   IsRunning="{Binding IsAuthenticatorBiometricBusy}"
+                                                   IsVisible="{Binding IsAuthenticatorBiometricBusy}"
+                                                   Color="#63F5A8"
+                                                   WidthRequest="24"
+                                                   HeightRequest="24" />
+                            </Grid>
+                        </VerticalStackLayout>
+
                         <Label
                             Text="{Binding ChangeAuthenticatorPasswordError}"
                             TextColor="#FF7474"

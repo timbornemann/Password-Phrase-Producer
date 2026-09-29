@@ -5,12 +5,15 @@ namespace Password_Phrase_Producer.Views;
 public partial class AuthenticatorPinPage : ContentPage
 {
     private readonly TotpEncryptionService _encryptionService;
+    private readonly IBiometricAuthenticationService _biometricService;
     private bool _isSetupMode;
+    private bool _isBusy;
 
-    public AuthenticatorPinPage(TotpEncryptionService encryptionService)
+    public AuthenticatorPinPage(TotpEncryptionService encryptionService, IBiometricAuthenticationService biometricService)
     {
         InitializeComponent();
         _encryptionService = encryptionService;
+        _biometricService = biometricService;
         
         // Initial state (will be updated in OnAppearing)
         TitleLabel.Text = "Lade...";
@@ -23,6 +26,10 @@ public partial class AuthenticatorPinPage : ContentPage
         try
         {
             _isSetupMode = !await _encryptionService.HasPasswordAsync();
+            var canUseBiometrics = await _biometricService.IsAvailableAsync();
+            var hasBiometricKey = !_isSetupMode && await _encryptionService.HasBiometricKeyAsync();
+            BiometricSetupRow.IsVisible = canUseBiometrics && !hasBiometricKey;
+            BiometricUnlockButton.IsVisible = canUseBiometrics && hasBiometricKey;
             UpdateUiState();
         }
         catch (Exception ex)
@@ -34,6 +41,7 @@ public partial class AuthenticatorPinPage : ContentPage
     private void UpdateUiState()
     {
         UnlockButton.IsEnabled = true;
+        BiometricUnlockButton.IsEnabled = true;
         if (_isSetupMode)
         {
             TitleLabel.Text = "Authenticator einrichten";
@@ -47,12 +55,14 @@ public partial class AuthenticatorPinPage : ContentPage
             TitleLabel.Text = "Authenticator gesperrt";
             SubtitleLabel.Text = "Bitte gib dein Master-Passwort ein.";
             UnlockButton.Text = "Entsperren";
+            ConfirmPinEntry.IsVisible = false;
             BackButton.IsVisible = true; // Zurück-Button im Unlock-Mode
         }
     }
 
     private async void OnBackTapped(object? sender, TappedEventArgs e)
     {
+        if (_isBusy) return;
         // Modal schließen
         await Navigation.PopModalAsync();
         
@@ -65,6 +75,7 @@ public partial class AuthenticatorPinPage : ContentPage
 
     private async void OnUnlockClicked(object sender, EventArgs e)
     {
+        if (_isBusy) return;
         var password = PinEntry.Text;
         
         if (string.IsNullOrWhiteSpace(password))
@@ -96,36 +107,46 @@ public partial class AuthenticatorPinPage : ContentPage
             // Create password
             try
             {
+                _isBusy = true;
                 UnlockButton.IsEnabled = false;
+                BiometricUnlockButton.IsEnabled = false;
                 UnlockButton.Text = "Erstelle...";
                 
                 await _encryptionService.SetupPasswordAsync(password);
+                await EnableBiometricsIfRequestedAsync();
                 await Navigation.PopModalAsync();
             }
             catch (Exception ex)
             {
                 ShowError($"Fehler: {ex.Message}");
                 UnlockButton.IsEnabled = true;
-                UnlockButton.Text = "Passwort erstellen";
+                UnlockButton.Text = _encryptionService.IsUnlocked ? "Entsperren" : "Passwort erstellen";
+                BiometricUnlockButton.IsEnabled = true;
+                _isSetupMode = !await _encryptionService.HasPasswordAsync();
+                UpdateUiState();
             }
+            finally { _isBusy = false; }
         }
         else
         {
             // Unlock mode
             try
             {
+                _isBusy = true;
                 UnlockButton.IsEnabled = false;
+                BiometricUnlockButton.IsEnabled = false;
                 UnlockButton.Text = "Entsperre...";
                 
                 var success = await _encryptionService.UnlockWithPasswordAsync(password);
                 
                 if (success)
                 {
+                    await EnableBiometricsIfRequestedAsync();
                     await Navigation.PopModalAsync();
                 }
                 else
                 {
-                    ShowError("Falsches Passwort");
+                    ShowError("Passwort falsch oder Authenticator-Daten beschädigt.");
                     PinEntry.Text = string.Empty;
                     PinEntry.Focus();
                     UnlockButton.IsEnabled = true;
@@ -138,6 +159,50 @@ public partial class AuthenticatorPinPage : ContentPage
                 UnlockButton.IsEnabled = true;
                 UnlockButton.Text = "Entsperren";
             }
+            finally
+            {
+                BiometricUnlockButton.IsEnabled = true;
+                _isBusy = false;
+            }
+        }
+    }
+
+    private async Task EnableBiometricsIfRequestedAsync()
+    {
+        if (!BiometricSetupRow.IsVisible || !BiometricSetupSwitch.IsToggled) return;
+        try
+        {
+            await _encryptionService.SetBiometricUnlockAsync(true);
+        }
+        catch (Exception ex)
+        {
+            // Password unlock is already valid. Make the optional setup failure visible.
+            await DisplayAlert("Biometrie nicht aktiviert", ex.Message, "OK");
+        }
+    }
+
+    private async void OnBiometricUnlockClicked(object sender, EventArgs e)
+    {
+        if (_isBusy) return;
+        try
+        {
+            _isBusy = true;
+            UnlockButton.IsEnabled = false;
+            BiometricUnlockButton.IsEnabled = false;
+            if (await _encryptionService.UnlockWithBiometricsAsync())
+                await Navigation.PopModalAsync();
+            else
+                ShowError("Biometrische Entsperrung fehlgeschlagen. Verwende dein Passwort.");
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Biometrische Entsperrung fehlgeschlagen: {ex.Message}");
+        }
+        finally
+        {
+            _isBusy = false;
+            UnlockButton.IsEnabled = true;
+            BiometricUnlockButton.IsEnabled = true;
         }
     }
 
@@ -189,6 +254,7 @@ public partial class AuthenticatorPinPage : ContentPage
         base.OnDisappearing();
         PinEntry.Text = string.Empty;
         ConfirmPinEntry.Text = string.Empty;
+        BiometricSetupSwitch.IsToggled = false;
     }
 }
 
