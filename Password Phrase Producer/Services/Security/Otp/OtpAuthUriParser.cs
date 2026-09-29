@@ -6,6 +6,7 @@ namespace Password_Phrase_Producer.Services.Security.Otp;
 public static class OtpAuthUriParser
 {
     private const string Prefix = "otpauth://";
+    private const int MaxUriLength = 16 * 1024;
 
     public static bool IsOtpAuthUri(string? text)
         => text is not null && text.TrimStart().StartsWith(Prefix, StringComparison.OrdinalIgnoreCase);
@@ -15,7 +16,7 @@ public static class OtpAuthUriParser
     /// </summary>
     public static OtpAccount? TryParse(string? text)
     {
-        if (!IsOtpAuthUri(text))
+        if (!IsOtpAuthUri(text) || text!.Length > MaxUriLength)
         {
             return null;
         }
@@ -110,17 +111,22 @@ public static class OtpAuthUriParser
         }
 
         var period = 30;
-        if (query.TryGetValue("period", out var periodText)
-            && int.TryParse(periodText, out var parsedPeriod)
-            && parsedPeriod > 0)
+        if (query.TryGetValue("period", out var periodText))
         {
+            if (!int.TryParse(periodText, out var parsedPeriod) || parsedPeriod < 1 || parsedPeriod > 3600)
+            {
+                return null;
+            }
             period = parsedPeriod;
         }
 
         long counter = 0;
         if (query.TryGetValue("counter", out var counterText))
         {
-            long.TryParse(counterText, out counter);
+            if (!long.TryParse(counterText, out counter) || counter < 0)
+            {
+                return null;
+            }
         }
 
         return new OtpAccount

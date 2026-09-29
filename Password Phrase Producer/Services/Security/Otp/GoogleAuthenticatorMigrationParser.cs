@@ -23,6 +23,8 @@ public sealed class MigrationBatch
 public static class GoogleAuthenticatorMigrationParser
 {
     private const string Prefix = "otpauth-migration://";
+    private const int MaxUriLength = 16 * 1024;
+    private const int MaxBatchParts = 256;
 
     public static bool IsMigrationUri(string? text)
         => text is not null && text.TrimStart().StartsWith(Prefix, StringComparison.OrdinalIgnoreCase);
@@ -44,7 +46,7 @@ public static class GoogleAuthenticatorMigrationParser
     /// <exception cref="FormatException">The text is not a valid Google Authenticator export.</exception>
     public static MigrationBatch Parse(string? text)
     {
-        if (!IsMigrationUri(text))
+        if (!IsMigrationUri(text) || text!.Length > MaxUriLength)
         {
             throw new FormatException("Kein Google-Authenticator-Export (otpauth-migration://).");
         }
@@ -127,10 +129,18 @@ public static class GoogleAuthenticatorMigrationParser
                     version = (int)field.Varint;
                     break;
                 case 3 when field.WireType == ProtobufReader.Varint:
-                    batchSize = Math.Max(1, (int)field.Varint);
+                    if (field.Varint is < 1 or > MaxBatchParts)
+                    {
+                        throw new FormatException("Ungültige Anzahl von Exportteilen.");
+                    }
+                    batchSize = (int)field.Varint;
                     break;
                 case 4 when field.WireType == ProtobufReader.Varint:
-                    batchIndex = Math.Max(0, (int)field.Varint);
+                    if (field.Varint >= MaxBatchParts)
+                    {
+                        throw new FormatException("Ungültiger Exportteil-Index.");
+                    }
+                    batchIndex = (int)field.Varint;
                     break;
                 case 5 when field.WireType == ProtobufReader.Varint:
                     batchId = unchecked((int)field.Varint);
@@ -140,7 +150,7 @@ public static class GoogleAuthenticatorMigrationParser
 
         if (batchIndex >= batchSize)
         {
-            batchSize = batchIndex + 1;
+            throw new FormatException("Exportteil-Index liegt außerhalb des Exports.");
         }
 
         return new MigrationBatch

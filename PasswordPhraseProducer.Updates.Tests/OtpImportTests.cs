@@ -54,11 +54,20 @@ public class OtpAuthUriParserTests
     [InlineData("otpauth://totp/Test?secret=NOT-BASE32-1890")]
     [InlineData("otpauth://totp/Test?secret=JBSWY3DPEHPK3PXP&digits=5")]
     [InlineData("otpauth://totp/Test?secret=JBSWY3DPEHPK3PXP&algorithm=SHA3")]
+    [InlineData("otpauth://totp/Test?secret=JBSWY3DPEHPK3PXP&period=0")]
+    [InlineData("otpauth://totp/Test?secret=JBSWY3DPEHPK3PXP&period=2147483647")]
+    [InlineData("otpauth://hotp/Test?secret=JBSWY3DPEHPK3PXP&counter=-1")]
     [InlineData("otpauth://steam/Test?secret=JBSWY3DPEHPK3PXP")]
     [InlineData("https://example.com")]
     public void RejectsInvalidUris(string uri)
     {
         Assert.Null(OtpAuthUriParser.TryParse(uri));
+    }
+
+    [Fact]
+    public void RejectsExcessivelyLongUri()
+    {
+        Assert.Null(OtpAuthUriParser.TryParse("otpauth://totp/Test?secret=" + new string('A', 20_000)));
     }
 }
 
@@ -122,6 +131,24 @@ public class GoogleAuthenticatorMigrationParserTests
     [InlineData("otpauth://totp/x?secret=JBSWY3DP")]
     public void RejectsInvalidExports(string uri)
     {
+        Assert.False(GoogleAuthenticatorMigrationParser.TryParse(uri, out _));
+    }
+
+    [Theory]
+    [InlineData(int.MaxValue, 0)]
+    [InlineData(2, int.MaxValue)]
+    [InlineData(2, 2)]
+    public void RejectsInvalidBatchMetadata(int batchSize, int batchIndex)
+    {
+        var uri = MigrationTestData.CreateUri(new[] { MigrationTestData.Simple("alice") }, batchSize, batchIndex);
+        Assert.False(GoogleAuthenticatorMigrationParser.TryParse(uri, out _));
+        Assert.Equal(OtpScanStatus.Invalid, new OtpScanCollector().Add(uri).Status);
+    }
+
+    [Fact]
+    public void RejectsExcessivelyLongExport()
+    {
+        var uri = "otpauth-migration://offline?data=" + new string('A', 20_000);
         Assert.False(GoogleAuthenticatorMigrationParser.TryParse(uri, out _));
     }
 }
