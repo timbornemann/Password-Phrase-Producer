@@ -29,6 +29,7 @@ public partial class RandomPasswordTechniqueUiPage : PasswordGeneratorContentVie
             bool includeDigits = digitsCheckBox?.IsChecked ?? true;
             bool includeSpecial = specialCheckBox?.IsChecked ?? true;
             string? seed = string.IsNullOrWhiteSpace(seedEntry?.Text) ? null : seedEntry.Text;
+            seedWarning.IsVisible = seed is not null;
 
             string result = randomPasswordTechnique.GeneratePassword(length, includeUppercase, includeLowercase, includeDigits, includeSpecial, seed);
             
@@ -39,7 +40,11 @@ public partial class RandomPasswordTechniqueUiPage : PasswordGeneratorContentVie
 
             UpdateGeneratedPassword(result);
 
-            if (analysisPanel is not null)
+            if (seed is not null)
+            {
+                analysisPanel?.Reset();
+            }
+            else if (analysisPanel is not null)
             {
                 var analysis = entropyAnalyzer.Analyze(result);
                 analysisPanel.Update(analysis);
@@ -47,6 +52,7 @@ public partial class RandomPasswordTechniqueUiPage : PasswordGeneratorContentVie
         }
         else
         {
+            seedWarning.IsVisible = false;
             if (resultEntry is not null)
             {
                 resultEntry.Text = string.Empty;

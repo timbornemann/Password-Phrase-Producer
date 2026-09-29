@@ -1,6 +1,4 @@
 using System;
-using System.Linq;
-using System.Security.Cryptography;
 using System.Text;
 
 namespace Password_Phrase_Producer.PasswordGenerationTechniques.RandomPasswordTechnique;
@@ -31,7 +29,7 @@ internal class RandomPasswordTechnique : IRandomPasswordTechnique
             charSet.Append(Lowercase);
         }
 
-        Random random = CreateRandom(seed);
+        using var random = new SecureRandomIndex(seed, "random-password");
         StringBuilder password = new StringBuilder(length);
 
         // Ensure at least one character from each selected set (if length allows)
@@ -54,19 +52,7 @@ internal class RandomPasswordTechnique : IRandomPasswordTechnique
         return Shuffle(password.ToString(), random);
     }
 
-    private static Random CreateRandom(string? seed)
-    {
-        if (string.IsNullOrWhiteSpace(seed))
-        {
-            return Random.Shared;
-        }
-
-        byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(seed));
-        int seedValue = BitConverter.ToInt32(hash, 0);
-        return new Random(seedValue);
-    }
-
-    private static string Shuffle(string input, Random random)
+    private static string Shuffle(string input, SecureRandomIndex random)
     {
         char[] chars = input.ToCharArray();
         for (int i = chars.Length - 1; i > 0; i--)

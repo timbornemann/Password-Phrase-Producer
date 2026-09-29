@@ -67,11 +67,8 @@ public partial class SymbolInjectionTechniqueUiPage : PasswordGeneratorContentVi
 
         UpdateGeneratedPassword(result);
 
-        if (analysisPanel is not null)
-        {
-            var analysis = entropyAnalyzer.Analyze(result);
-            analysisPanel.Update(analysis);
-        }
+        // The base password is user supplied; its entropy cannot be inferred from its appearance.
+        analysisPanel?.Reset();
     }
 
     private async void OnCopyClicked(object sender, EventArgs e)

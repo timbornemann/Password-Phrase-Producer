@@ -43,6 +43,8 @@
                 <Entry x:Name="seedEntry"
                        Placeholder="Optionaler Seed für reproduzierbare Symbole"
                        Style="{StaticResource DarkEntryStyle}" />
+                <Label Text="Die Sicherheit hängt vom Basispasswort ab. Ein Seed fügt keine geheime Zufälligkeit hinzu."
+                       TextColor="#FFB86B" FontSize="12" />
             </VerticalStackLayout>
         </Border>
 

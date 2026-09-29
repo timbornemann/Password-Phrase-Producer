@@ -1,19 +1,34 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace Password_Phrase_Producer.PasswordGenerationTechniques.DicewareTechnique
 {
     internal class AdaptiveDicewareTechnique : IDicewareTechnique
     {
-        private static readonly string[] WordList =
+        private static readonly string[] WordList = LoadWordList();
+
+        private static string[] LoadWordList()
         {
-            "anker", "atlas", "biene", "blitz", "cloud", "delta", "ember", "falke", "gamma", "harfe",
-            "ionen", "jaguar", "komet", "laser", "magma", "nebel", "omega", "pixel", "quarz", "robot",
-            "silbe", "token", "ultra", "vital", "wolke", "xenon", "yukon", "zirbe", "fjord", "zenit"
-        };
+            using var stream = typeof(AdaptiveDicewareTechnique).Assembly
+                .GetManifestResourceStream("EffLargeWordlist")
+                ?? throw new InvalidOperationException("Diceware wordlist is missing.");
+            using var reader = new StreamReader(stream);
+            var words = new List<string>(7776);
+            string? line;
+            while ((line = reader.ReadLine()) is not null)
+            {
+                var fields = line.Split('\t');
+                if (fields.Length != 2 || string.IsNullOrWhiteSpace(fields[1]))
+                    throw new InvalidDataException("Invalid Diceware wordlist.");
+                words.Add(fields[1]);
+            }
+
+            if (words.Count != 7776 || words.Distinct(StringComparer.Ordinal).Count() != words.Count)
+                throw new InvalidDataException("Invalid Diceware wordlist size or duplicate words.");
+            return words.ToArray();
+        }
 
         public string Generate(int wordCount, string? seed)
         {
@@ -22,7 +37,7 @@ namespace Password_Phrase_Producer.PasswordGenerationTechniques.DicewareTechniqu
                 return string.Empty;
             }
 
-            Random random = CreateRandom(seed);
+            using var random = new SecureRandomIndex(seed, "diceware");
             var words = new List<string>(capacity: wordCount);
             for (int i = 0; i < wordCount; i++)
             {
@@ -31,18 +46,6 @@ namespace Password_Phrase_Producer.PasswordGenerationTechniques.DicewareTechniqu
 
             string marker = CalculateEntropyMarker(words);
             return string.Join('-', words) + marker;
-        }
-
-        private static Random CreateRandom(string? seed)
-        {
-            if (string.IsNullOrWhiteSpace(seed))
-            {
-                return Random.Shared;
-            }
-
-            byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(seed));
-            int seedValue = BitConverter.ToInt32(hash, 0);
-            return new Random(seedValue);
         }
 
         private static string CalculateEntropyMarker(IEnumerable<string> words)

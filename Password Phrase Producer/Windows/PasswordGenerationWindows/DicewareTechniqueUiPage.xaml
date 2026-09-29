@@ -16,22 +16,24 @@
                        FontSize="15"
                        FontAttributes="Bold"
                        TextColor="White"/>
-                <Label Text="Erzeuge reproduzierbare Passphrasen mit einem optionalen Seed."
+                <Label Text="Erzeuge Passphrasen aus 7.776 Wörtern. Verwende mindestens sechs Wörter."
                        TextColor="#9EA3C4"
                        FontSize="12"
                        LineBreakMode="WordWrap"/>
                 <Label x:Name="wordCountLabel"
-                       Text="Wörter: 5"
+                       Text="Wörter: 6"
                        TextColor="#9EA3C4"
                        FontSize="11" />
                 <Slider x:Name="wordCountSlider"
-                        Minimum="3"
+                        Minimum="6"
                         Maximum="8"
-                        Value="5"
+                        Value="6"
                         ValueChanged="OnWordCountChanged" />
                 <Entry x:Name="seedEntry"
                        Placeholder="Optionaler Seed für deterministische Ergebnisse"
                        Style="{StaticResource DarkEntryStyle}" />
+                <Label x:Name="seedWarning" Text="Mit Seed ist die Sicherheit allein vom Seed abhängig. Für neue Passwörter das Feld leer lassen."
+                       TextColor="#FFB86B" FontSize="12" IsVisible="False" />
             </VerticalStackLayout>
         </Border>
 

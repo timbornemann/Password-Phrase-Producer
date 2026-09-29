@@ -1,6 +1,5 @@
 using System;
 using System.Globalization;
-using System.Security.Cryptography;
 using System.Text;
 
 namespace Password_Phrase_Producer.PasswordGenerationTechniques.SymbolInjectionTechnique
@@ -16,7 +15,7 @@ namespace Password_Phrase_Producer.PasswordGenerationTechniques.SymbolInjectionT
                 return string.Empty;
             }
 
-            var random = CreateRandom(seed);
+            using var random = new SecureRandomIndex(seed, "symbol-injection");
             var builder = new StringBuilder(input.Length + Math.Max(symbolCount, 0));
 
             foreach (char character in input.Trim())
@@ -45,16 +44,5 @@ namespace Password_Phrase_Producer.PasswordGenerationTechniques.SymbolInjectionT
             return builder.ToString();
         }
 
-        private static Random CreateRandom(string? seed)
-        {
-            if (string.IsNullOrWhiteSpace(seed))
-            {
-                return Random.Shared;
-            }
-
-            byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(seed));
-            int seedValue = BitConverter.ToInt32(hash, 0);
-            return new Random(seedValue);
-        }
     }
 }

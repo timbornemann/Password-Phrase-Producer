@@ -36,14 +36,16 @@ public partial class DicewareTechniqueUiPage : PasswordGeneratorContentView
 
     private int GetWordCount()
     {
-        return wordCountSlider is null ? 5 : (int)Math.Round(wordCountSlider.Value);
+        return wordCountSlider is null ? 6 : (int)Math.Round(wordCountSlider.Value);
     }
 
     private void OnCreateClicked(object sender, EventArgs e)
     {
         int wordCount = GetWordCount();
         string seed = seedEntry?.Text ?? string.Empty;
-        string result = dicewareTechnique.Generate(wordCount, string.IsNullOrWhiteSpace(seed) ? null : seed);
+        bool hasSeed = !string.IsNullOrWhiteSpace(seed);
+        seedWarning.IsVisible = hasSeed;
+        string result = dicewareTechnique.Generate(wordCount, hasSeed ? seed : null);
 
         if (string.IsNullOrEmpty(result))
         {
@@ -64,9 +66,19 @@ public partial class DicewareTechniqueUiPage : PasswordGeneratorContentView
 
         UpdateGeneratedPassword(result);
 
-        if (analysisPanel is not null)
+        if (hasSeed)
         {
-            var analysis = entropyAnalyzer.Analyze(result);
+            analysisPanel?.Reset();
+        }
+        else if (analysisPanel is not null)
+        {
+            var analysis = entropyAnalyzer.Analyze(result) with
+            {
+                Entropy = Math.Round(wordCount * Math.Log2(7776), 2),
+                StrengthScore = wordCount >= 6 ? 100 : 0,
+                StrengthLabel = wordCount >= 6 ? "Stark" : "Schwach",
+                Suggestions = new[] { "Die Entropie basiert auf der zufälligen Wortauswahl. Das angehängte Prüfzeichen erhöht sie nicht." }
+            };
             analysisPanel.Update(analysis);
         }
     }
