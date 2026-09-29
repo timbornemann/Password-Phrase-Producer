@@ -59,6 +59,11 @@ public partial class VaultPage : ContentPage
 
         _viewModel.Deactivate();
         DetachUnlockSubscription();
+        if (_pendingVaultRequest is { } pendingRequest)
+        {
+            VaultNavigationCoordinator.ClearPendingRequest(pendingRequest.Id);
+            _pendingVaultRequest = null;
+        }
     }
 
     private async void OnAddEntryClicked(object? sender, EventArgs e)
