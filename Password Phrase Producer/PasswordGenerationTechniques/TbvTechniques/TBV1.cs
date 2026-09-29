@@ -154,7 +154,6 @@ namespace PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques
         };
 
         private TBVHelper helper = new TBVHelper();
-        private string resultWithoutSpaces = string.Empty;
         public static bool IsCancelled { get; set; } = false;
 
 
@@ -205,8 +204,7 @@ namespace PasswordPhraseProducer.PasswordGenerationTechniques.TbvTechniques
                 finalPassword += reversedChars[i];
             }
 
-            resultWithoutSpaces = finalPassword.Replace(" ", "");
-            return resultWithoutSpaces;
+            return finalPassword.Replace(" ", "");
         }
     }
 }

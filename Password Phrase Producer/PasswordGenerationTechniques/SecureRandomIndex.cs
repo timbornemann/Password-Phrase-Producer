@@ -16,7 +16,18 @@ internal sealed class SecureRandomIndex : IDisposable
     {
         if (!string.IsNullOrWhiteSpace(seed))
         {
-            _key = SHA256.HashData(Encoding.UTF8.GetBytes($"PasswordPhraseProducer/{purpose}/v1/{seed}"));
+            var prefix = Encoding.UTF8.GetBytes($"PasswordPhraseProducer/{purpose}/v1/");
+            var material = new byte[prefix.Length + Encoding.UTF8.GetByteCount(seed)];
+            try
+            {
+                prefix.CopyTo(material, 0);
+                Encoding.UTF8.GetBytes(seed.AsSpan(), material.AsSpan(prefix.Length));
+                _key = SHA256.HashData(material);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(material);
+            }
         }
     }
 
