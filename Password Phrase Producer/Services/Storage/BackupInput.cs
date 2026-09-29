@@ -48,7 +48,7 @@ internal static class BackupInput
         }
     }
 
-    internal static void VerifyDecryptable(PortableBackupDto backup, string password)
+    internal static void VerifyDecryptable(PortableBackupDto backup, string password, Action<byte[]>? validateSnapshot = null)
     {
         var validated = Validate(backup);
         var key = Rfc2898DeriveBytes.Pbkdf2(password, validated.Salt, backup.Iterations,
@@ -69,6 +69,7 @@ internal static class BackupInput
             if (!document.RootElement.TryGetProperty("entries", out var entries) ||
                 entries.ValueKind != JsonValueKind.Array)
                 throw new InvalidDataException("Die Sicherungsdatei enthält keinen gültigen Snapshot.");
+            validateSnapshot?.Invoke(plaintext);
         }
         finally
         {

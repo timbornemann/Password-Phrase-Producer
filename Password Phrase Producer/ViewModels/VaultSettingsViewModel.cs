@@ -900,9 +900,24 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
             throw new InvalidOperationException("Alle enthaltenen Tresore müssen vor dem Import entsperrt sein.");
 
         // Check every encrypted section before changing any local vault.
-        if (backup.PasswordVault is not null) BackupInput.VerifyDecryptable(backup.PasswordVault, filePassword);
-        if (backup.DataVault is not null) BackupInput.VerifyDecryptable(backup.DataVault, filePassword);
-        if (backup.AuthenticatorEncrypted is not null) BackupInput.VerifyDecryptable(backup.AuthenticatorEncrypted, filePassword);
+        if (backup.PasswordVault is not null) BackupInput.VerifyDecryptable(backup.PasswordVault, filePassword, bytes =>
+        {
+            var snapshot = JsonSerializer.Deserialize<PasswordVaultSnapshotDto>(bytes, _jsonOptions);
+            if (snapshot?.Entries is null) throw new InvalidDataException("Ungültiger Passwort-Tresor-Snapshot.");
+            foreach (var entry in snapshot.Entries) _ = entry.ToModel();
+        });
+        if (backup.DataVault is not null) BackupInput.VerifyDecryptable(backup.DataVault, filePassword, bytes =>
+        {
+            var snapshot = JsonSerializer.Deserialize<PasswordVaultSnapshotDto>(bytes, _jsonOptions);
+            if (snapshot?.Entries is null) throw new InvalidDataException("Ungültiger Datentresor-Snapshot.");
+            foreach (var entry in snapshot.Entries) _ = entry.ToModel();
+        });
+        if (backup.AuthenticatorEncrypted is not null) BackupInput.VerifyDecryptable(backup.AuthenticatorEncrypted, filePassword, bytes =>
+        {
+            var snapshot = JsonSerializer.Deserialize<TotpSnapshotDto>(bytes, _jsonOptions);
+            if (snapshot?.Entries is null) throw new InvalidDataException("Ungültiger Authenticator-Snapshot.");
+            foreach (var entry in snapshot.Entries) _ = entry.ToModel();
+        });
 
         // Restore Password Vault if present and unlocked
         if (backup.PasswordVault is not null && _vaultService.IsUnlocked)

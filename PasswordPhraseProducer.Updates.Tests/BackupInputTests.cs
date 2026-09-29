@@ -42,6 +42,8 @@ public sealed class BackupInputTests
         };
 
         BackupInput.VerifyDecryptable(backup, password);
+        Assert.Throws<InvalidDataException>(() => BackupInput.VerifyDecryptable(backup, password,
+            _ => throw new InvalidDataException("Malformed entry")));
         Assert.Throws<InvalidDataException>(() => BackupInput.VerifyDecryptable(backup, "wrong password"));
         backup.CipherText = Convert.ToBase64String(nonce.Concat(cipher).Concat(new byte[16]).ToArray());
         Assert.ThrowsAny<CryptographicException>(() => BackupInput.VerifyDecryptable(backup, password));
