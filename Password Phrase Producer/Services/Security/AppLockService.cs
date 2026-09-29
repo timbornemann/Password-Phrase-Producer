@@ -83,7 +83,32 @@ public class AppLockService : IAppLockService
                 var kek = DeriveKeyBytes(password, salt, iterations); // Key Encryption Key
                 var encryptedMek = Convert.FromBase64String(_cachedMetadata.EncryptedMasterKey);
 
-                _masterKey = DecryptAesGcm(encryptedMek, kek);
+                var masterKey = DecryptAesGcm(encryptedMek, kek);
+                if (masterKey.Length != KeySize)
+                {
+                    CryptographicOperations.ZeroMemory(masterKey);
+                    return false;
+                }
+
+                // The authenticated password wrapper is authoritative. Repair a
+                // missing or damaged biometric verifier after successful decryption.
+                if (!MatchesMasterKeyVerifier(masterKey) || string.IsNullOrEmpty(_cachedMetadata.MasterKeyVerifier))
+                {
+                    var previousVerifier = _cachedMetadata.MasterKeyVerifier;
+                    var verifier = Convert.ToBase64String(CreateVerifier(masterKey));
+                    _cachedMetadata.MasterKeyVerifier = verifier;
+                    try
+                    {
+                        await SecureStorage.Default.SetAsync(AppLockStorageKey, JsonSerializer.Serialize(_cachedMetadata))
+                            .ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        _cachedMetadata.MasterKeyVerifier = previousVerifier;
+                    }
+                }
+                Lock();
+                _masterKey = masterKey;
                 return true;
             }
             catch
@@ -112,7 +137,15 @@ public class AppLockService : IAppLockService
             try
             {
                 var encryptedMek = Convert.FromBase64String(_cachedMetadata.BiometricEncryptedMasterKey);
-                _masterKey = await _biometricService.DecryptAsync(encryptedMek);
+                var masterKey = await _biometricService.DecryptAsync(encryptedMek);
+                if (masterKey.Length != KeySize || string.IsNullOrEmpty(_cachedMetadata.MasterKeyVerifier) ||
+                    !MatchesMasterKeyVerifier(masterKey))
+                {
+                    CryptographicOperations.ZeroMemory(masterKey);
+                    return false;
+                }
+                Lock();
+                _masterKey = masterKey;
                 return true;
             }
             catch (UnauthorizedAccessException)
@@ -164,6 +197,7 @@ public class AppLockService : IAppLockService
                 Iterations = iterations,
                 Verifier = Convert.ToBase64String(verifier),
                 EncryptedMasterKey = Convert.ToBase64String(encryptedMek),
+                MasterKeyVerifier = Convert.ToBase64String(CreateVerifier(mek)),
                 BiometricEncryptedMasterKey = null
             };
 
@@ -232,6 +266,7 @@ public class AppLockService : IAppLockService
                 Iterations = iterations,
                 Verifier = Convert.ToBase64String(verifier),
                 EncryptedMasterKey = Convert.ToBase64String(encryptedMek),
+                MasterKeyVerifier = Convert.ToBase64String(CreateVerifier(_masterKey)),
                 BiometricEncryptedMasterKey = _cachedMetadata?.BiometricEncryptedMasterKey
             };
 
@@ -258,6 +293,7 @@ public class AppLockService : IAppLockService
 
             if (enable)
             {
+                _cachedMetadata.MasterKeyVerifier = Convert.ToBase64String(CreateVerifier(_masterKey));
                 var bioEncryptedMek = await _biometricService.EncryptAsync(_masterKey);
                 _cachedMetadata.BiometricEncryptedMasterKey = Convert.ToBase64String(bioEncryptedMek);
             }
@@ -357,6 +393,21 @@ public class AppLockService : IAppLockService
         return sha.ComputeHash(key);
     }
 
+    private bool MatchesMasterKeyVerifier(byte[] masterKey)
+    {
+        if (string.IsNullOrEmpty(_cachedMetadata?.MasterKeyVerifier)) return true;
+        try
+        {
+            var expected = Convert.FromBase64String(_cachedMetadata.MasterKeyVerifier);
+            return expected.Length == 32 &&
+                   CryptographicOperations.FixedTimeEquals(expected, CreateVerifier(masterKey));
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+    }
+
     private static byte[] EncryptAesGcm(byte[] plaintext, byte[] key)
     {
         var nonce = RandomNumberGenerator.GetBytes(NonceSize);
@@ -414,6 +465,7 @@ public class AppLockService : IAppLockService
         public int Iterations { get; set; }
         public string Verifier { get; set; } = ""; // Base64 (Hash of KEK)
         public string EncryptedMasterKey { get; set; } = ""; // Base64 (MEK encrypted with KEK)
+        public string? MasterKeyVerifier { get; set; } // SHA-256 of random MEK; checks biometric output
         public string? BiometricEncryptedMasterKey { get; set; } // Base64 (MEK encrypted with Bio)
     }
 }

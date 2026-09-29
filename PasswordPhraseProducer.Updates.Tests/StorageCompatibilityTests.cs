@@ -15,6 +15,7 @@ internal static class SecureStorage
         private readonly ConcurrentDictionary<string, string> _values = new();
         public Task<string?> GetAsync(string key) => Task.FromResult(_values.GetValueOrDefault(key));
         public Task SetAsync(string key, string value) { _values[key] = value; return Task.CompletedTask; }
+        public void Clear() => _values.Clear();
     }
 }
 
@@ -23,6 +24,7 @@ public sealed class StorageCompatibilityTests
     [Fact]
     public async Task ExistingAppPasswordAndEncryptedFilesSurviveReplacementOfServiceInstances()
     {
+        SecureStorage.Default.Clear();
         var directory = Path.Combine(Path.GetTempPath(), "ppp-storage-test-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
@@ -62,7 +64,49 @@ public sealed class StorageCompatibilityTests
             await Assert.ThrowsAsync<InvalidDataException>(() => StartupDataGuard.VerifyAsync(directory, SecureStorage.Default.GetAsync));
             Assert.Equal(ciphertext["totp_data.json.enc"], File.ReadAllBytes(Path.Combine(directory, "totp_data.json.enc")));
         }
-        finally { Directory.Delete(directory, true); }
+        finally { Directory.Delete(directory, true); SecureStorage.Default.Clear(); }
+    }
+
+    [Fact]
+    public async Task BiometricUnlockRejectsCorruptKeyAndMigratesLegacyMetadata()
+    {
+        SecureStorage.Default.Clear();
+        try
+        {
+            var biometrics = new CorruptibleBiometrics();
+            var appLock = new AppLockService(biometrics);
+            await appLock.SetupAsync("app password", true);
+            appLock.Lock();
+
+            biometrics.Corrupt = true;
+            Assert.False(await appLock.UnlockWithBiometricsAsync());
+            Assert.False(appLock.IsUnlocked);
+
+            biometrics.Corrupt = false;
+            Assert.True(await appLock.UnlockWithBiometricsAsync());
+            appLock.Lock();
+
+            var stored = await SecureStorage.Default.GetAsync("AppLockMetadata_V1");
+            var metadata = System.Text.Json.Nodes.JsonNode.Parse(stored!)!;
+            metadata.AsObject().Remove("MasterKeyVerifier");
+            await SecureStorage.Default.SetAsync("AppLockMetadata_V1", metadata.ToJsonString());
+            appLock = new AppLockService(biometrics);
+            Assert.False(await appLock.UnlockWithBiometricsAsync());
+            Assert.True(await appLock.UnlockAsync("app password"));
+            appLock.Lock();
+            Assert.True(await appLock.UnlockWithBiometricsAsync());
+
+            stored = await SecureStorage.Default.GetAsync("AppLockMetadata_V1");
+            metadata = System.Text.Json.Nodes.JsonNode.Parse(stored!)!;
+            metadata["MasterKeyVerifier"] = Convert.ToBase64String(new byte[32]);
+            await SecureStorage.Default.SetAsync("AppLockMetadata_V1", metadata.ToJsonString());
+            appLock = new AppLockService(biometrics);
+            Assert.False(await appLock.UnlockWithBiometricsAsync());
+            Assert.True(await appLock.UnlockAsync("app password"));
+            appLock.Lock();
+            Assert.True(await appLock.UnlockWithBiometricsAsync());
+        }
+        finally { SecureStorage.Default.Clear(); }
     }
 
     private sealed class DisabledBiometrics : IBiometricAuthenticationService
@@ -71,5 +115,19 @@ public sealed class StorageCompatibilityTests
         public Task<bool> AuthenticateAsync(string reason, CancellationToken ct = default) => Task.FromResult(false);
         public Task<byte[]> EncryptAsync(byte[] data, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<byte[]> DecryptAsync(byte[] data, CancellationToken ct = default) => throw new NotSupportedException();
+    }
+
+    private sealed class CorruptibleBiometrics : IBiometricAuthenticationService
+    {
+        public bool Corrupt { get; set; }
+        public Task<bool> IsAvailableAsync(CancellationToken ct = default) => Task.FromResult(true);
+        public Task<bool> AuthenticateAsync(string reason, CancellationToken ct = default) => Task.FromResult(true);
+        public Task<byte[]> EncryptAsync(byte[] data, CancellationToken ct = default) => Task.FromResult(data.ToArray());
+        public Task<byte[]> DecryptAsync(byte[] data, CancellationToken ct = default)
+        {
+            var output = data.ToArray();
+            if (Corrupt) output[0] ^= 1;
+            return Task.FromResult(output);
+        }
     }
 }
