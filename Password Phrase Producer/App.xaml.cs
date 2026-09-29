@@ -82,6 +82,11 @@ namespace Password_Phrase_Producer
                  if (!_storageChecked)
                  {
                      await StartupDataGuard.VerifyAsync(FileSystem.AppDataDirectory, key => SecureStorage.Default.GetAsync(key));
+#if IOS || MACCATALYST
+                     // Previous biometric fallback persisted unwrapped vault keys.
+                     SecureStorage.Default.Remove("PasswordVaultBiometricKey_V2");
+                     SecureStorage.Default.Remove("DataVaultBiometricKey_V2");
+#endif
                      _storageChecked = true;
                  }
                  var isConfigured = await _appLockService.IsConfiguredAsync();

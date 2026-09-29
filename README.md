@@ -55,7 +55,8 @@ Security highlights:
 
 - **PBKDF2** with a high iteration count for master keys.
 - **AES-GCM encryption** for vault files, TOTP secrets, and sync content.
-- Optional **biometric unlock** (per vault or at the app-lock layer).
+- Optional **biometric unlock** on Android and Windows (per vault or at the app-lock layer).
+  iOS and Mac Catalyst require the password until biometric key protection is implemented there.
 
 ---
 

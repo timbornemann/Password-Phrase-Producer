@@ -82,16 +82,6 @@
         "resolved": "1.4.1",
         "contentHash": "UXjZ80T6BfVACJWmEcz4UFZ93hwX3STKojKvVpPk3qUhubjnLwIiZMsI4Hh91HhYxC0JlatNdNrVK2wkv4O9/Q=="
       },
-      "Plugin.Maui.Biometric": {
-        "type": "Direct",
-        "requested": "[0.0.7, )",
-        "resolved": "0.0.7",
-        "contentHash": "C5cS2ORHK4lkdaJoVh2z5B6ScttVmKiO8/6wgt3EsA6atyPwM+wJi5IX2vlwfUM7+ZQOvf530FasOIbZ0POP/g==",
-        "dependencies": {
-          "Xamarin.AndroidX.Biometric": "1.1.0.28",
-          "Xamarin.AndroidX.Collection.Ktx": "1.5.0.1"
-        }
-      },
       "SkiaSharp": {
         "type": "Direct",
         "requested": "[2.88.8, )",
@@ -1352,12 +1342,6 @@
         "resolved": "1.4.1",
         "contentHash": "UXjZ80T6BfVACJWmEcz4UFZ93hwX3STKojKvVpPk3qUhubjnLwIiZMsI4Hh91HhYxC0JlatNdNrVK2wkv4O9/Q=="
       },
-      "Plugin.Maui.Biometric": {
-        "type": "Direct",
-        "requested": "[0.0.7, )",
-        "resolved": "0.0.7",
-        "contentHash": "C5cS2ORHK4lkdaJoVh2z5B6ScttVmKiO8/6wgt3EsA6atyPwM+wJi5IX2vlwfUM7+ZQOvf530FasOIbZ0POP/g=="
-      },
       "SkiaSharp": {
         "type": "Direct",
         "requested": "[2.88.8, )",
@@ -1641,12 +1625,6 @@
         "resolved": "1.4.1",
         "contentHash": "UXjZ80T6BfVACJWmEcz4UFZ93hwX3STKojKvVpPk3qUhubjnLwIiZMsI4Hh91HhYxC0JlatNdNrVK2wkv4O9/Q=="
       },
-      "Plugin.Maui.Biometric": {
-        "type": "Direct",
-        "requested": "[0.0.7, )",
-        "resolved": "0.0.7",
-        "contentHash": "C5cS2ORHK4lkdaJoVh2z5B6ScttVmKiO8/6wgt3EsA6atyPwM+wJi5IX2vlwfUM7+ZQOvf530FasOIbZ0POP/g=="
-      },
       "SkiaSharp": {
         "type": "Direct",
         "requested": "[2.88.8, )",
@@ -1923,12 +1901,6 @@
         "requested": "[1.4.1, )",
         "resolved": "1.4.1",
         "contentHash": "UXjZ80T6BfVACJWmEcz4UFZ93hwX3STKojKvVpPk3qUhubjnLwIiZMsI4Hh91HhYxC0JlatNdNrVK2wkv4O9/Q=="
-      },
-      "Plugin.Maui.Biometric": {
-        "type": "Direct",
-        "requested": "[0.0.7, )",
-        "resolved": "0.0.7",
-        "contentHash": "C5cS2ORHK4lkdaJoVh2z5B6ScttVmKiO8/6wgt3EsA6atyPwM+wJi5IX2vlwfUM7+ZQOvf530FasOIbZ0POP/g=="
       },
       "SkiaSharp": {
         "type": "Direct",

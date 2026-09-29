@@ -328,6 +328,15 @@ public class AppLockService : IAppLockService
         if (!string.IsNullOrEmpty(json))
         {
             _cachedMetadata = JsonSerializer.Deserialize<AppLockMetadata>(json);
+#if IOS || MACCATALYST
+            // Older versions stored the raw master key as the "biometric ciphertext".
+            if (_cachedMetadata?.BiometricEncryptedMasterKey is not null)
+            {
+                _cachedMetadata.BiometricEncryptedMasterKey = null;
+                await SecureStorage.Default.SetAsync(AppLockStorageKey, JsonSerializer.Serialize(_cachedMetadata))
+                    .ConfigureAwait(false);
+            }
+#endif
         }
     }
 

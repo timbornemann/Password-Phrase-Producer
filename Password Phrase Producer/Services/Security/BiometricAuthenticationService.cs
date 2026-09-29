@@ -1,5 +1,4 @@
 using System;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -421,100 +420,13 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
     }
 
 #else
-    public async Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)
-    {
-        var status = await Plugin.Maui.Biometric.BiometricAuthenticationService.Default
-            .GetAuthenticationStatusAsync()
-            .WaitAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        return IsAvailable(status);
-    }
-
-    public async Task<bool> AuthenticateAsync(string reason, CancellationToken cancellationToken = default)
-    {
-        var request = new Plugin.Maui.Biometric.AuthenticationRequest
-        {
-            Title = "Passwort Tresor entsperren",
-            Subtitle = reason,
-            NegativeText = "Abbrechen"
-        };
-
-        var result = await Plugin.Maui.Biometric.BiometricAuthenticationService.Default
-            .AuthenticateAsync(request, cancellationToken)
-            .ConfigureAwait(false);
-
-        return result.Status == Plugin.Maui.Biometric.BiometricResponseStatus.Success;
-    }
-
-    public async Task<byte[]> EncryptAsync(byte[] data, CancellationToken cancellationToken = default)
-    {
-        // Fallback for iOS/Others if encryption not critically implemented yet.
-        // Ideally should implement Keychain AccessControl for iOS.
-        // Current User Request focused on "Windows/iOS" but recommendations emphasized Windows TPM.
-        // For now, iOS remains on standard Authenticate + Store logic (which is imperfect but not explicitly broken if we assume Keychain is secure enough).
-        // WARNING: This still returns cleartext, relying on SecureStorage (Keychain). 
-        // If secure storage is compromised (Jailbreak), key is visible.
-        
-        var authObj = await AuthenticateAsync("Verschlüsselung autorisieren", cancellationToken);
-        if (!authObj)
-        {
-             throw new UnauthorizedAccessException("Authentication failed.");
-        }
-        return data; 
-    }
-
-    public async Task<byte[]> DecryptAsync(byte[] data, CancellationToken cancellationToken = default)
-    {
-        var authObj = await AuthenticateAsync("Entschlüsselung autorisieren", cancellationToken);
-        if (!authObj)
-        {
-             throw new UnauthorizedAccessException("Authentication failed.");
-        }
-        return data;
-    }
-
-    private static bool IsAvailable(object? status)
-    {
-        if (status is null)
-        {
-            return false;
-        }
-
-        if (status is Enum enumStatus)
-        {
-            return string.Equals(enumStatus.ToString(), "Available", StringComparison.Ordinal);
-        }
-
-        var statusProperty = status.GetType().GetRuntimeProperty("Status") ?? status.GetType().GetProperty("Status");
-        if (statusProperty is not null)
-        {
-            var value = statusProperty.GetValue(status);
-            if (value is null)
-            {
-                return false;
-            }
-
-            if (value is Enum nestedEnum)
-            {
-                return string.Equals(nestedEnum.ToString(), "Available", StringComparison.Ordinal);
-            }
-
-            if (value is bool boolValue)
-            {
-                return boolValue;
-            }
-
-            return string.Equals(value.ToString(), "Available", StringComparison.Ordinal);
-        }
-
-        var availableProperty = status.GetType().GetRuntimeProperty("IsAvailable") ?? status.GetType().GetProperty("IsAvailable");
-        if (availableProperty?.GetValue(status) is bool isAvailable)
-        {
-            return isAvailable;
-        }
-
-        return string.Equals(status.ToString(), "Available", StringComparison.Ordinal);
-    }
+    // A prompt alone does not protect key material. Until this platform has a
+    // hardware/Keychain bound encryption implementation, biometric unlock is disabled.
+    public Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
+    public Task<bool> AuthenticateAsync(string reason, CancellationToken cancellationToken = default) => Task.FromResult(false);
+    public Task<byte[]> EncryptAsync(byte[] data, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Biometric key protection is unavailable on this platform.");
+    public Task<byte[]> DecryptAsync(byte[] data, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Biometric key protection is unavailable on this platform.");
 #endif
 }
