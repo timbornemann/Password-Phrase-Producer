@@ -9,19 +9,45 @@ using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
 using Password_Phrase_Producer.ViewModels;
 using Password_Phrase_Producer.Views.Dialogs;
+using Password_Phrase_Producer.Services.Security;
+using Password_Phrase_Producer.Views.Security;
 
 namespace Password_Phrase_Producer.Views;
 
 public partial class SettingsPage : ContentPage
 {
     private readonly VaultSettingsViewModel _viewModel;
+    private readonly IRecoveryQuestionsService _recoveryQuestions;
+    private readonly IUnlockAttemptGate _attemptGate;
     private LoadingPage? _loadingPage;
+    private bool _recoverySettingsBusy;
 
-    public SettingsPage(VaultSettingsViewModel viewModel, UpdateSettingsViewModel updates)
+    public SettingsPage(VaultSettingsViewModel viewModel, UpdateSettingsViewModel updates,
+        IRecoveryQuestionsService recoveryQuestions, IUnlockAttemptGate attemptGate)
     {
         InitializeComponent();
         BindingContext = _viewModel = viewModel;
         UpdatePanel.BindingContext = updates;
+        _recoveryQuestions = recoveryQuestions;
+        _attemptGate = attemptGate;
+    }
+
+    private async void OnConfigureRecoveryClicked(object? sender, EventArgs e)
+    {
+        if (_recoverySettingsBusy) return;
+        _recoverySettingsBusy = true;
+        try
+        {
+            await _viewModel.InitializeAsync();
+            if (!await EnsureVaultUnlockedAsync() || !await EnsureDataVaultUnlockedAsync() ||
+                !await EnsureAuthenticatorUnlockedAsync()) return;
+
+            var page = new RecoverySettingsPage(_recoveryQuestions, _attemptGate);
+            await Navigation.PushModalAsync(page);
+            await page.WaitForCloseAsync();
+        }
+        catch (Exception ex) { await DisplayAlert("Sicherheitsfragen", ex.Message, "OK"); }
+        finally { _viewModel.LockAllVaults(); _recoverySettingsBusy = false; }
     }
 
     private async Task<bool> EnsureVaultUnlockedAsync()
@@ -32,6 +58,7 @@ public partial class SettingsPage : ContentPage
         {
             return true;
         }
+        if (!await EnsureAttemptsAvailableAsync(ProtectedAccess.PasswordVault)) return false;
 
         var promptPage = new PasswordPromptPage(
             "Passwort-Tresor entsperren",
@@ -51,7 +78,7 @@ public partial class SettingsPage : ContentPage
         var success = await _viewModel.UnlockVaultWithPasswordAsync(password);
         if (!success)
         {
-            await DisplayAlert("Fehler", "Falsches Passwort.", "OK");
+            await ShowUnlockFailureAsync(ProtectedAccess.PasswordVault);
             return false;
         }
 
@@ -65,6 +92,7 @@ public partial class SettingsPage : ContentPage
         {
             return true;
         }
+        if (!await EnsureAttemptsAvailableAsync(ProtectedAccess.PasswordVault)) return false;
 
         var promptPage = new PasswordPromptPage(
             "Passwort-Tresor entsperren",
@@ -84,7 +112,7 @@ public partial class SettingsPage : ContentPage
         var success = await _viewModel.UnlockVaultWithoutSyncAsync(password);
         if (!success)
         {
-            await DisplayAlert("Fehler", "Falsches Passwort.", "OK");
+            await ShowUnlockFailureAsync(ProtectedAccess.PasswordVault);
             return false;
         }
 
@@ -100,6 +128,7 @@ public partial class SettingsPage : ContentPage
         {
             return true;
         }
+        if (!await EnsureAttemptsAvailableAsync(ProtectedAccess.DataVault)) return false;
 
         var promptPage = new PasswordPromptPage(
             "Datentresor entsperren",
@@ -119,7 +148,7 @@ public partial class SettingsPage : ContentPage
         var success = await _viewModel.UnlockDataVaultWithPasswordAsync(password);
         if (!success)
         {
-            await DisplayAlert("Fehler", "Falsches Passwort.", "OK");
+            await ShowUnlockFailureAsync(ProtectedAccess.DataVault);
             return false;
         }
 
@@ -133,6 +162,7 @@ public partial class SettingsPage : ContentPage
         {
             return true;
         }
+        if (!await EnsureAttemptsAvailableAsync(ProtectedAccess.DataVault)) return false;
 
         var promptPage = new PasswordPromptPage(
             "Datentresor entsperren",
@@ -152,7 +182,7 @@ public partial class SettingsPage : ContentPage
         var success = await _viewModel.UnlockDataVaultWithoutSyncAsync(password);
         if (!success)
         {
-            await DisplayAlert("Fehler", "Falsches Passwort.", "OK");
+            await ShowUnlockFailureAsync(ProtectedAccess.DataVault);
             return false;
         }
 
@@ -166,6 +196,7 @@ public partial class SettingsPage : ContentPage
         {
             return true; // No password set, consider it unlocked
         }
+        if (!await EnsureAttemptsAvailableAsync(ProtectedAccess.Authenticator)) return false;
 
         var promptPage = new PasswordPromptPage(
             "Authenticator entsperren",
@@ -185,11 +216,28 @@ public partial class SettingsPage : ContentPage
         var success = await _viewModel.UnlockAuthenticatorWithPasswordAsync(password);
         if (!success)
         {
-            await DisplayAlert("Fehler", "Falsches Passwort.", "OK");
+            await ShowUnlockFailureAsync(ProtectedAccess.Authenticator);
             return false;
         }
 
         return true;
+    }
+
+    private async Task<bool> EnsureAttemptsAvailableAsync(ProtectedAccess access)
+    {
+        var status = await _attemptGate.GetStatusAsync(access);
+        if (!status.IsLocked) return true;
+        await DisplayAlert("Vorübergehend gesperrt",
+            $"Dieser Zugang ist bis {status.LockedUntil!.Value.ToLocalTime():g} gesperrt. Öffne den Tresor nach Ablauf der Wartezeit oder nutze dort den einmaligen Notzugang.", "OK");
+        return false;
+    }
+
+    private async Task ShowUnlockFailureAsync(ProtectedAccess access)
+    {
+        var status = await _attemptGate.GetStatusAsync(access);
+        await DisplayAlert(status.IsLocked ? "Vorübergehend gesperrt" : "Passwort ungültig",
+            status.IsLocked ? $"Erneut versuchen ab {status.LockedUntil!.Value.ToLocalTime():g}." :
+                $"Noch {status.PasswordAttemptsRemaining} Passwortversuche.", "OK");
     }
 
     private async Task<bool?> AskMergeOrReplaceAsync()

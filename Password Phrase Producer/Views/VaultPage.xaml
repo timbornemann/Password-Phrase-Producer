@@ -653,7 +653,7 @@
                     </VerticalStackLayout>
 
                     <VerticalStackLayout Spacing="10">
-                        <Entry
+                        <Entry x:Name="VaultPasswordEntry"
                             Text="{Binding Password}"
                             IsPassword="True"
                             Placeholder="Master-Passwort"
@@ -697,7 +697,7 @@
                                 VerticalOptions="Center" />
                         </Grid>
 
-                        <Button
+                        <Button x:Name="UnlockButton"
                             Text="Entsperren"
                             Command="{Binding UnlockCommand}"
                             HeightRequest="40"
@@ -706,7 +706,7 @@
                             TextColor="White"
                             CornerRadius="10" />
 
-                        <Button
+                        <Button x:Name="BiometricUnlockButton"
                             Text="Fingerabdruck"
                             Command="{Binding UnlockWithBiometricCommand}"
                             HeightRequest="40"
@@ -716,6 +716,9 @@
                             BorderColor="#4A5CFF"
                             BorderWidth="1"
                             IsVisible="{Binding CanUseBiometric}" />
+                        <Label x:Name="AttemptStatusLabel" TextColor="#E8EBFF" HorizontalTextAlignment="Center" />
+                        <Button x:Name="RecoveryButton" Text="Sicherheitsfragen beantworten"
+                                Clicked="OnRecoveryClicked" IsVisible="False" />
                     </VerticalStackLayout>
                 </VerticalStackLayout>
                 </Grid>

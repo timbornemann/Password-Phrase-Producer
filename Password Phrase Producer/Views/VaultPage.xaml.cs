@@ -17,20 +17,29 @@ using Password_Phrase_Producer.Services.Vault;
 using Password_Phrase_Producer.ViewModels;
 using Password_Phrase_Producer.Services;
 using Password_Phrase_Producer.Views.Dialogs;
+using Password_Phrase_Producer.Services.Security;
+using Password_Phrase_Producer.Views.Security;
 
 namespace Password_Phrase_Producer.Views;
 
 public partial class VaultPage : ContentPage
 {
     private readonly VaultPageViewModel _viewModel;
+    private readonly IUnlockAttemptGate _attemptGate;
+    private readonly IRecoveryQuestionsService _recoveryQuestions;
+    private Microsoft.Maui.Dispatching.IDispatcherTimer? _lockoutTimer;
+    private bool _refreshingLockout;
     private int _modalDepth;
     private PendingVaultEntryRequest? _pendingVaultRequest;
     private bool _isSubscribedToUnlockChanges;
 
-    public VaultPage(VaultPageViewModel viewModel)
+    public VaultPage(VaultPageViewModel viewModel, IUnlockAttemptGate attemptGate,
+        IRecoveryQuestionsService recoveryQuestions)
     {
         InitializeComponent();
         BindingContext = _viewModel = viewModel;
+        _attemptGate = attemptGate;
+        _recoveryQuestions = recoveryQuestions;
     }
 
     protected override async void OnAppearing()
@@ -44,6 +53,11 @@ public partial class VaultPage : ContentPage
 
         _viewModel.Activate();
         await _viewModel.InitializeAsync();
+        await RefreshLockoutAsync();
+        _lockoutTimer = Dispatcher.CreateTimer();
+        _lockoutTimer.Interval = TimeSpan.FromSeconds(1);
+        _lockoutTimer.Tick += async (_, _) => await RefreshLockoutAsync();
+        _lockoutTimer.Start();
 
         await HandlePendingVaultRequestAsync();
     }
@@ -57,6 +71,8 @@ public partial class VaultPage : ContentPage
             return;
         }
 
+        _lockoutTimer?.Stop();
+
         _viewModel.Deactivate();
         DetachUnlockSubscription();
         if (_pendingVaultRequest is { } pendingRequest)
@@ -64,6 +80,58 @@ public partial class VaultPage : ContentPage
             VaultNavigationCoordinator.ClearPendingRequest(pendingRequest.Id);
             _pendingVaultRequest = null;
         }
+    }
+
+    private async void OnRecoveryClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            var page = new RecoveryChallengePage(_recoveryQuestions, _attemptGate, ProtectedAccess.PasswordVault);
+            await Navigation.PushModalAsync(page);
+            await page.WaitForCloseAsync();
+            await RefreshLockoutAsync();
+        }
+        catch (Exception ex) { AttemptStatusLabel.Text = ex.Message; }
+    }
+
+    private async Task RefreshLockoutAsync()
+    {
+        if (_refreshingLockout) return;
+        _refreshingLockout = true;
+        try
+        {
+            if (_viewModel.IsNewVault || _viewModel.IsUnlocked)
+            {
+                AttemptStatusLabel.IsVisible = false;
+                RecoveryButton.IsVisible = false;
+                UnlockButton.IsEnabled = true;
+                VaultPasswordEntry.IsEnabled = true;
+                return;
+            }
+            var status = await _attemptGate.GetStatusAsync(ProtectedAccess.PasswordVault);
+            AttemptStatusLabel.IsVisible = true;
+            AttemptStatusLabel.Text = status.IsLocked
+                ? $"Gesperrt für {FormatLockout(status.LockedUntil!.Value)}"
+                : $"Noch {status.PasswordAttemptsRemaining} Passwort{(status.PasswordAttemptsRemaining == 1 ? "versuch" : "versuche")}";
+            UnlockButton.IsEnabled = VaultPasswordEntry.IsEnabled = !status.IsLocked;
+            BiometricUnlockButton.IsEnabled = status.CanUseBiometrics;
+            RecoveryButton.IsVisible = status.CanUseRecovery && await _recoveryQuestions.IsConfiguredAsync();
+        }
+        catch (Exception ex)
+        {
+            UnlockButton.IsEnabled = VaultPasswordEntry.IsEnabled = BiometricUnlockButton.IsEnabled = false;
+            AttemptStatusLabel.IsVisible = true;
+            AttemptStatusLabel.Text = ex.Message;
+            RecoveryButton.IsVisible = false;
+        }
+        finally { _refreshingLockout = false; }
+    }
+
+    private static string FormatLockout(DateTimeOffset until)
+    {
+        var remaining = until - DateTimeOffset.UtcNow;
+        if (remaining < TimeSpan.Zero) remaining = TimeSpan.Zero;
+        return $"{(int)remaining.TotalHours:00}:{remaining.Minutes:00}:{remaining.Seconds:00}";
     }
 
     private async void OnAddEntryClicked(object? sender, EventArgs e)

@@ -89,7 +89,8 @@ public sealed class UnlockAttemptGateTests
     [Fact]
     public async Task RecoveryIsOneSubmissionAndGrantsOnlyTwoPasswordAttempts()
     {
-        var gate = NewGate(new FakeClock());
+        var clock = new FakeClock();
+        var gate = NewGate(clock);
         for (var i = 0; i < 4; i++)
             await gate.RunPasswordAsync(ProtectedAccess.DataVault, () => Task.FromResult(false));
         Assert.True(await gate.RedeemRecoveryAsync(ProtectedAccess.DataVault, () => Task.FromResult(true)));
@@ -97,9 +98,12 @@ public sealed class UnlockAttemptGateTests
         Assert.False(status.IsLocked);
         Assert.Equal(2, status.PasswordAttemptsRemaining);
         Assert.False(status.CanUseBiometrics);
+        Assert.False(await gate.RunBiometricAsync(ProtectedAccess.DataVault, () => Task.FromResult(true)));
+        Assert.Equal(2, (await gate.GetStatusAsync(ProtectedAccess.DataVault)).PasswordAttemptsRemaining);
         for (var i = 0; i < 2; i++)
             await gate.RunPasswordAsync(ProtectedAccess.DataVault, () => Task.FromResult(false));
-        Assert.True((await gate.GetStatusAsync(ProtectedAccess.DataVault)).IsLocked);
+        Assert.Equal(clock.GetUtcNow().AddMinutes(5),
+            (await gate.GetStatusAsync(ProtectedAccess.DataVault)).LockedUntil);
         Assert.False(await gate.RedeemRecoveryAsync(ProtectedAccess.DataVault, () => Task.FromResult(true)));
         await gate.RearmRecoveryAsync(ProtectedAccess.DataVault);
         Assert.True(await gate.RedeemRecoveryAsync(ProtectedAccess.DataVault, () => Task.FromResult(true)));
@@ -116,6 +120,30 @@ public sealed class UnlockAttemptGateTests
         var status = await gate.GetStatusAsync(ProtectedAccess.App);
         Assert.True(status.IsLocked);
         Assert.True(status.RecoveryUsed);
+    }
+
+    [Fact]
+    public async Task RecoveryUsePersistsAcrossRestartAndPasswordSuccess()
+    {
+        var store = new MemoryStore();
+        var gate = new UnlockAttemptGate(store);
+        for (var i = 0; i < 4; i++)
+            await gate.RunPasswordAsync(ProtectedAccess.App, () => Task.FromResult(false));
+        Assert.True(await gate.RedeemRecoveryAsync(ProtectedAccess.App, () => Task.FromResult(true)));
+        gate = new UnlockAttemptGate(store);
+        Assert.True((await gate.GetStatusAsync(ProtectedAccess.App)).RecoveryUsed);
+        Assert.True(await gate.RunPasswordAsync(ProtectedAccess.App, () => Task.FromResult(true)));
+        Assert.True((await gate.GetStatusAsync(ProtectedAccess.App)).RecoveryUsed);
+    }
+
+    [Fact]
+    public async Task MissingStateAfterInitializationFailsClosed()
+    {
+        var store = new MemoryStore();
+        var gate = new UnlockAttemptGate(store);
+        await gate.GetStatusAsync(ProtectedAccess.App);
+        store.Remove("UnlockAttemptState_V1_App");
+        await Assert.ThrowsAsync<InvalidDataException>(() => gate.GetStatusAsync(ProtectedAccess.App));
     }
 
     [Fact]
@@ -136,6 +164,7 @@ public sealed class UnlockAttemptGateTests
         private readonly Dictionary<string, string> _data = new();
         public Task<string?> ReadAsync(string key) => Task.FromResult(_data.GetValueOrDefault(key));
         public Task WriteAsync(string key, string value) { _data[key] = value; return Task.CompletedTask; }
+        public void Remove(string key) => _data.Remove(key);
     }
 
     private sealed class FakeClock : TimeProvider

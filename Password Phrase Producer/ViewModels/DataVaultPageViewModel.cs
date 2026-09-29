@@ -24,6 +24,7 @@ public class DataVaultPageViewModel : INotifyPropertyChanged
 
     private readonly DataVaultService _vaultService;
     private readonly IBiometricAuthenticationService _biometricAuthenticationService;
+    private readonly IUnlockAttemptGate _attemptGate;
     private bool _isBusy;
     private bool _isListening;
     private long _lifecycleGeneration;
@@ -41,10 +42,12 @@ public class DataVaultPageViewModel : INotifyPropertyChanged
     private readonly List<PasswordVaultEntry> _allEntries = new();
     private readonly List<string> _availableCategories = new();
 
-    public DataVaultPageViewModel(DataVaultService vaultService, IBiometricAuthenticationService biometricAuthenticationService)
+    public DataVaultPageViewModel(DataVaultService vaultService, IBiometricAuthenticationService biometricAuthenticationService,
+        IUnlockAttemptGate attemptGate)
     {
         _vaultService = vaultService;
         _biometricAuthenticationService = biometricAuthenticationService;
+        _attemptGate = attemptGate;
         _entryGroups = new ObservableCollection<VaultEntryGroup>();
         CategoryFilterOptions = new ObservableCollection<string> { AllCategoriesFilter };
 
@@ -376,7 +379,8 @@ public class DataVaultPageViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(SelectedCategory));
             });
 
-            if (CanUseBiometric && IsBiometricConfigured && !_hasAttemptedAutoBiometric)
+            if (CanUseBiometric && IsBiometricConfigured && !_hasAttemptedAutoBiometric &&
+                (await _attemptGate.GetStatusAsync(ProtectedAccess.DataVault)).CanUseBiometrics)
             {
                 if (!_isListening || generation != Interlocked.Read(ref _lifecycleGeneration)) return;
                 _hasAttemptedAutoBiometric = true;
@@ -485,8 +489,11 @@ public class DataVaultPageViewModel : INotifyPropertyChanged
             var unlocked = await _vaultService.TryUnlockWithStoredKeyAsync(cancellationToken);
             if (!unlocked)
             {
-                UnlockError = "Der gespeicherte biometrische Schlüssel ist nicht mehr gültig. Bitte gib dein Passwort ein.";
-                IsBiometricConfigured = false;
+                var status = await _attemptGate.GetStatusAsync(ProtectedAccess.DataVault);
+                UnlockError = status.IsLocked ? "Der Tresor ist vorübergehend gesperrt." :
+                    !status.CanUseBiometrics ? "Biometrie ist vorübergehend gesperrt. Bitte gib dein Passwort ein." :
+                    "Biometrische Entsperrung fehlgeschlagen. Bitte gib dein Passwort ein.";
+                IsBiometricConfigured = await _vaultService.HasBiometricKeyAsync(cancellationToken);
                 return;
             }
 

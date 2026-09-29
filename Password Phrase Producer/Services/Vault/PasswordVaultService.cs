@@ -135,6 +135,7 @@ public class PasswordVaultService
                 _activePasswordMetadata = new PasswordMetadata(Convert.ToBase64String(salt), Convert.ToBase64String(verifier), Pbkdf2Iterations);
             }
             UpdateStoredEntryCount(0);
+            await _attemptGate.ResetAsync(ProtectedAccess.PasswordVault).ConfigureAwait(false);
 
             if (enableBiometrics)
             {
@@ -1488,6 +1489,7 @@ public class PasswordVaultService
                 SecureStorage.Default.Remove(BiometricKeyStorageKey);
 
                 ClearStoredEntryCount();
+                await _attemptGate.ResetAsync(ProtectedAccess.PasswordVault).ConfigureAwait(false);
             }
             finally
             {

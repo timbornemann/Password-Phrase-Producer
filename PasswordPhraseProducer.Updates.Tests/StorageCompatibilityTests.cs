@@ -15,6 +15,7 @@ internal static class SecureStorage
         private readonly ConcurrentDictionary<string, string> _values = new();
         public Task<string?> GetAsync(string key) => Task.FromResult(_values.GetValueOrDefault(key));
         public Task SetAsync(string key, string value) { _values[key] = value; return Task.CompletedTask; }
+        public void Remove(string key) => _values.TryRemove(key, out _);
         public void Clear() => _values.Clear();
     }
 }

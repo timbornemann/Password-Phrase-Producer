@@ -268,6 +268,7 @@ public class AppLockService : IAppLockService
                 };
 
                 await SecureStorage.Default.SetAsync(AppLockStorageKey, JsonSerializer.Serialize(metadata)).ConfigureAwait(false);
+                await _attemptGate.ResetAsync(ProtectedAccess.App).ConfigureAwait(false);
                 _cachedMetadata = metadata;
                 lock (_keyStateLock)
                 {

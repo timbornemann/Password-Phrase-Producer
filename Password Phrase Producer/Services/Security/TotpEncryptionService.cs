@@ -126,6 +126,7 @@ public class TotpEncryptionService
                 _unlockedKey = masterKey;
                 _isUnlocked = true;
             }
+            await _attemptGate.ResetAsync(ProtectedAccess.Authenticator).ConfigureAwait(false);
         }
         catch
         {
@@ -424,7 +425,7 @@ public class TotpEncryptionService
     /// <summary>
     /// Reset the service by deleting all stored data and passwords
     /// </summary>
-    public void Reset()
+    public async Task ResetAsync()
     {
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
@@ -439,6 +440,7 @@ public class TotpEncryptionService
             SecureStorage.Default.Remove(PasswordSaltStorageKey);
             SecureStorage.Default.Remove(PasswordVerifierStorageKey);
             SecureStorage.Default.Remove(PasswordIterationsStorageKey);
+            await _attemptGate.ResetAsync(ProtectedAccess.Authenticator).ConfigureAwait(false);
         }
         catch
         {

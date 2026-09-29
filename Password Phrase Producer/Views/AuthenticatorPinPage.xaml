@@ -128,6 +128,9 @@
                         BackgroundColor="#1F2338"
                         TextColor="White"
                         CornerRadius="10" />
+                    <Label x:Name="AttemptStatusLabel" TextColor="#E8EBFF" HorizontalTextAlignment="Center" />
+                    <Button x:Name="RecoveryButton" Text="Sicherheitsfragen beantworten"
+                            Clicked="OnRecoveryClicked" IsVisible="False" />
                 </VerticalStackLayout>
             </VerticalStackLayout>
         </Grid>

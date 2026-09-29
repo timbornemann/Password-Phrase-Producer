@@ -780,7 +780,7 @@ public class TotpService
                 }
 
                 // Reset encryption service (clears password and key file)
-                _encryptionService.Reset();
+                await _encryptionService.ResetAsync().ConfigureAwait(false);
             }
             finally
             {

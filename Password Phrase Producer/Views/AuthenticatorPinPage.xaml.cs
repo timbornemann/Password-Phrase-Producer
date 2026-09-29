@@ -1,4 +1,5 @@
 using Password_Phrase_Producer.Services.Security;
+using Password_Phrase_Producer.Views.Security;
 
 namespace Password_Phrase_Producer.Views;
 
@@ -6,14 +7,21 @@ public partial class AuthenticatorPinPage : ContentPage
 {
     private readonly TotpEncryptionService _encryptionService;
     private readonly IBiometricAuthenticationService _biometricService;
+    private readonly IUnlockAttemptGate _attemptGate;
+    private readonly IRecoveryQuestionsService _recoveryQuestions;
+    private Microsoft.Maui.Dispatching.IDispatcherTimer? _lockoutTimer;
+    private bool _refreshingLockout;
     private bool _isSetupMode;
     private bool _isBusy;
 
-    public AuthenticatorPinPage(TotpEncryptionService encryptionService, IBiometricAuthenticationService biometricService)
+    public AuthenticatorPinPage(TotpEncryptionService encryptionService, IBiometricAuthenticationService biometricService,
+        IUnlockAttemptGate attemptGate, IRecoveryQuestionsService recoveryQuestions)
     {
         InitializeComponent();
         _encryptionService = encryptionService;
         _biometricService = biometricService;
+        _attemptGate = attemptGate;
+        _recoveryQuestions = recoveryQuestions;
         if (OperatingSystem.IsWindows())
         {
             BiometricSetupLabel.Text = "Windows Hello (PIN oder Biometrie) für den Authenticator aktivieren";
@@ -36,11 +44,68 @@ public partial class AuthenticatorPinPage : ContentPage
             BiometricSetupRow.IsVisible = canUseBiometrics && !hasBiometricKey;
             BiometricUnlockButton.IsVisible = canUseBiometrics && hasBiometricKey;
             UpdateUiState();
+            await RefreshLockoutAsync();
+            _lockoutTimer?.Stop();
+            _lockoutTimer = Dispatcher.CreateTimer();
+            _lockoutTimer.Interval = TimeSpan.FromSeconds(1);
+            _lockoutTimer.Tick += async (_, _) => await RefreshLockoutAsync();
+            _lockoutTimer.Start();
         }
         catch (Exception ex)
         {
             ShowError($"Fehler beim Laden: {ex.Message}");
         }
+    }
+
+    private async void OnRecoveryClicked(object? sender, EventArgs e)
+    {
+        if (_isBusy) return;
+        try
+        {
+            var page = new RecoveryChallengePage(_recoveryQuestions, _attemptGate, ProtectedAccess.Authenticator);
+            await Navigation.PushModalAsync(page);
+            await page.WaitForCloseAsync();
+            await RefreshLockoutAsync();
+        }
+        catch (Exception ex) { ShowError(ex.Message); }
+    }
+
+    private async Task RefreshLockoutAsync()
+    {
+        if (_refreshingLockout) return;
+        _refreshingLockout = true;
+        try
+        {
+            if (_isSetupMode)
+            {
+                AttemptStatusLabel.IsVisible = false;
+                RecoveryButton.IsVisible = false;
+                return;
+            }
+            var status = await _attemptGate.GetStatusAsync(ProtectedAccess.Authenticator);
+            AttemptStatusLabel.IsVisible = true;
+            AttemptStatusLabel.Text = status.IsLocked
+                ? $"Gesperrt für {FormatLockout(status.LockedUntil!.Value)}"
+                : $"Noch {status.PasswordAttemptsRemaining} Passwort{(status.PasswordAttemptsRemaining == 1 ? "versuch" : "versuche")}";
+            UnlockButton.IsEnabled = PinEntry.IsEnabled = !status.IsLocked && !_isBusy;
+            BiometricUnlockButton.IsEnabled = status.CanUseBiometrics && !_isBusy;
+            RecoveryButton.IsVisible = status.CanUseRecovery && await _recoveryQuestions.IsConfiguredAsync();
+        }
+        catch (Exception ex)
+        {
+            UnlockButton.IsEnabled = PinEntry.IsEnabled = BiometricUnlockButton.IsEnabled = false;
+            AttemptStatusLabel.IsVisible = true;
+            AttemptStatusLabel.Text = ex.Message;
+            RecoveryButton.IsVisible = false;
+        }
+        finally { _refreshingLockout = false; }
+    }
+
+    private static string FormatLockout(DateTimeOffset until)
+    {
+        var remaining = until - DateTimeOffset.UtcNow;
+        if (remaining < TimeSpan.Zero) remaining = TimeSpan.Zero;
+        return $"{(int)remaining.TotalHours:00}:{remaining.Minutes:00}:{remaining.Seconds:00}";
     }
 
     private void UpdateUiState()
@@ -130,7 +195,7 @@ public partial class AuthenticatorPinPage : ContentPage
                 _isSetupMode = !await _encryptionService.HasPasswordAsync();
                 UpdateUiState();
             }
-            finally { _isBusy = false; }
+            finally { _isBusy = false; await RefreshLockoutAsync(); }
         }
         else
         {
@@ -168,6 +233,7 @@ public partial class AuthenticatorPinPage : ContentPage
             {
                 BiometricUnlockButton.IsEnabled = true;
                 _isBusy = false;
+                await RefreshLockoutAsync();
             }
         }
     }
@@ -208,6 +274,7 @@ public partial class AuthenticatorPinPage : ContentPage
             _isBusy = false;
             UnlockButton.IsEnabled = true;
             BiometricUnlockButton.IsEnabled = true;
+            await RefreshLockoutAsync();
         }
     }
 
@@ -257,6 +324,7 @@ public partial class AuthenticatorPinPage : ContentPage
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
+        _lockoutTimer?.Stop();
         PinEntry.Text = string.Empty;
         ConfirmPinEntry.Text = string.Empty;
         BiometricSetupSwitch.IsToggled = false;

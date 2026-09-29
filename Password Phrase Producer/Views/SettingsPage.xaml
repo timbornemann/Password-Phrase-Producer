@@ -766,6 +766,15 @@
                             Margin="0,8,0,0" />
                     </VerticalStackLayout>
                 </Border>
+                <Border BackgroundColor="#1B2036" Padding="14" StrokeThickness="0">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Sicherheitsfragen" FontSize="16" FontAttributes="Bold" TextColor="White" />
+                        <Label Text="Einmaliger Notzugang bei einer zeitlichen Sperre. Zum Ändern müssen alle eingerichteten Tresore geöffnet sein."
+                               FontSize="12" TextColor="#9EA3C4" />
+                        <Button Text="Sicherheitsfragen einrichten oder ändern"
+                                Clicked="OnConfigureRecoveryClicked" BackgroundColor="#4A5CFF" TextColor="White" />
+                    </VerticalStackLayout>
+                </Border>
             </VerticalStackLayout>
         </ScrollView>
     </Grid>
