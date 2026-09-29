@@ -308,7 +308,7 @@ public class TotpService
         var encryptedBytes = await File.ReadAllBytesAsync(_totpFilePath, cancellationToken).ConfigureAwait(false);
         if (encryptedBytes.Length == 0)
         {
-            return new List<TotpEntry>();
+            throw new InvalidDataException("Die vorhandene Authenticator-Datei ist leer.");
         }
 
         byte[]? decryptedBytes = null;
@@ -318,14 +318,16 @@ public class TotpService
 
             if (decryptedBytes.Length == 0)
             {
-                return new List<TotpEntry>();
+                throw new InvalidDataException("Die Authenticator-Datei enthält keinen gültigen Snapshot.");
             }
 
             var json = Encoding.UTF8.GetString(decryptedBytes);
             try
             {
                 var snapshot = JsonSerializer.Deserialize<TotpSnapshotDto>(json, _jsonOptions);
-                return snapshot?.Entries.Select(e => e.ToModel()).ToList() ?? new List<TotpEntry>();
+                if (snapshot?.Entries is null)
+                    throw new InvalidDataException("Die Authenticator-Datei enthält keine Einträge-Liste.");
+                return snapshot.Entries.Select(e => e.ToModel()).ToList();
             }
             catch (Exception ex)
             {
@@ -542,7 +544,7 @@ public class TotpService
 
         if (data.Length < nonceLength + tagLength)
         {
-            return Array.Empty<byte>();
+            throw new InvalidDataException("Der Chiffretext der Authenticator-Sicherung ist unvollständig.");
         }
 
         var cipherLength = data.Length - nonceLength - tagLength;

@@ -814,8 +814,7 @@ public class PasswordVaultService
         {
             if (decryptedBytes.Length == 0)
             {
-                UpdateStoredEntryCount(0);
-                return new List<PasswordVaultEntry>();
+                throw new InvalidDataException("Die Tresor-Datei enthält keinen gültigen Snapshot.");
             }
 
             var json = Encoding.UTF8.GetString(decryptedBytes);
@@ -823,8 +822,7 @@ public class PasswordVaultService
 
             if (snapshot?.Entries is null)
             {
-                UpdateStoredEntryCount(0);
-                return new List<PasswordVaultEntry>();
+                throw new InvalidDataException("Die Tresor-Datei enthält keine Einträge-Liste.");
             }
 
             var entries = snapshot.Entries
@@ -922,6 +920,8 @@ public class PasswordVaultService
         }
 
         var rawContent = await _secureFileService.ReadAllBytesAsync(_vaultFilePath, cancellationToken).ConfigureAwait(false);
+        if (rawContent.Length == 0)
+            throw new InvalidDataException("Die vorhandene Tresor-Datei ist leer.");
         return ParseVaultFile(rawContent);
     }
 
@@ -944,7 +944,7 @@ public class PasswordVaultService
                     return new VaultFileContent(cipher, dto.PasswordSalt, dto.PasswordVerifier, dto.Pbkdf2Iterations, rawContent);
                 }
 
-                return new VaultFileContent(Array.Empty<byte>(), dto?.PasswordSalt, dto?.PasswordVerifier, dto?.Pbkdf2Iterations, rawContent);
+                throw new InvalidDataException("Die Tresor-Datei enthält keinen Chiffretext.");
             }
         }
         catch (DecoderFallbackException)
@@ -1164,7 +1164,7 @@ public class PasswordVaultService
 
         if (data.Length < nonceLength + tagLength)
         {
-            return Array.Empty<byte>();
+            throw new InvalidDataException("Der Chiffretext der Tresor-Datei ist unvollständig.");
         }
 
         var cipherLength = data.Length - nonceLength - tagLength;
