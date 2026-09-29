@@ -60,6 +60,20 @@ public class TotpService
             try
             {
                 var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
+                if (!_encryptionService.IsUnlocked)
+                {
+                    foreach (var entry in entries)
+                    {
+                        if (entry.Secret is { } secret) CryptographicOperations.ZeroMemory(secret);
+                        entry.Secret = null;
+                    }
+                    return new List<TotpEntry>();
+                }
+                foreach (var entry in entries.Where(e => e.IsDeleted))
+                {
+                    if (entry.Secret is { } secret) CryptographicOperations.ZeroMemory(secret);
+                    entry.Secret = null;
+                }
                 return entries.Where(e => !e.IsDeleted).ToList();
             }
             finally
@@ -273,7 +287,7 @@ public class TotpService
 
     public TotpCode? GenerateCode(TotpEntry entry)
     {
-        if (entry.Secret == null || entry.Secret.Length == 0)
+        if (!_encryptionService.IsUnlocked || entry.Secret == null || entry.Secret.Length == 0)
         {
             return null;
         }

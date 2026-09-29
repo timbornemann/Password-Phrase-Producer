@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using Password_Phrase_Producer.Models;
 using Password_Phrase_Producer.Services;
 
@@ -43,6 +44,18 @@ public class TotpViewModelItem : INotifyPropertyChanged
 
     public int NextCopyFeedbackToken()
         => Interlocked.Increment(ref _copyFeedbackToken);
+
+    public void ClearSensitiveData()
+    {
+        if (Entry.Secret is { } secret)
+        {
+            CryptographicOperations.ZeroMemory(secret);
+            Entry.Secret = null;
+        }
+        Code = "--- ---";
+        NextCopyFeedbackToken();
+        IsCopyFeedbackActive = false;
+    }
 
     public int RemainingSeconds
     {

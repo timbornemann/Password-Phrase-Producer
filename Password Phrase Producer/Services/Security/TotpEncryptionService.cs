@@ -251,7 +251,10 @@ public class TotpEncryptionService
             _unlockedKey = null;
             _isUnlocked = false;
         }
+        Locked?.Invoke(this, EventArgs.Empty);
     }
+
+    public event EventHandler? Locked;
 
     /// <summary>
     /// Reset the service by deleting all stored data and passwords

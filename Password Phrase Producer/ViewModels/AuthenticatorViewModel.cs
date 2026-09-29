@@ -16,10 +16,12 @@ namespace Password_Phrase_Producer.ViewModels;
 public class AuthenticatorViewModel : INotifyPropertyChanged
 {
     private readonly TotpService _totpService;
+    private readonly TotpEncryptionService _encryptionService;
     private readonly IDispatcher _dispatcher;
     private IDispatcherTimer? _timer;
     private bool _isBusy;
     private bool _isActive;
+    private long _loadGeneration;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -36,9 +38,10 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
         set => SetProperty(ref _isBusy, value);
     }
 
-    public AuthenticatorViewModel(TotpService totpService)
+    public AuthenticatorViewModel(TotpService totpService, TotpEncryptionService encryptionService)
     {
         _totpService = totpService;
+        _encryptionService = encryptionService;
         _dispatcher = Application.Current?.Dispatcher ?? Dispatcher.GetForCurrentThread()!;
 
         AddEntryCommand = new Command(AddEntryAsync);
@@ -46,15 +49,14 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
         CopyCodeCommand = new Command<TotpViewModelItem>(CopyCodeAsync);
         RefreshCommand = new Command(async () => await LoadEntriesAsync());
 
-        _totpService.EntriesChanged += OnEntriesChanged;
     }
 
     public void Activate()
     {
         if (_isActive) return;
         _isActive = true;
-        
-        StartTimer();
+        _totpService.EntriesChanged += OnEntriesChanged;
+        _encryptionService.Locked += OnLocked;
         StartTimer();
         Task.Run(async () => 
         {
@@ -66,7 +68,23 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
     public void Deactivate()
     {
         _isActive = false;
+        Interlocked.Increment(ref _loadGeneration);
+        _totpService.EntriesChanged -= OnEntriesChanged;
+        _encryptionService.Locked -= OnLocked;
         StopTimer();
+        ClearEntries();
+    }
+
+    private void OnLocked(object? sender, EventArgs e)
+    {
+        if (MainThread.IsMainThread) Deactivate();
+        else _dispatcher.Dispatch(Deactivate);
+    }
+
+    private void ClearEntries()
+    {
+        foreach (var item in Entries) item.ClearSensitiveData();
+        Entries.Clear();
     }
 
     private void StartTimer()
@@ -88,6 +106,7 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
 
     private void UpdateCodes()
     {
+        if (!_isActive || !_totpService.IsUnlocked) return;
         foreach (var item in Entries)
         {
             var result = _totpService.GenerateCode(item.Entry);
@@ -110,7 +129,8 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
 
     private async Task LoadEntriesAsync()
     {
-        if (IsBusy) return;
+        if (IsBusy || !_isActive || !_totpService.IsUnlocked) return;
+        var generation = Interlocked.Increment(ref _loadGeneration);
         IsBusy = true;
         try
         {
@@ -119,7 +139,13 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
 
             _dispatcher.Dispatch(() =>
             {
-                Entries.Clear();
+                if (!_isActive || !_totpService.IsUnlocked ||
+                    generation != Interlocked.Read(ref _loadGeneration))
+                {
+                    foreach (var vm in viewModels) vm.ClearSensitiveData();
+                    return;
+                }
+                ClearEntries();
                 foreach (var vm in viewModels)
                 {
                     Entries.Add(vm);
@@ -157,7 +183,7 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
 
     private async void OnEntriesChanged(object? sender, EventArgs e)
     {
-        await LoadEntriesAsync();
+        if (_isActive) await LoadEntriesAsync();
     }
 
     private async void AddEntryAsync()
@@ -205,7 +231,7 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
 
     private async void CopyCodeAsync(TotpViewModelItem? item)
     {
-        if (item == null) return;
+        if (item == null || !_isActive || !_totpService.IsUnlocked) return;
         
         // Remove spaces for clipboard
         var cleanCode = item.Code.Replace(" ", "");
