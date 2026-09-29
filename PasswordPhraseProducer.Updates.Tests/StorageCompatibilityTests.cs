@@ -22,6 +22,22 @@ internal static class SecureStorage
 public sealed class StorageCompatibilityTests
 {
     [Fact]
+    public async Task SecureFilesNeverFallBackToPlaintextWithoutAppLock()
+    {
+        SecureStorage.Default.Clear();
+        var path = Path.Combine(Path.GetTempPath(), "ppp-no-plaintext-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var files = new SecureFileService(new AppLockService(new DisabledBiometrics()));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => files.WriteAllBytesAsync(path, new byte[] { 1, 2, 3 }));
+            Assert.False(File.Exists(path));
+            await File.WriteAllBytesAsync(path, new byte[] { 1, 2, 3 });
+            await Assert.ThrowsAsync<InvalidOperationException>(() => files.ReadAllBytesAsync(path));
+        }
+        finally { File.Delete(path); SecureStorage.Default.Clear(); }
+    }
+
+    [Fact]
     public async Task PasswordVerificationDoesNotUnlockTheApp()
     {
         SecureStorage.Default.Clear();

@@ -42,16 +42,9 @@ public class SecureFileService : ISecureFileService
                     CryptographicOperations.ZeroMemory(masterKey);
                 }
             }
-            else if (await _appLockService.IsConfiguredAsync().ConfigureAwait(false))
-            {
-                 // Configured but locked -> Error
-                 throw new InvalidOperationException("Cannot write secure file while App Lock is locked.");
-            }
             else
             {
-                // Not configured (Fresh install) -> Write plain
-                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-                await AtomicFile.WriteAsync(path, bytes, cancellationToken).ConfigureAwait(false);
+                throw new InvalidOperationException("Cannot write a secure file while App Lock is locked or unconfigured.");
             }
         }
         catch
@@ -68,15 +61,8 @@ public class SecureFileService : ISecureFileService
         {
             if (!File.Exists(path)) return Array.Empty<byte>();
 
-            // If configured, require encryption (or valid unlock)
-            if (await _appLockService.IsConfiguredAsync().ConfigureAwait(false))
+            if (_appLockService.IsUnlocked)
             {
-                if (!_appLockService.IsUnlocked)
-                {
-                    // Cannot decrypt.
-                     throw new InvalidOperationException("Cannot read secure file while App Lock is locked.");
-                }
-
                 var fileContent = await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
 
                 try
@@ -92,8 +78,7 @@ public class SecureFileService : ISecureFileService
                 }
             }
 
-            // Not configured: Assume plain.
-            return await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
+            throw new InvalidOperationException("Cannot read a secure file while App Lock is locked or unconfigured.");
         }
         catch
         {
