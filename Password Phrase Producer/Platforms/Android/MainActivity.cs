@@ -3,6 +3,7 @@ using Android.App;
 using Android.Content;
 using Android.Content.PM;
 using Android.OS;
+using Android.Views;
 
 namespace Password_Phrase_Producer
 {
@@ -17,6 +18,7 @@ namespace Password_Phrase_Producer
         {
             Platforms.Android.Services.AndroidUpdateInstaller.RecoverInterruptedSessions();
             base.OnCreate(savedInstanceState);
+            Window?.SetFlags(WindowManagerFlags.Secure, WindowManagerFlags.Secure);
             Current = this;
         }
 
