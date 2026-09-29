@@ -90,8 +90,8 @@ public class SynchronizationService : ISynchronizationService
                 // We need to check if it has content (length > 0). ISyncFileService abstraction doesn't have Length?
                 // Open stream to check.
                 using var stream = await _syncFileService.OpenReadAsync(path);
-                var length = stream.Length;
-                stream.Close();
+                var firstByte = new byte[1];
+                var length = await stream.ReadAsync(firstByte);
 
                 if (length > 0)
                 {
@@ -241,12 +241,11 @@ public class SynchronizationService : ISynchronizationService
 
     private async Task<byte[]> GetKeyAsync()
     {
+        if (!_appLockService.IsUnlocked) throw new InvalidOperationException("App locked.");
         if (_cachedCommonKey != null) return _cachedCommonKey;
 
         var encryptedKeyStr = await SecureStorage.Default.GetAsync(SyncKeyStorageKey);
         if (string.IsNullOrEmpty(encryptedKeyStr)) throw new InvalidOperationException("Sync not configured.");
-
-        if (!_appLockService.IsUnlocked) throw new InvalidOperationException("App locked.");
 
         var encryptedKey = Convert.FromBase64String(encryptedKeyStr);
         _cachedCommonKey = _appLockService.DecryptWithMasterKey(encryptedKey);
@@ -588,11 +587,12 @@ public class SynchronizationService : ISynchronizationService
         string json;
         using (var stream = await _syncFileService.OpenReadAsync(path))
         {
-            json = await ReadJsonFromStreamAsync(stream);
+            json = await SyncFileReader.ReadJsonAsync(stream);
         }
 
         var file = JsonSerializer.Deserialize<ExternalVaultFile>(json, _jsonOptions);
         if (file == null) throw new InvalidDataException("Invalid sync file.");
+        ValidateHeader(file.Header);
 
         if (string.IsNullOrEmpty(file.CipherText)) throw new InvalidDataException("Sync file has no content (CipherText empty).");
 
@@ -600,12 +600,18 @@ public class SynchronizationService : ISynchronizationService
         if (encryptedBytes.Length < 28) throw new InvalidDataException("Sync file content invalid (too short).");
 
         var plainBytes = DecryptWithKey(encryptedBytes, key);
-        var plainJson = Encoding.UTF8.GetString(plainBytes);
-
-        var content = JsonSerializer.Deserialize<ExternalVaultContent>(plainJson, _jsonOptions)
-                      ?? new ExternalVaultContent();
-
-        return (file.Header, content);
+        try
+        {
+            var content = JsonSerializer.Deserialize<ExternalVaultContent>(plainBytes, _jsonOptions)
+                          ?? throw new InvalidDataException("Sync file content is invalid.");
+            if (content.PasswordVault is null || content.DataVault is null || content.Authenticator is null)
+                throw new InvalidDataException("Sync file content is incomplete.");
+            return (file.Header, content);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(plainBytes);
+        }
     }
 
     private async Task<ExternalVaultHeader> ReadHeaderAsync(string path)
@@ -614,81 +620,26 @@ public class SynchronizationService : ISynchronizationService
         // Use Abstracted OpenRead
         using (var stream = await _syncFileService.OpenReadAsync(path))
         {
-            json = await ReadJsonFromStreamAsync(stream);
+            json = await SyncFileReader.ReadJsonAsync(stream);
         }
         var file = JsonSerializer.Deserialize<ExternalVaultFile>(json, _jsonOptions);
-        return file?.Header ?? throw new InvalidDataException("Invalid sync file format.");
+        var header = file?.Header ?? throw new InvalidDataException("Invalid sync file format.");
+        ValidateHeader(header);
+        return header;
     }
 
-    private async Task<string> ReadJsonFromStreamAsync(Stream stream)
+    private static void ValidateHeader(ExternalVaultHeader header)
     {
-        // Try to read Magic Header (4 bytes)
-        var magicBuffer = new byte[4];
-        var read = await ReadExactlyAsync(stream, magicBuffer, 4);
-
-        if (read < 4)
-        {
-            if (read == 0) throw new InvalidDataException("Sync file is empty.");
-
-            // Partial read at start: fallback to legacy?
-            // If we read < 4 bytes and EOF, it can't be a valid magic header anyway.
-            // Try to treat as legacy text provided it's not binary garbage.
-            var sb = new StringBuilder(Encoding.UTF8.GetString(magicBuffer, 0, read));
-            using var reader = new StreamReader(stream);
-            sb.Append(await reader.ReadToEndAsync());
-            return sb.ToString();
-        }
-
-        var magic = Encoding.UTF8.GetString(magicBuffer);
-        if (magic == MagicHeader)
-        {
-            // Read Length (4 bytes, Little Endian)
-            var lenBuffer = new byte[4];
-            if (await ReadExactlyAsync(stream, lenBuffer, 4) < 4)
-                throw new InvalidDataException("Corrupted sync file (missing length).");
-
-            var length = BitConverter.ToInt32(lenBuffer, 0);
-
-            if (length <= 0) throw new InvalidDataException($"Corrupted sync file (Invalid length: {length}).");
-
-            // Read Content
-            var contentBuffer = new byte[length];
-            var totalRead = await ReadExactlyAsync(stream, contentBuffer, length);
-
-            if (totalRead < length)
-                throw new InvalidDataException($"Unexpected end of stream. Expected {length}, got {totalRead}.");
-
-            return Encoding.UTF8.GetString(contentBuffer);
-        }
-        else
-        {
-            // Legacy JSON format (no magic)
-            if (stream.CanSeek)
-            {
-                stream.Seek(0, SeekOrigin.Begin);
-                using var reader = new StreamReader(stream, leaveOpen: true);
-                return await reader.ReadToEndAsync();
-            }
-            else
-            {
-                var part1 = Encoding.UTF8.GetString(magicBuffer);
-                using var reader = new StreamReader(stream, leaveOpen: true);
-                var part2 = await reader.ReadToEndAsync();
-                return part1 + part2;
-            }
-        }
+        if (header.Version != 1 || header.Iterations is < 10_000 or > 1_000_000 ||
+            !TryDecodeLength(header.Salt, SaltSize) || !TryDecodeLength(header.Verifier, 32))
+            throw new InvalidDataException("Sync file header is invalid.");
     }
 
-    private async Task<int> ReadExactlyAsync(Stream stream, byte[] buffer, int count)
+    private static bool TryDecodeLength(string? value, int length)
     {
-        var totalRead = 0;
-        while (totalRead < count)
-        {
-            var read = await stream.ReadAsync(buffer, totalRead, count - totalRead);
-            if (read == 0) break;
-            totalRead += read;
-        }
-        return totalRead;
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        try { return Convert.FromBase64String(value).Length == length; }
+        catch (FormatException) { return false; }
     }
 
     private async Task WriteVaultFileAsync(string path, ExternalVaultHeader header, ExternalVaultContent content, byte[] key)
@@ -706,6 +657,8 @@ public class SynchronizationService : ISynchronizationService
         var json = JsonSerializer.Serialize(file, _jsonOptions);
         var jsonBytes = Encoding.UTF8.GetBytes(json);
         var length = jsonBytes.Length;
+        if (length > SyncFileReader.MaxJsonBytes)
+            throw new InvalidDataException("Sync file exceeds the supported size.");
         var lengthBytes = BitConverter.GetBytes(length);
         var magicBytes = Encoding.UTF8.GetBytes(MagicHeader);
 
