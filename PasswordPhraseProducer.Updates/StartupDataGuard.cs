@@ -30,10 +30,8 @@ public static class StartupDataGuard
             if (json.RootElement.GetProperty("Iterations").GetInt32() <= 0) throw new FormatException();
             if (File.Exists(Path.Combine(dataDirectory, "totp_data.json.enc")) && !File.Exists(Path.Combine(dataDirectory, "totp.key")))
                 throw new FormatException();
-            if (File.Exists(Path.Combine(dataDirectory, "totp.key")) &&
-                (string.IsNullOrEmpty(await readSecureValue("TotpPasswordSalt")) ||
-                 string.IsNullOrEmpty(await readSecureValue("TotpPasswordVerifier"))))
-                throw new FormatException();
+            // V2 stores the password metadata in totp.key so a password change
+            // cannot strand the encrypted key between separate writes.
         }
         catch (Exception ex) when (ex is JsonException or FormatException or KeyNotFoundException or InvalidOperationException or ArgumentException)
         {

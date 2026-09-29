@@ -38,8 +38,8 @@ public class TotpEncryptionService
     /// </summary>
     public async Task<bool> HasPasswordAsync()
     {
-        var salt = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey).ConfigureAwait(false);
-        return !string.IsNullOrEmpty(salt);
+        // The key file is authoritative. V2 also carries its own password metadata.
+        return await _secureFileService.ExistsAsync(_keyFilePath).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -83,31 +83,19 @@ public class TotpEncryptionService
                 rng.GetBytes(masterKey);
             }
 
-            // Generate a unique salt for this user
-            var salt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
-            var passwordDerivedKey = DeriveKeyFromPassword(password, salt);
+            var encryptedMasterKey = TotpKeyFileFormat.Encrypt(masterKey, password);
+            Directory.CreateDirectory(Path.GetDirectoryName(_keyFilePath)!);
             try
             {
-                var encryptedMasterKey = EncryptWithKey(masterKey, passwordDerivedKey);
-                var verifier = CreateVerifier(passwordDerivedKey);
-
-                // Save encrypted master key to file
-                Directory.CreateDirectory(Path.GetDirectoryName(_keyFilePath)!);
                 await _secureFileService.WriteAllBytesAsync(_keyFilePath, encryptedMasterKey);
-
-                // Store password metadata (salt, verifier, iterations) in SecureStorage
-                await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, Convert.ToBase64String(salt));
-                await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, Convert.ToBase64String(verifier));
-                await SecureStorage.Default.SetAsync(PasswordIterationsStorageKey, Pbkdf2Iterations.ToString());
-
-                // Unlock immediately
-                _unlockedKey = masterKey;
-                _isUnlocked = true;
             }
-            finally
+            catch
             {
-                Array.Clear(passwordDerivedKey);
+                CryptographicOperations.ZeroMemory(masterKey);
+                throw;
             }
+            _unlockedKey = masterKey;
+            _isUnlocked = true;
         }
         catch
         {
@@ -129,44 +117,54 @@ public class TotpEncryptionService
                 return false;
             }
 
-            // Get password metadata
-            var saltBase64 = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey);
-            var verifierBase64 = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey);
-            var iterationsStr = await SecureStorage.Default.GetAsync(PasswordIterationsStorageKey);
-
-            if (string.IsNullOrEmpty(saltBase64) || string.IsNullOrEmpty(verifierBase64))
-            {
-                 // Missing metadata means invalid state in new system
-                 return false;
-            }
-
-            if (!int.TryParse(iterationsStr, out var iterations) || iterations <= 0)
-            {
-                iterations = Pbkdf2Iterations;
-            }
-
-            var salt = Convert.FromBase64String(saltBase64);
-            var passwordDerivedKey = DeriveKeyFromPassword(password, salt, iterations);
-
             try
             {
-                // Verify password using verifier
-                var expectedVerifier = Convert.FromBase64String(verifierBase64);
-                var actualVerifier = CreateVerifier(passwordDerivedKey);
-
-                if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
+                var encryptedMasterKey = await _secureFileService.ReadAllBytesAsync(_keyFilePath);
+                byte[]? decryptedKey;
+                if (TotpKeyFileFormat.IsV2(encryptedMasterKey))
                 {
-                    return false; // Wrong password
+                    if (!TotpKeyFileFormat.TryDecrypt(encryptedMasterKey, password, out decryptedKey))
+                        return false;
+                }
+                else
+                {
+                    // Read-only compatibility with key files created before V2.
+                    var saltBase64 = await SecureStorage.Default.GetAsync(PasswordSaltStorageKey);
+                    var verifierBase64 = await SecureStorage.Default.GetAsync(PasswordVerifierStorageKey);
+                    var iterationsStr = await SecureStorage.Default.GetAsync(PasswordIterationsStorageKey);
+                    if (string.IsNullOrEmpty(saltBase64) || string.IsNullOrEmpty(verifierBase64))
+                        return false;
+
+                    var salt = Convert.FromBase64String(saltBase64);
+                    var expectedVerifier = Convert.FromBase64String(verifierBase64);
+                    if (salt.Length != SaltSizeBytes || expectedVerifier.Length != 32)
+                        return false;
+                    if (!int.TryParse(iterationsStr, out var iterations))
+                        iterations = Pbkdf2Iterations;
+                    if (iterations is < 10_000 or > 1_000_000)
+                        return false;
+
+                    var passwordDerivedKey = DeriveKeyFromPassword(password, salt, iterations);
+                    try
+                    {
+                        if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, CreateVerifier(passwordDerivedKey)))
+                            return false;
+                        decryptedKey = DecryptWithKey(encryptedMasterKey, passwordDerivedKey);
+                    }
+                    finally
+                    {
+                        CryptographicOperations.ZeroMemory(passwordDerivedKey);
+                    }
                 }
 
-                // Load and decrypt master key
-                if (!await _secureFileService.ExistsAsync(_keyFilePath))
+                if (decryptedKey is null || decryptedKey.Length != 32)
                 {
+                    if (decryptedKey is not null)
+                        CryptographicOperations.ZeroMemory(decryptedKey);
                     return false;
                 }
-
-                var encryptedMasterKey = await _secureFileService.ReadAllBytesAsync(_keyFilePath);
-                _unlockedKey = DecryptWithKey(encryptedMasterKey, passwordDerivedKey);
+                Lock();
+                _unlockedKey = decryptedKey;
                 _isUnlocked = true;
 
                 return true;
@@ -174,11 +172,6 @@ public class TotpEncryptionService
             catch
             {
                 return false;
-            }
-            finally
-            {
-                // Passwort-abgeleiteter Schlüssel aus dem Speicher löschen
-                Array.Clear(passwordDerivedKey);
             }
         }
         catch
@@ -211,25 +204,19 @@ public class TotpEncryptionService
                 throw new ArgumentException("Passwort darf nicht leer sein.", nameof(newPassword));
             }
 
-            // Generate new salt for the new password
-            var newSalt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
-            var newPasswordDerivedKey = DeriveKeyFromPassword(newPassword, newSalt);
+            var encryptedMasterKey = TotpKeyFileFormat.Encrypt(_unlockedKey, newPassword);
+            await _secureFileService.WriteAllBytesAsync(_keyFilePath, encryptedMasterKey);
+            // Legacy metadata is no longer needed. The V2 file remains usable even
+            // if the process stops before these removals finish.
             try
             {
-                var encryptedMasterKey = EncryptWithKey(_unlockedKey, newPasswordDerivedKey);
-                var newVerifier = CreateVerifier(newPasswordDerivedKey);
-
-                await _secureFileService.WriteAllBytesAsync(_keyFilePath, encryptedMasterKey);
-
-                // Update password metadata
-                await SecureStorage.Default.SetAsync(PasswordSaltStorageKey, Convert.ToBase64String(newSalt));
-                await SecureStorage.Default.SetAsync(PasswordVerifierStorageKey, Convert.ToBase64String(newVerifier));
-                await SecureStorage.Default.SetAsync(PasswordIterationsStorageKey, Pbkdf2Iterations.ToString());
+                SecureStorage.Default.Remove(PasswordSaltStorageKey);
+                SecureStorage.Default.Remove(PasswordVerifierStorageKey);
+                SecureStorage.Default.Remove(PasswordIterationsStorageKey);
             }
-            finally
+            catch
             {
-                // Neuer Passwort-abgeleiteter Schlüssel aus dem Speicher löschen
-                Array.Clear(newPasswordDerivedKey);
+                // Cleanup failure does not invalidate the already committed V2 key file.
             }
         }
         catch
@@ -312,7 +299,8 @@ public class TotpEncryptionService
     public byte[] Encrypt(byte[] plaintext)
     {
         var key = GetUnlockedKey();
-        return EncryptWithKey(plaintext, key);
+        try { return EncryptWithKey(plaintext, key); }
+        finally { CryptographicOperations.ZeroMemory(key); }
     }
 
     /// <summary>
@@ -321,7 +309,8 @@ public class TotpEncryptionService
     public byte[] Decrypt(byte[] ciphertext)
     {
         var key = GetUnlockedKey();
-        return DecryptWithKey(ciphertext, key);
+        try { return DecryptWithKey(ciphertext, key); }
+        finally { CryptographicOperations.ZeroMemory(key); }
     }
 
     #region Private Helpers
