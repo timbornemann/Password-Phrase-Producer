@@ -34,17 +34,18 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
 
     public async Task<bool> AuthenticateAsync(string reason, CancellationToken cancellationToken = default)
     {
-        return await AuthenticateInternalAsync(reason, null, cancellationToken).ConfigureAwait(false);
+        return await AuthenticateInternalAsync(reason, null, cancellationToken).ConfigureAwait(false) is null;
     }
 
     public async Task<byte[]> EncryptAsync(byte[] data, CancellationToken cancellationToken = default)
     {
         var cipher = GetCipher(Javax.Crypto.CipherMode.EncryptMode);
-        var success = await AuthenticateInternalAsync("Biometrie einrichten", cipher, cancellationToken).ConfigureAwait(false);
+        var outcome = await AuthenticateInternalAsync("Biometrie einrichten", cipher, cancellationToken).ConfigureAwait(false);
         
-        if (!success || cipher is null)
+        if (outcome is not null || cipher is null)
         {
-            throw new UnauthorizedAccessException("Biometric authentication failed or cancelled.");
+            throw new BiometricAuthenticationException(outcome ?? BiometricAuthOutcome.Unavailable,
+                "Biometric authentication failed or cancelled.");
         }
 
         var iv = cipher.GetIV();
@@ -96,11 +97,12 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
         Buffer.BlockCopy(data, ivLength, cipherText, 0, cipherText.Length);
 
         var cipher = GetCipher(Javax.Crypto.CipherMode.DecryptMode, iv);
-        var success = await AuthenticateInternalAsync("Tresor entsperren", cipher, cancellationToken).ConfigureAwait(false);
+        var outcome = await AuthenticateInternalAsync("Tresor entsperren", cipher, cancellationToken).ConfigureAwait(false);
 
-        if (!success || cipher is null)
+        if (outcome is not null || cipher is null)
         {
-             throw new UnauthorizedAccessException("Biometric authentication failed or cancelled.");
+             throw new BiometricAuthenticationException(outcome ?? BiometricAuthOutcome.Unavailable,
+                 "Biometric authentication failed or cancelled.");
         }
 
         try 
@@ -115,7 +117,7 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
         }
     }
 
-    private async Task<bool> AuthenticateInternalAsync(string reason, Javax.Crypto.Cipher? cipher, CancellationToken cancellationToken)
+    private async Task<BiometricAuthOutcome?> AuthenticateInternalAsync(string reason, Javax.Crypto.Cipher? cipher, CancellationToken cancellationToken)
     {
          if (string.IsNullOrWhiteSpace(reason))
         {
@@ -125,12 +127,12 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
         var activity = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity;
         if (activity is null)
         {
-            return false;
+            return BiometricAuthOutcome.Unavailable;
         }
 
         if (activity is not AndroidX.Fragment.App.FragmentActivity fragmentActivity)
         {
-            return false;
+            return BiometricAuthOutcome.Unavailable;
         }
 
         var callback = new AndroidBiometricAuthCallback();
@@ -165,7 +167,7 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
             catch (Exception)
             {
                 // Catch any binding/cast errors on the UI thread to prevent crash
-                callback.Cancel(); // Ensure task is cancelled
+                callback.FailUnavailable();
             }
         });
 
@@ -177,11 +179,11 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
         }
         catch (OperationCanceledException)
         {
-            return false;
+            return BiometricAuthOutcome.Cancelled;
         }
         catch (Exception)
         {
-            return false;
+            return BiometricAuthOutcome.Unavailable;
         }
     }
 
@@ -242,10 +244,11 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
 
     private sealed class AndroidBiometricAuthCallback : AndroidX.Biometric.BiometricPrompt.AuthenticationCallback
     {
-        private readonly TaskCompletionSource<bool> _taskCompletionSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<BiometricAuthOutcome?> _taskCompletionSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private AndroidX.Biometric.BiometricPrompt? _prompt;
+        private int _failedScans;
 
-        public Task<bool> Task => _taskCompletionSource.Task;
+        public Task<BiometricAuthOutcome?> Task => _taskCompletionSource.Task;
 
         public void SetPrompt(AndroidX.Biometric.BiometricPrompt prompt)
         {
@@ -263,16 +266,26 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
             Microsoft.Maui.ApplicationModel.MainThread.BeginInvokeOnMainThread(prompt.CancelAuthentication);
         }
 
+        public void FailUnavailable()
+        {
+            _taskCompletionSource.TrySetResult(BiometricAuthOutcome.Unavailable);
+            Cancel();
+        }
+
         public override void OnAuthenticationSucceeded(AndroidX.Biometric.BiometricPrompt.AuthenticationResult result)
         {
             // IMPORTANT: If we used CryptoObject, result.CryptoObject.Cipher should be the authenticated cipher.
             // Using the existing cipher instance *should* work as it's modified in place by the authentication (unlocked).
-            _taskCompletionSource.TrySetResult(true);
+            _taskCompletionSource.TrySetResult(null);
         }
 
         public override void OnAuthenticationFailed()
         {
-            // keep waiting for another attempt
+            if (++_failedScans >= 2)
+            {
+                _taskCompletionSource.TrySetResult(BiometricAuthOutcome.Rejected);
+                Cancel();
+            }
         }
 
         public override void OnAuthenticationError(int errorCode, Java.Lang.ICharSequence? errString)
@@ -281,11 +294,15 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
                 errorCode == AndroidX.Biometric.BiometricPrompt.ErrorUserCanceled ||
                 errorCode == AndroidX.Biometric.BiometricPrompt.ErrorNegativeButton)
             {
-                _taskCompletionSource.TrySetCanceled();
+                _taskCompletionSource.TrySetResult(_failedScans > 0
+                    ? BiometricAuthOutcome.Rejected : BiometricAuthOutcome.Cancelled);
                 return;
             }
 
-            _taskCompletionSource.TrySetResult(false);
+            _taskCompletionSource.TrySetResult(_failedScans > 0 ||
+                errorCode == AndroidX.Biometric.BiometricPrompt.ErrorLockout ||
+                errorCode == AndroidX.Biometric.BiometricPrompt.ErrorLockoutPermanent
+                ? BiometricAuthOutcome.Rejected : BiometricAuthOutcome.Unavailable);
         }
     }
 #elif WINDOWS
@@ -306,25 +323,36 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
 
     public async Task<bool> AuthenticateAsync(string reason, CancellationToken cancellationToken = default)
     {
+        return await RequestWindowsVerificationAsync(reason, cancellationToken).ConfigureAwait(false) is null;
+    }
+
+    private static async Task<BiometricAuthOutcome?> RequestWindowsVerificationAsync(
+        string reason, CancellationToken cancellationToken)
+    {
         try
         {
-            // Explicitly request verification from the user.
-            // Note: This shows a UI prompt. 
-            // If strictly encrypting/decrypting using the CngKey, the OS will trigger the prompt automatically upon key access.
-            // This method is provided for scenarios where authentication is required without an immediate key operation.
+            cancellationToken.ThrowIfCancellationRequested();
             var result = await global::Windows.Security.Credentials.UI.UserConsentVerifier.RequestVerificationAsync(reason);
-            return result == global::Windows.Security.Credentials.UI.UserConsentVerificationResult.Verified;
+            return result switch
+            {
+                global::Windows.Security.Credentials.UI.UserConsentVerificationResult.Verified => null,
+                global::Windows.Security.Credentials.UI.UserConsentVerificationResult.RetriesExhausted => BiometricAuthOutcome.Rejected,
+                global::Windows.Security.Credentials.UI.UserConsentVerificationResult.Canceled => BiometricAuthOutcome.Cancelled,
+                _ => BiometricAuthOutcome.Unavailable
+            };
         }
+        catch (OperationCanceledException) { return BiometricAuthOutcome.Cancelled; }
         catch
         {
-            return false;
+            return BiometricAuthOutcome.Unavailable;
         }
     }
 
     public async Task<byte[]> EncryptAsync(byte[] data, CancellationToken cancellationToken = default)
     {
-        if (!await AuthenticateAsync("Biometrie einrichten", cancellationToken).ConfigureAwait(false))
-            throw new UnauthorizedAccessException("Windows Hello wurde abgebrochen oder ist fehlgeschlagen.");
+        var outcome = await RequestWindowsVerificationAsync("Biometrie einrichten", cancellationToken).ConfigureAwait(false);
+        if (outcome is not null)
+            throw new BiometricAuthenticationException(outcome.Value, "Windows Hello wurde abgebrochen oder ist fehlgeschlagen.");
         EnsureKeyExists(createIfMissing: true);
         
         // 2. Use AesCng with Named Key
@@ -361,8 +389,9 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
         var cipherText = new byte[data.Length - ivLength];
         Buffer.BlockCopy(data, ivLength, cipherText, 0, cipherText.Length);
         
-        if (!await AuthenticateAsync("Tresor entsperren", cancellationToken).ConfigureAwait(false))
-            throw new UnauthorizedAccessException("Windows Hello wurde abgebrochen oder ist fehlgeschlagen.");
+        var outcome = await RequestWindowsVerificationAsync("Tresor entsperren", cancellationToken).ConfigureAwait(false);
+        if (outcome is not null)
+            throw new BiometricAuthenticationException(outcome.Value, "Windows Hello wurde abgebrochen oder ist fehlgeschlagen.");
         EnsureKeyExists(createIfMissing: false);
         
         using var aes = new System.Security.Cryptography.AesCng(WindowsKeyName, System.Security.Cryptography.CngProvider.MicrosoftSoftwareKeyStorageProvider);
@@ -381,7 +410,8 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
         catch (System.Security.Cryptography.CryptographicException ex)
         {
             // If user cancels or authentication fails, CNG throws a CryptographicException.
-            throw new UnauthorizedAccessException("Biometric decryption was cancelled or failed.", ex);
+            throw new BiometricAuthenticationException(BiometricAuthOutcome.Unavailable,
+                $"Biometric decryption failed: {ex.GetType().Name}.");
         }
     }
 
@@ -391,12 +421,14 @@ public class BiometricAuthenticationService : IBiometricAuthenticationService
         {
             using var existing = System.Security.Cryptography.CngKey.Open(WindowsKeyName, System.Security.Cryptography.CngProvider.MicrosoftSoftwareKeyStorageProvider);
             if (existing.UIPolicy?.ProtectionLevel != System.Security.Cryptography.CngUIProtectionLevels.ForceHighProtection)
-                throw new UnauthorizedAccessException("Der biometrische Schlüssel hat keine erzwungene Geräteauthentifizierung.");
+                throw new BiometricAuthenticationException(BiometricAuthOutcome.Unavailable,
+                    "Der biometrische Schlüssel hat keine erzwungene Geräteauthentifizierung.");
             return;
         }
 
         if (!createIfMissing)
-            throw new UnauthorizedAccessException("Der biometrische Geräteschlüssel fehlt.");
+            throw new BiometricAuthenticationException(BiometricAuthOutcome.Unavailable,
+                "Der biometrische Geräteschlüssel fehlt.");
         
         // Create new
         var keyCreationParams = new System.Security.Cryptography.CngKeyCreationParameters

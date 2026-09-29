@@ -129,6 +129,7 @@ public sealed class UnlockAttemptGate : IUnlockAttemptGate
             {
                 state.Remaining++;
                 await SaveAsync(access, state).ConfigureAwait(false);
+                if (biometric) return false;
                 throw;
             }
 
