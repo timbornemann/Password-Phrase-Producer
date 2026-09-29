@@ -22,8 +22,7 @@
             <Label Text="{Binding Status}" TextColor="#BAC4FF" FontSize="13" />
             <Label Text="{Binding DownloadSize}" TextColor="#9EA3C4" FontSize="12" IsVisible="{Binding HasUpdate}" />
             <ProgressBar Progress="{Binding Progress}" IsVisible="{Binding IsDownloading}" ProgressColor="#7B8CFF" />
-            <Label Text="{Binding Notes}" TextColor="#9EA3C4" FontSize="12" IsVisible="{Binding HasUpdate}" />
-            <Button Text="Änderungshinweise öffnen" Command="{Binding ReleaseNotesCommand}" IsVisible="{Binding HasUpdate}" />
+            <Button Text="Änderungshinweise anzeigen" Command="{Binding ReleaseNotesCommand}" IsVisible="{Binding HasNotes}" />
             <Button Text="{Binding CheckText}" Command="{Binding CheckCommand}" />
             <Button Text="Herunterladen" Command="{Binding DownloadCommand}" IsVisible="{Binding CanDownload}" />
             <Button Text="{Binding InstallText}" Command="{Binding InstallCommand}" IsVisible="{Binding CanInstall}" />

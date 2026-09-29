@@ -1,0 +1,92 @@
+name: Verify Windows and Android builds
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-main-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.308
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test update security and data-operation barrier
+        run: dotnet test PasswordPhraseProducer.Updates.Tests/PasswordPhraseProducer.Updates.Tests.csproj -c Release
+      - name: Test release publication and versioning
+        run: python -m unittest discover -s Installer/tests -v
+      - name: Test Android signing certificate verification
+        shell: pwsh
+        run: ./Installer/tests/Test-AndroidPackageVerification.ps1
+
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      # Placeholder only. The release workflow supplies the real tag version.
+      APP_VERSION: 0.0.1
+      APP_BUILD: 1
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.308
+      - uses: actions/setup-java@v4
+        with:
+          distribution: microsoft
+          java-version: '17'
+      - name: Install build workloads and pinned Velopack tool
+        shell: pwsh
+        run: |
+          dotnet workload install maui-windows maui-android
+          if ($LASTEXITCODE -ne 0) { throw 'Workload installation failed.' }
+          dotnet tool restore
+          if ($LASTEXITCODE -ne 0) { throw 'Velopack tool restore failed.' }
+      - name: Ensure Android SDK prerequisites
+        shell: pwsh
+        run: |
+          dotnet build 'Password Phrase Producer/PasswordPhraseProducer.csproj' -t:InstallAndroidDependencies -f net9.0-android `
+            -p:PppTargetFramework=net9.0-android -p:AcceptAndroidSdkLicenses=true "-p:AndroidSdkDirectory=$env:ANDROID_HOME" "-p:JavaSdkDirectory=$env:JAVA_HOME"
+          if ($LASTEXITCODE -ne 0) { throw 'Android SDK dependency installation failed.' }
+      - name: Publish Windows application
+        shell: pwsh
+        run: |
+          $output = Join-Path $env:RUNNER_TEMP 'windows'
+          dotnet publish 'Password Phrase Producer/PasswordPhraseProducer.csproj' -c Release -f net9.0-windows10.0.19041.0 `
+            -p:PppTargetFramework=net9.0-windows10.0.19041.0 -p:RuntimeIdentifier=win-x64 -p:SelfContained=true `
+            -p:WindowsAppSDKSelfContained=true -p:ApplicationDisplayVersion=$env:APP_VERSION -p:ApplicationVersion=$env:APP_BUILD `
+            -o $output
+          if ($LASTEXITCODE -ne 0) { throw 'Windows publish failed.' }
+          $package = Join-Path $env:RUNNER_TEMP 'windows-package'
+          dotnet vpk pack --packId Timbornemann.PasswordPhraseProducer --packTitle 'Password Phrase Producer' `
+            --packVersion $env:APP_VERSION --packDir $output --mainExe PasswordPhraseProducer.exe `
+            --runtime win-x64 --channel win-x64 --outputDir $package
+          if ($LASTEXITCODE -ne 0) { throw 'Windows packaging failed.' }
+          $setup = @(Get-ChildItem -LiteralPath $package -Filter '*-Setup.exe')
+          if ($setup.Count -ne 1) { throw 'Expected exactly one Windows Setup executable.' }
+      - name: Publish Android application
+        shell: pwsh
+        run: |
+          $output = Join-Path $env:RUNNER_TEMP 'android'
+          dotnet publish 'Password Phrase Producer/PasswordPhraseProducer.csproj' -c Release -f net9.0-android `
+            -p:PppTargetFramework=net9.0-android -p:ApplicationDisplayVersion=$env:APP_VERSION -p:ApplicationVersion=$env:APP_BUILD `
+            -o $output
+          if ($LASTEXITCODE -ne 0) { throw 'Android publish failed.' }
+          $apk = @(Get-ChildItem -LiteralPath $output -Filter '*.apk')
+          if ($apk.Count -lt 1) {
+            Get-ChildItem -LiteralPath $output -Recurse | Select-Object -ExpandProperty FullName
+            throw 'Android publish produced no APK.'
+          }

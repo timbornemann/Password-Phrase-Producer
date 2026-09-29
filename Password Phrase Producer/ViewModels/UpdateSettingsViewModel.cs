@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using CommunityToolkit.Maui.Views;
+using Password_Phrase_Producer.Views.Dialogs;
 using PasswordPhraseProducer.Updates;
 
 namespace Password_Phrase_Producer.ViewModels;
@@ -13,6 +15,7 @@ public sealed class UpdateSettingsViewModel : INotifyPropertyChanged
     public string AvailableVersion => _updates.State.Release?.Version ?? "–";
     public string LastCheck => _settings.LastCheckUtc?.ToLocalTime().ToString("g") ?? "Noch nicht geprüft";
     public string Notes => _updates.State.Release?.Signed.Manifest.Notes ?? "";
+    public bool HasNotes => !string.IsNullOrWhiteSpace(Notes);
     public string DownloadSize => _updates.State.Release is { } release ? $"{release.Artifact.Size / 1048576d:F1} MB" : "";
     public double Progress => _updates.State.Progress;
     public bool IsDownloading => _updates.State.Phase == UpdatePhase.Downloading;
@@ -74,15 +77,11 @@ public sealed class UpdateSettingsViewModel : INotifyPropertyChanged
         ReleaseNotesCommand = new Command(async () =>
         {
             if (updates.State.Release is not { } release) return;
-            try
-            {
-                await Launcher.Default.OpenAsync(new Uri($"https://github.com/{UpdateIdentity.Repository}/releases/tag/{Uri.EscapeDataString(release.Signed.Manifest.ReleaseTag)}"));
-            }
-            catch
-            {
-                _settingsError = "Die Änderungshinweise konnten nicht im Browser geöffnet werden.";
-                Changed();
-            }
+            var notes = release.Signed.Manifest.Notes;
+            if (string.IsNullOrWhiteSpace(notes)) return;
+            if (Application.Current?.Windows.FirstOrDefault()?.Page is not Page page) return;
+            var releaseUri = new Uri($"https://github.com/{UpdateIdentity.Repository}/releases/tag/{Uri.EscapeDataString(release.Signed.Manifest.ReleaseTag)}");
+            await page.ShowPopupAsync(new ReleaseNotesPopup(notes, release.Version, releaseUri));
         });
         updates.StateChanged += (_, _) => MainThread.BeginInvokeOnMainThread(Changed);
     }

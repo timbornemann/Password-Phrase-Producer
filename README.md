@@ -131,8 +131,12 @@ Historical MSIX users need a one-time export/import. Subsequent updates do not r
 - [Windows installation and repair](Installer/Windows/README.md)
 - [Signing, release pipeline, key recovery and acceptance tests](Installer/UPDATES.md)
 
-To publish a new version, push the source changes and then create a **normal GitHub release** with your chosen
-tag, for example `v2.6.0`. Pushes do not package or publish the app. The release workflow uses app version `2.6.0`,
+Every push to `main` runs **Verify Windows and Android builds**. It runs the automated tests and Release builds
+for Windows (self-contained, including the Velopack package) and Android. Those outputs stay on the runner:
+the check does not sign with the release keys and does not attach files to a release.
+
+To publish a new version, create a **normal GitHub release** with your chosen
+tag, for example `v2.6.0`. The release workflow uses app version `2.6.0`,
 builds and verifies both platforms, then attaches their files to that release. The signed update manifest is
 completed last, so apps ignore the release while its files are still being prepared. Drafts and prereleases are
 excluded. See the [step-by-step release procedure](Installer/UPDATES.md#publication).

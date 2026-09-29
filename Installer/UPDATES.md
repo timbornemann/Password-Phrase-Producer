@@ -48,8 +48,11 @@ release signed with the old key; generating a new key on every build is prohibit
 
 ## Publication
 
-**A push never publishes or packages a version.** Only publishing a normal GitHub release, or promoting a release
-to stable, starts the packaging workflow. Drafts and prereleases are excluded. Pull requests run unit tests only.
+**A push never publishes a version.** Every push to `main` runs the automated tests and Release builds for
+Windows and Android, including the Velopack package step. That check discards the outputs: it does not sign
+the Android APK with the release key, sign the update manifest, or upload assets. Pull requests run unit tests
+only. Only publishing a normal GitHub release, or promoting a release to stable, starts the packaging workflow.
+Drafts and prereleases are excluded.
 The workflow subscribes only to `released`: GitHub also emits `published` for a new stable release, so subscribing
 to both would start the same workflow twice.
 

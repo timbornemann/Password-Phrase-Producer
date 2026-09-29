@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "projects": [
+    {
+      "id": "2b9b2f38-c411-40ad-a98e-4754f097634b",
+      "name": "Password-Phrase-Producer",
+      "description": "",
+      "kind": "repository",
+      "createdAt": 1790675137211,
+      "updatedAt": 1790675137211
+    }
+  ],
+  "items": [
+    {
+      "id": "03c104a9-bab7-4ad8-a64f-52ba1d1a4b2e",
+      "projectId": "2b9b2f38-c411-40ad-a98e-4754f097634b",
+      "title": "2FA Auch biometsich",
+      "description": "der 2fa save ist aktuell anscheiend anders abgesichert als die anderen beiden sacev, außerdme gibt es keien möglichkeit der biometischen ameldung, das soll umgebaut werdne damit auch hier biometeisch geöffnet werdne kann, außerden sollen alle saves wirklich sicher sein, gegen verschiedene angriffe und breach möglichkeiten",
+      "priority": "medium",
+      "status": "done",
+      "tags": [],
+      "createdAt": 1790675255710,
+      "updatedAt": 1790681209830
+    },
+    {
+      "id": "ce15cf1f-885e-4848-9397-3b027ed8d36a",
+      "projectId": "2b9b2f38-c411-40ad-a98e-4754f097634b",
+      "title": "Passwoert eingabe limit",
+      "description": "Aktuell kann man unbegrnzt versuchen das login oder tresor passwort einzugeben, das miss behoben werdne, sowohl für die tresore als auch für fingerabdruck. \nwenn man ein paar mal mit dem fingerabdruck fehlschlägt, hat man noch ein paar versuche den code einzugeben. wenn man direkt mit dem code anfängt hat man ein paar wenige versuche mehr mit dem code, soll heißen, der fingerabdruck fail ziet dem code ein paar versuche ab, dadruch entsteht etwas mehr sicherheit. wenn dann zulestz der code fehlschlägt wird man für einige zeit gesperrt und kann es später nochmal versuchen. umos öfter man direkt hinter einander fehlschlägt mit dem passwort um so länger soll die warte zeit steigen. \n\njetzt die kleine hintertür, wenn man ausgespeert ist git es jetzt eine unterseite auf der man sicherheits fragen einrichten kann in den einstellungen. wenn man die exakt angibt bekommt man nochmal ein paar code versuche, das ganze soll 1 mal gehen, dort werdne dann mehrere fragen kombiniert, man muss nachname und vorname udn geburtsdatum angeben, und 3 fragen beantworten, hierfür für die fragen soll es keien freitext felder geben sondern comboboxen die man in den einsetllugne jeweis mit 5 auswahlen frei befüllt, in den einstellungen gibt es dann 10 fragen von denen man wählen kann klassisch wie mädchennamhe der muter, erstets haustier name, liblings essen, name der ersten schule und so weiter",
+      "priority": "medium",
+      "status": "done",
+      "tags": [],
+      "createdAt": 1790675770665,
+      "updatedAt": 1790686993831
+    },
+    {
+      "id": "bb6ffccf-440d-4d70-8399-196fa62b00a6",
+      "projectId": "2b9b2f38-c411-40ad-a98e-4754f097634b",
+      "title": "Alternative sync variante",
+      "description": "In der app soll man auf lokale syncronisation satrten klicken, die app offnet dann eine freien port auf der lokalen ip adresse des geräts. dann erstellt das gerät ein gesammt backup der tresorte, heißt sie müssen wie bisher auch entsperrt werden. Anschließend verschlüsselt die app die daten mit der diceware wortliste indem sie 6 zulällige wörter nimt als passwort. auf eienr anderen app die im gleichen netzwerk liegt, kann man dann auf sync klicken und die ip die in der sender app angezeigt wird mit port eingeben, dann das auf der sender app angezeigt passwort, dann werdne die verschlüsselten daten von app1 sender zu app 2 enpfänger verschlüsselt übertragen. somit ist das eine aktive sync variante zwischen geräten die jedoch deutlich sicherer ist, als über groogle drive eine austausch datei zu besitzen. da die verbindung nur kurz besteht und die daten gut verschlüsslt sind.",
+      "priority": "medium",
+      "status": "idea",
+      "tags": [],
+      "createdAt": 1790675782064,
+      "updatedAt": 1790676468269
+    }
+  ]
+}
