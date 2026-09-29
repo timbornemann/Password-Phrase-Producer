@@ -791,25 +791,25 @@ public class DataVaultService
             ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);
             EnsureUnlocked();
 
-            using var reader = new StreamReader(stream, Encoding.UTF8, leaveOpen: true);
-            var json = await reader.ReadToEndAsync().ConfigureAwait(false);
+            var json = await BackupInput.ReadJsonAsync(stream, cancellationToken).ConfigureAwait(false);
             var dto = JsonSerializer.Deserialize<PortableBackupDto>(json, _jsonOptions)
                       ?? throw new InvalidOperationException("Ungültiges Export-Format.");
 
-            var salt = Convert.FromBase64String(dto.Salt);
-            var key = DeriveKey(filePassword, salt, dto.Iterations);
-
-            var expectedVerifier = Convert.FromBase64String(dto.Verifier);
-            var actualVerifier = CreateVerifier(key);
-            if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
+            var validated = BackupInput.Validate(dto);
+            var key = DeriveKey(filePassword, validated.Salt, dto.Iterations);
+            byte[] plainBytes;
+            try
+            {
+                var actualVerifier = CreateVerifier(key);
+                if (!CryptographicOperations.FixedTimeEquals(validated.Verifier, actualVerifier))
+                    throw new InvalidOperationException("Falsches Datei-Passwort.");
+                plainBytes = DecryptWithKey(validated.Cipher, key);
+            }
+            finally
             {
                 Array.Clear(key);
-                throw new InvalidOperationException("Falsches Datei-Passwort.");
+                Array.Clear(validated.Cipher);
             }
-
-            var encrypted = Convert.FromBase64String(dto.CipherText);
-            var plainBytes = DecryptWithKey(encrypted, key);
-            Array.Clear(key);
 
             try
             {
@@ -1281,8 +1281,7 @@ public class DataVaultService
             ArgumentNullException.ThrowIfNull(backupStream);
             EnsureUnlocked();
 
-            using var reader = new StreamReader(backupStream, Encoding.UTF8, leaveOpen: true);
-            var json = await reader.ReadToEndAsync().ConfigureAwait(false);
+            var json = await BackupInput.ReadJsonAsync(backupStream, cancellationToken).ConfigureAwait(false);
             var dto = JsonSerializer.Deserialize<PasswordVaultBackupDto>(json, _jsonOptions)
                       ?? throw new InvalidOperationException("Ungültiges Backup-Format.");
 

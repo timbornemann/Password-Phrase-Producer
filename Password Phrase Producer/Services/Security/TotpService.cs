@@ -6,6 +6,7 @@ using OtpNet;
 using Password_Phrase_Producer.Models;
 using Password_Phrase_Producer.Services.Security.Otp;
 using Password_Phrase_Producer.Services.Synchronization;
+using Password_Phrase_Producer.Services.Storage;
 using Microsoft.Maui.ApplicationModel;
 
 namespace Password_Phrase_Producer.Services.Security;
@@ -474,27 +475,25 @@ public class TotpService
             EnsureUnlocked();
 
             // 1. Datei lesen und parsen
-            using var reader = new StreamReader(stream, Encoding.UTF8, leaveOpen: true);
-            var json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            var json = await BackupInput.ReadJsonAsync(stream, cancellationToken).ConfigureAwait(false);
             var dto = JsonSerializer.Deserialize<PortableBackupDto>(json, _jsonOptions)
                       ?? throw new InvalidOperationException("Ungültiges Export-Format.");
 
-            // 2. Mit Datei-Passwort entschlüsseln
-            var salt = Convert.FromBase64String(dto.Salt);
-            var key = DeriveKey(filePassword, salt, dto.Iterations);
-
-            // Verifier prüfen
-            var expectedVerifier = Convert.FromBase64String(dto.Verifier);
-            var actualVerifier = CreateVerifier(key);
-            if (!CryptographicOperations.FixedTimeEquals(expectedVerifier, actualVerifier))
+            var validated = BackupInput.Validate(dto);
+            var key = DeriveKey(filePassword, validated.Salt, dto.Iterations);
+            byte[] plainBytes;
+            try
+            {
+                var actualVerifier = CreateVerifier(key);
+                if (!CryptographicOperations.FixedTimeEquals(validated.Verifier, actualVerifier))
+                    throw new InvalidOperationException("Falsches Datei-Passwort.");
+                plainBytes = DecryptWithKey(validated.Cipher, key);
+            }
+            finally
             {
                 Array.Clear(key);
-                throw new InvalidOperationException("Falsches Datei-Passwort.");
+                Array.Clear(validated.Cipher);
             }
-
-            var encrypted = Convert.FromBase64String(dto.CipherText);
-            var plainBytes = DecryptWithKey(encrypted, key);
-            Array.Clear(key);
 
             try
             {
@@ -647,8 +646,7 @@ public class TotpService
             ArgumentNullException.ThrowIfNull(backupStream);
             EnsureUnlocked();
 
-            using var reader = new StreamReader(backupStream, Encoding.UTF8, leaveOpen: true);
-            var json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            var json = await BackupInput.ReadJsonAsync(backupStream, cancellationToken).ConfigureAwait(false);
             var backup = JsonSerializer.Deserialize<Models.AuthenticatorBackupDto>(json, _jsonOptions)
                          ?? throw new InvalidOperationException("Ungültiges Backup-Format.");
 

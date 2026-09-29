@@ -14,6 +14,7 @@ using Password_Phrase_Producer.Services.Security;
 using Password_Phrase_Producer.Services.Vault;
 using Password_Phrase_Producer.Services;
 using Password_Phrase_Producer.Services.Synchronization;
+using Password_Phrase_Producer.Services.Storage;
 using Microsoft.Maui.Storage;
 using Microsoft.Maui.Graphics;
 using CommunityToolkit.Maui.Storage;
@@ -887,10 +888,21 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
         ArgumentNullException.ThrowIfNull(backupStream);
         ArgumentException.ThrowIfNullOrWhiteSpace(filePassword);
 
-        using var reader = new StreamReader(backupStream, Encoding.UTF8, leaveOpen: true);
-        var json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        var json = await BackupInput.ReadJsonAsync(backupStream, cancellationToken).ConfigureAwait(false);
         var backup = JsonSerializer.Deserialize<FullBackupDto>(json, _jsonOptions)
                      ?? throw new InvalidOperationException("Ungültiges Backup-Format.");
+
+        if (backup.Version != 2 || backup.Authenticator is not null)
+            throw new InvalidDataException("Nicht unterstütztes oder unverschlüsseltes Gesamtbackup.");
+        if (backup.PasswordVault is not null && !_vaultService.IsUnlocked ||
+            backup.DataVault is not null && !_dataVaultService.IsUnlocked ||
+            backup.AuthenticatorEncrypted is not null && !_totpEncryptionService.IsUnlocked)
+            throw new InvalidOperationException("Alle enthaltenen Tresore müssen vor dem Import entsperrt sein.");
+
+        // Check every encrypted section before changing any local vault.
+        if (backup.PasswordVault is not null) BackupInput.VerifyDecryptable(backup.PasswordVault, filePassword);
+        if (backup.DataVault is not null) BackupInput.VerifyDecryptable(backup.DataVault, filePassword);
+        if (backup.AuthenticatorEncrypted is not null) BackupInput.VerifyDecryptable(backup.AuthenticatorEncrypted, filePassword);
 
         // Restore Password Vault if present and unlocked
         if (backup.PasswordVault is not null && _vaultService.IsUnlocked)
