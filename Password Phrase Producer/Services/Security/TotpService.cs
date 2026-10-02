@@ -234,8 +234,8 @@ public class TotpService
            && a.Secret.AsSpan().SequenceEqual(b.Secret);
 
     /// <summary>
-    /// Loads the entries, merges read-only sync data, applies <paramref name="mutate"/> and, if it
-    /// reports a change, synchronizes and saves the result once.
+    /// Saves local edits before contacting the sync provider, so a failed remote sync
+    /// cannot discard a newly created authenticator entry.
     /// </summary>
     private async Task MutateEntriesAsync(Func<List<TotpEntry>, bool> mutate, CancellationToken cancellationToken)
     {
@@ -243,42 +243,37 @@ public class TotpService
         try
         {
             var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-            var isSyncConfigured = await _syncService.IsConfiguredAsync().ConfigureAwait(false);
-            var isReadOnlySync = isSyncConfigured && await IsReadOnlySyncAsync().ConfigureAwait(false);
-
-            if (isReadOnlySync)
-            {
-                await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
-            }
-
             if (!mutate(entries))
             {
                 return;
             }
 
+            await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
+
+            var isSyncConfigured = await _syncService.HasConfigurationAsync().ConfigureAwait(false);
             if (isSyncConfigured)
             {
                 try
                 {
-                    if (!isReadOnlySync)
-                    {
-                        await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
-                    }
+                    var result = await (await IsReadOnlySyncAsync().ConfigureAwait(false)
+                        ? _syncService.GetMergedAuthenticatorReadOnlyAsync(entries, cancellationToken)
+                        : _syncService.GetMergedAuthenticatorAsync(entries, cancellationToken)).ConfigureAwait(false);
+
+                    if (!TotpEntrySetComparer.AreEquivalent(entries, result.MergedEntries))
+                        await SaveEntriesInternalAsync(result.MergedEntries, cancellationToken).ConfigureAwait(false);
+
                     Preferences.Set("AuthenticatorLastSync", DateTime.Now);
                 }
                 catch (Exception ex)
                 {
-                    if (!isReadOnlySync)
+                    if (ex is OperationCanceledException) throw;
+                    MainThread.BeginInvokeOnMainThread(async () =>
                     {
-                         MainThread.BeginInvokeOnMainThread(async () =>
-                         {
-                             await Application.Current.MainPage.DisplayAlert("Sync Error", $"Fehler beim Synchronisieren (Auth): {ex.Message}", "OK");
-                         });
-                    }
+                        if (Application.Current?.MainPage is Page page)
+                            await page.DisplayAlert("Synchronisation", $"Der Eintrag wurde lokal gespeichert. Die Synchronisation ist fehlgeschlagen: {ex.Message}", "OK");
+                    });
                 }
             }
-
-            await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -678,34 +673,27 @@ public class TotpService
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            if (!await _syncService.IsConfiguredAsync().ConfigureAwait(false)) return;
+            if (!await _syncService.HasConfigurationAsync().ConfigureAwait(false)) return;
 
             EnsureUnlocked();
+            var changed = false;
             await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-                var isReadOnlySync = await IsReadOnlySyncAsync().ConfigureAwait(false);
-                if (isReadOnlySync)
-                {
-                    await MergeFromSyncReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
-                }
-                else
-                {
-                    await _syncService.SyncAuthenticatorAsync(entries, cancellationToken).ConfigureAwait(false);
-                }
+                var result = await (await IsReadOnlySyncAsync().ConfigureAwait(false)
+                    ? _syncService.GetMergedAuthenticatorReadOnlyAsync(entries, cancellationToken)
+                    : _syncService.GetMergedAuthenticatorAsync(entries, cancellationToken)).ConfigureAwait(false);
+                changed = !TotpEntrySetComparer.AreEquivalent(entries, result.MergedEntries);
+                if (changed)
+                    await SaveEntriesInternalAsync(result.MergedEntries, cancellationToken).ConfigureAwait(false);
                 Preferences.Set("AuthenticatorLastSync", DateTime.Now);
-                await SaveEntriesInternalAsync(entries, cancellationToken).ConfigureAwait(false);
-            }
-            catch
-            {
-                // Sync failed
             }
             finally
             {
                 _syncLock.Release();
             }
-            EntriesChanged?.Invoke(this, EventArgs.Empty);
+            if (changed) EntriesChanged?.Invoke(this, EventArgs.Empty);
         }
         catch
         {
@@ -720,42 +708,31 @@ public class TotpService
         return mode == SyncAccessMode.ReadMerge;
     }
 
-    private async Task MergeFromSyncReadOnlyAsync(IList<TotpEntry> entries, CancellationToken cancellationToken)
-    {
-        var result = await _syncService.GetMergedAuthenticatorReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
-        entries.Clear();
-        foreach (var mergedEntry in result.MergedEntries)
-        {
-            entries.Add(mergedEntry);
-        }
-    }
-
     public async Task LoadFromSyncAsync(CancellationToken cancellationToken = default)
     {
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-            if (!await _syncService.IsConfiguredAsync().ConfigureAwait(false)) return;
+            if (!await _syncService.HasConfigurationAsync().ConfigureAwait(false)) return;
 
             EnsureUnlocked();
+            var changed = false;
             await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
                 var result = await _syncService.GetMergedAuthenticatorReadOnlyAsync(entries, cancellationToken).ConfigureAwait(false);
+                changed = !TotpEntrySetComparer.AreEquivalent(entries, result.MergedEntries);
+                if (changed)
+                    await SaveEntriesInternalAsync(result.MergedEntries, cancellationToken).ConfigureAwait(false);
                 Preferences.Set("AuthenticatorLastSync", DateTime.Now);
-                await SaveEntriesInternalAsync(result.MergedEntries, cancellationToken).ConfigureAwait(false);
-            }
-            catch
-            {
-                // Sync failed
             }
             finally
             {
                 _syncLock.Release();
             }
 
-            EntriesChanged?.Invoke(this, EventArgs.Empty);
+            if (changed) EntriesChanged?.Invoke(this, EventArgs.Empty);
         }
         catch
         {

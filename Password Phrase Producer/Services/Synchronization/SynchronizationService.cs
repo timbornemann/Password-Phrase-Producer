@@ -20,6 +20,7 @@ namespace Password_Phrase_Producer.Services.Synchronization;
 public interface ISynchronizationService
 {
     Task<bool> IsConfiguredAsync();
+    Task<bool> HasConfigurationAsync();
     Task ConfigureAsync(string path, string password);
     Task<bool> ValidatePasswordAsync(string password); // Checks if password matches existing file
     Task<SyncAccessMode> GetAccessModeAsync();
@@ -228,19 +229,24 @@ public class SynchronizationService : ISynchronizationService
         }
     }
 
+    public Task<bool> HasConfigurationAsync()
+    {
+        var path = Preferences.Get(SyncPathKey, string.Empty);
+        return Task.FromResult(!string.IsNullOrWhiteSpace(path));
+    }
+
     public async Task<bool> IsConfiguredAsync()
     {
         var path = Preferences.Get(SyncPathKey, string.Empty);
-        if (string.IsNullOrEmpty(path)) return false;
+        if (string.IsNullOrWhiteSpace(path)) return false;
 
         try
         {
-            return await _syncFileService.ExistsAsync(path);
+            return await _syncFileService.ExistsAsync(path).ConfigureAwait(false);
         }
         catch
         {
-            // If checking existence fails (e.g. network error), assume not configured/offline
-            // to prevent blocking local usage.
+            // Automatic sync for the other vaults remains best effort when offline.
             return false;
         }
     }
@@ -297,8 +303,6 @@ public class SynchronizationService : ISynchronizationService
         try
         {
             var path = GetPath();
-            if (!await _syncFileService.ExistsAsync(path)) return;
-
             using var keyLease = await GetKeyAsync();
             var key = keyLease.Key;
 
@@ -310,12 +314,15 @@ public class SynchronizationService : ISynchronizationService
                 var remoteEntries = content.DataVault.Select(d => d.ToModel()).ToList();
                 var result = _vaultMergeService.MergeEntries(localEntries, remoteEntries);
 
-                content.DataVault = result.MergedEntries
-                    .Select(PasswordVaultEntryDto.FromModel)
-                    .ToList();
-                content.LastModified = DateTimeOffset.UtcNow;
-
-                await WriteVaultFileAsync(path, header, content, key);
+                if (content.DataVault.Any(d => d.Id == Guid.Empty || d.ModifiedAt == default) ||
+                    !PasswordEntrySetComparer.AreEquivalent(remoteEntries, result.MergedEntries))
+                {
+                    content.DataVault = result.MergedEntries
+                        .Select(PasswordVaultEntryDto.FromModel)
+                        .ToList();
+                    content.LastModified = DateTimeOffset.UtcNow;
+                    await WriteVaultFileAsync(path, header, content, key).ConfigureAwait(false);
+                }
 
                 localEntries.Clear();
                 foreach(var e in result.MergedEntries) localEntries.Add(e);
@@ -337,34 +344,9 @@ public class SynchronizationService : ISynchronizationService
         using var dataOperation = AppDataOperations.Shared.BeginOperation();
         try
         {
-             var path = GetPath();
-            if (!await _syncFileService.ExistsAsync(path)) return;
-
-            using var keyLease = await GetKeyAsync();
-            var key = keyLease.Key;
-
-            await _fileLock.WaitAsync(cancellationToken);
-            try
-            {
-                var (header, content) = await ReadVaultFileAsync(path, key);
-
-                var remoteEntries = content.Authenticator.Select(d => d.ToModel()).ToList();
-                var result = _vaultMergeService.MergeEntries(localEntries, remoteEntries);
-
-                content.Authenticator = result.MergedEntries
-                    .Select(TotpEntryDto.FromModel)
-                    .ToList();
-                content.LastModified = DateTimeOffset.UtcNow;
-
-                await WriteVaultFileAsync(path, header, content, key);
-
-                 localEntries.Clear();
-                foreach(var e in result.MergedEntries) localEntries.Add(e);
-            }
-            finally
-            {
-                _fileLock.Release();
-            }
+            var result = await GetMergedAuthenticatorAsync(localEntries, cancellationToken).ConfigureAwait(false);
+            localEntries.Clear();
+            foreach (var entry in result.MergedEntries) localEntries.Add(entry);
         }
         catch
         {
@@ -379,8 +361,6 @@ public class SynchronizationService : ISynchronizationService
         try
         {
              var path = GetPath();
-            if (!await _syncFileService.ExistsAsync(path)) return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
-
             using var keyLease = await GetKeyAsync();
             var key = keyLease.Key;
 
@@ -392,12 +372,15 @@ public class SynchronizationService : ISynchronizationService
                 var remoteEntries = content.PasswordVault.Select(d => d.ToModel()).ToList();
                 var result = _vaultMergeService.MergeEntries(localEntries, remoteEntries);
 
-                content.PasswordVault = result.MergedEntries
-                    .Select(PasswordVaultEntryDto.FromModel)
-                    .ToList();
-                content.LastModified = DateTimeOffset.UtcNow;
-
-                await WriteVaultFileAsync(path, header, content, key);
+                if (content.PasswordVault.Any(d => d.Id == Guid.Empty || d.ModifiedAt == default) ||
+                    !PasswordEntrySetComparer.AreEquivalent(remoteEntries, result.MergedEntries))
+                {
+                    content.PasswordVault = result.MergedEntries
+                        .Select(PasswordVaultEntryDto.FromModel)
+                        .ToList();
+                    content.LastModified = DateTimeOffset.UtcNow;
+                    await WriteVaultFileAsync(path, header, content, key).ConfigureAwait(false);
+                }
 
                 return result;
             }
@@ -419,8 +402,6 @@ public class SynchronizationService : ISynchronizationService
         try
         {
              var path = GetPath();
-            if (!await _syncFileService.ExistsAsync(path)) return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
-
             using var keyLease = await GetKeyAsync();
             var key = keyLease.Key;
 
@@ -432,12 +413,15 @@ public class SynchronizationService : ISynchronizationService
                 var remoteEntries = content.DataVault.Select(d => d.ToModel()).ToList();
                 var result = _vaultMergeService.MergeEntries(localEntries, remoteEntries);
 
-                content.DataVault = result.MergedEntries
-                    .Select(PasswordVaultEntryDto.FromModel)
-                    .ToList();
-                content.LastModified = DateTimeOffset.UtcNow;
-
-                await WriteVaultFileAsync(path, header, content, key);
+                if (content.DataVault.Any(d => d.Id == Guid.Empty || d.ModifiedAt == default) ||
+                    !PasswordEntrySetComparer.AreEquivalent(remoteEntries, result.MergedEntries))
+                {
+                    content.DataVault = result.MergedEntries
+                        .Select(PasswordVaultEntryDto.FromModel)
+                        .ToList();
+                    content.LastModified = DateTimeOffset.UtcNow;
+                    await WriteVaultFileAsync(path, header, content, key).ConfigureAwait(false);
+                }
 
                 return result;
             }
@@ -459,25 +443,25 @@ public class SynchronizationService : ISynchronizationService
         try
         {
              var path = GetPath();
-            if (!await _syncFileService.ExistsAsync(path)) return new MergeResult<TotpEntry> { MergedEntries = localEntries.ToList() };
-
             using var keyLease = await GetKeyAsync();
             var key = keyLease.Key;
 
             await _fileLock.WaitAsync(cancellationToken);
             try
             {
-                var (header, content) = await ReadVaultFileAsync(path, key);
+                var (header, content) = await ReadVaultFileWithRetryAsync(path, key, cancellationToken).ConfigureAwait(false);
 
                 var remoteEntries = content.Authenticator.Select(d => d.ToModel()).ToList();
                 var result = _vaultMergeService.MergeEntries(localEntries, remoteEntries);
 
-                content.Authenticator = result.MergedEntries
-                    .Select(TotpEntryDto.FromModel)
-                    .ToList();
-                content.LastModified = DateTimeOffset.UtcNow;
-
-                await WriteVaultFileAsync(path, header, content, key);
+                if (!TotpEntrySetComparer.AreEquivalent(remoteEntries, result.MergedEntries))
+                {
+                    content.Authenticator = result.MergedEntries
+                        .Select(TotpEntryDto.FromModel)
+                        .ToList();
+                    content.LastModified = DateTimeOffset.UtcNow;
+                    await WriteVaultFileAsync(path, header, content, key).ConfigureAwait(false);
+                }
 
                 return result;
             }
@@ -501,11 +485,6 @@ public class SynchronizationService : ISynchronizationService
         try
         {
             var path = GetPath();
-            if (!await _syncFileService.ExistsAsync(path))
-            {
-                return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
-            }
-
             using var keyLease = await GetKeyAsync();
             var key = keyLease.Key;
 
@@ -536,11 +515,6 @@ public class SynchronizationService : ISynchronizationService
         try
         {
             var path = GetPath();
-            if (!await _syncFileService.ExistsAsync(path))
-            {
-                return new MergeResult<PasswordVaultEntry> { MergedEntries = localEntries.ToList() };
-            }
-
             using var keyLease = await GetKeyAsync();
             var key = keyLease.Key;
 
@@ -571,18 +545,13 @@ public class SynchronizationService : ISynchronizationService
         try
         {
             var path = GetPath();
-            if (!await _syncFileService.ExistsAsync(path))
-            {
-                return new MergeResult<TotpEntry> { MergedEntries = localEntries.ToList() };
-            }
-
             using var keyLease = await GetKeyAsync();
             var key = keyLease.Key;
 
             await _fileLock.WaitAsync(cancellationToken);
             try
             {
-                var (_, content) = await ReadVaultFileAsync(path, key);
+                var (_, content) = await ReadVaultFileWithRetryAsync(path, key, cancellationToken).ConfigureAwait(false);
                 var remoteEntries = content.Authenticator.Select(d => d.ToModel()).ToList();
                 return _vaultMergeService.MergeEntries(localEntries, remoteEntries);
             }
@@ -599,6 +568,27 @@ public class SynchronizationService : ISynchronizationService
     }
 
     private const string MagicHeader = "PPP1"; // Password Phrase Producer v1
+
+    private async Task<(ExternalVaultHeader Header, ExternalVaultContent Content)> ReadVaultFileWithRetryAsync(
+        string path, byte[] key, CancellationToken cancellationToken)
+    {
+        // SAF cloud documents can briefly expose an incomplete revision. Reopen the entire
+        // document on retry; every candidate must still pass the normal header and AEAD checks.
+        for (var attempt = 0; ; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                return await ReadVaultFileAsync(path, key).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (attempt < 2 &&
+                ex is IOException or InvalidDataException or JsonException or CryptographicException or FormatException)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(attempt == 0 ? 250 : 600), cancellationToken)
+                    .ConfigureAwait(false);
+            }
+        }
+    }
 
     private async Task<(ExternalVaultHeader Header, ExternalVaultContent Content)> ReadVaultFileAsync(string path, byte[] key)
     {

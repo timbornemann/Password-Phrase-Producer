@@ -20,7 +20,7 @@
         <Grid
             Grid.Row="0"
             Padding="16,16,16,10"
-            RowDefinitions="Auto"
+            RowDefinitions="Auto,Auto"
             RowSpacing="10">
 
             <!-- Top Bar: Menu, Title, Add, Back -->
@@ -101,6 +101,18 @@
                         Rotation="180" />
                 </Border>
             </Grid>
+
+            <Label
+                Grid.Row="1"
+                Text="Synchronisation fehlgeschlagen · Erneut versuchen"
+                IsVisible="{Binding HasSyncError}"
+                TextColor="{StaticResource TextSecondary}"
+                FontSize="12"
+                Padding="2,4,2,0">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding RefreshCommand}" />
+                </Label.GestureRecognizers>
+            </Label>
         </Grid>
 
         <!-- List -->

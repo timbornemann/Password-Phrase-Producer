@@ -99,32 +99,29 @@ public class AndroidSyncFileService : ISyncFileService
         var contentResolver = Application.Context.ContentResolver;
         if (contentResolver == null) return null;
 
-        // Use standard OpenOutputStream which is more reliable for Cloud Providers (triggering upload).
-        // "wt" = Write + Truncate. Some providers (e.g., Proton Drive) don't support "wt" and only
-        // accept "w" or default write. Fall back to "w" then default mode, then try file descriptors.
-        try
+        // Providers signal unsupported modes in different ways, including a null stream or
+        // FileNotFoundException. Keep trying modes, but never ignore a permission error.
+        foreach (var mode in new[] { "wt", "w" })
         {
-            return contentResolver.OpenOutputStream(uri, "wt");
-        }
-        catch (Java.Lang.UnsupportedOperationException)
-        {
-            // Fall through to retry with "w".
-        }
-
-        try
-        {
-            return contentResolver.OpenOutputStream(uri, "w");
-        }
-        catch (Java.Lang.UnsupportedOperationException)
-        {
-            // Fall through to retry with default mode.
+            try
+            {
+                var stream = contentResolver.OpenOutputStream(uri, mode);
+                if (stream != null) return stream;
+            }
+            catch (Exception ex) when (ex is Java.Lang.UnsupportedOperationException or
+                Java.IO.FileNotFoundException or Java.Lang.IllegalArgumentException)
+            {
+                // Try the next mode.
+            }
         }
 
         try
         {
-            return contentResolver.OpenOutputStream(uri);
+            var stream = contentResolver.OpenOutputStream(uri);
+            if (stream != null) return stream;
         }
-        catch (Java.Lang.UnsupportedOperationException)
+        catch (Exception ex) when (ex is Java.Lang.UnsupportedOperationException or
+            Java.IO.FileNotFoundException or Java.Lang.IllegalArgumentException)
         {
             // Fall through to retry with file descriptor modes.
         }

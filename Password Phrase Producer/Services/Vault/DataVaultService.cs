@@ -506,7 +506,7 @@ public class DataVaultService
             await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                if (!await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+                if (!await _syncService.HasConfigurationAsync().ConfigureAwait(false))
                 {
                     return;
                 }
@@ -782,7 +782,7 @@ public class DataVaultService
             try
             {
                 var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-                if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+                if (await _syncService.HasConfigurationAsync().ConfigureAwait(false))
                 {
                     var isReadOnlySync = await IsReadOnlySyncAsync().ConfigureAwait(false);
                     if (isReadOnlySync)

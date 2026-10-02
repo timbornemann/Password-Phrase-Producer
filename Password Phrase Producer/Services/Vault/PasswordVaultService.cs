@@ -747,7 +747,7 @@ public class PasswordVaultService
             try
             {
                 var entries = await LoadEntriesInternalAsync(cancellationToken).ConfigureAwait(false);
-                if (await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+                if (await _syncService.HasConfigurationAsync().ConfigureAwait(false))
                 {
                     var isReadOnlySync = await IsReadOnlySyncAsync().ConfigureAwait(false);
                     if (isReadOnlySync)
@@ -784,7 +784,7 @@ public class PasswordVaultService
             await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                if (!await _syncService.IsConfiguredAsync().ConfigureAwait(false))
+                if (!await _syncService.HasConfigurationAsync().ConfigureAwait(false))
                 {
                     return;
                 }

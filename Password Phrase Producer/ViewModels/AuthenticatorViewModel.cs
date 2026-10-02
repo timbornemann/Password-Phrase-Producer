@@ -18,10 +18,16 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
     private readonly TotpService _totpService;
     private readonly TotpEncryptionService _encryptionService;
     private readonly IDispatcher _dispatcher;
+    private readonly SemaphoreSlim _loadLock = new(1, 1);
+    private readonly SemaphoreSlim _syncRunLock = new(1, 1);
     private IDispatcherTimer? _timer;
     private bool _isBusy;
     private bool _isActive;
+    private bool _hasSyncError;
+    private int _pendingLoads;
     private long _loadGeneration;
+    private long _activationGeneration;
+    private long _syncRequestGeneration;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -38,6 +44,12 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
         set => SetProperty(ref _isBusy, value);
     }
 
+    public bool HasSyncError
+    {
+        get => _hasSyncError;
+        private set => SetProperty(ref _hasSyncError, value);
+    }
+
     public AuthenticatorViewModel(TotpService totpService, TotpEncryptionService encryptionService)
     {
         _totpService = totpService;
@@ -47,7 +59,7 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
         AddEntryCommand = new Command(AddEntryAsync);
         DeleteEntryCommand = new Command<TotpViewModelItem>(DeleteEntryAsync);
         CopyCodeCommand = new Command<TotpViewModelItem>(CopyCodeAsync);
-        RefreshCommand = new Command(async () => await LoadEntriesAsync());
+        RefreshCommand = new Command(async () => await RefreshAsync());
 
     }
 
@@ -55,20 +67,60 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
     {
         if (_isActive) return;
         _isActive = true;
+        var activation = Interlocked.Increment(ref _activationGeneration);
+        HasSyncError = false;
         _totpService.EntriesChanged += OnEntriesChanged;
         _encryptionService.Locked += OnLocked;
         StartTimer();
-        Task.Run(async () => 
+        _ = ActivateAsync(activation);
+    }
+
+    private async Task ActivateAsync(long activation)
+    {
+        await LoadEntriesAsync();
+        await RunSyncAsync(activation);
+    }
+
+    private async Task RefreshAsync()
+    {
+        await LoadEntriesAsync();
+        await RunSyncAsync(Interlocked.Read(ref _activationGeneration));
+    }
+
+    private async Task RunSyncAsync(long activation)
+    {
+        var request = Interlocked.Increment(ref _syncRequestGeneration);
+        await _syncRunLock.WaitAsync();
+
+        try
         {
-            await _totpService.SyncAfterUnlockAsync();
-            await LoadEntriesAsync();
-        });
+            if (!_isActive || !_totpService.IsUnlocked ||
+                activation != Interlocked.Read(ref _activationGeneration) ||
+                request != Interlocked.Read(ref _syncRequestGeneration)) return;
+
+            await Task.Run(() => _totpService.SyncAfterUnlockAsync());
+            if (_isActive && activation == Interlocked.Read(ref _activationGeneration))
+                await MainThread.InvokeOnMainThreadAsync(() => HasSyncError = false);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Authenticator] Synchronisation fehlgeschlagen: {ex.GetType().Name}");
+            if (_isActive && activation == Interlocked.Read(ref _activationGeneration))
+                await MainThread.InvokeOnMainThreadAsync(() => HasSyncError = true);
+        }
+        finally
+        {
+            _syncRunLock.Release();
+        }
     }
 
     public void Deactivate()
     {
         _isActive = false;
         Interlocked.Increment(ref _loadGeneration);
+        Interlocked.Increment(ref _activationGeneration);
+        Interlocked.Increment(ref _syncRequestGeneration);
+        HasSyncError = false;
         _totpService.EntriesChanged -= OnEntriesChanged;
         _encryptionService.Locked -= OnLocked;
         StopTimer();
@@ -129,15 +181,19 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
 
     private async Task LoadEntriesAsync()
     {
-        if (IsBusy || !_isActive || !_totpService.IsUnlocked) return;
+        if (!_isActive || !_totpService.IsUnlocked) return;
         var generation = Interlocked.Increment(ref _loadGeneration);
-        IsBusy = true;
+        if (Interlocked.Increment(ref _pendingLoads) == 1)
+            await MainThread.InvokeOnMainThreadAsync(() => IsBusy = true);
+
+        await _loadLock.WaitAsync();
         try
         {
+            if (!_isActive || !_totpService.IsUnlocked) return;
             var entries = await _totpService.GetEntriesAsync();
             var viewModels = entries.Select(e => new TotpViewModelItem(e)).ToList();
 
-            _dispatcher.Dispatch(() =>
+            await MainThread.InvokeOnMainThreadAsync(() =>
             {
                 if (!_isActive || !_totpService.IsUnlocked ||
                     generation != Interlocked.Read(ref _loadGeneration))
@@ -177,7 +233,9 @@ public class AuthenticatorViewModel : INotifyPropertyChanged
         }
         finally
         {
-            IsBusy = false;
+            _loadLock.Release();
+            if (Interlocked.Decrement(ref _pendingLoads) == 0)
+                await MainThread.InvokeOnMainThreadAsync(() => IsBusy = false);
         }
     }
 

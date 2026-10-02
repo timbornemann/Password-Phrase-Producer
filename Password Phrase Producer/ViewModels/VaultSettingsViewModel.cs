@@ -1569,6 +1569,9 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     {
         try 
         {
+            if (!await _syncService.HasConfigurationAsync())
+                throw new InvalidOperationException("Die Synchronisation ist nicht eingerichtet.");
+
             IsSyncBusy = true;
             SyncStatusMessage = "Synchronisiere...";
             SyncStatusColor = Colors.Orange;
@@ -1612,6 +1615,9 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
     {
         try
         {
+            if (!await _syncService.HasConfigurationAsync())
+                throw new InvalidOperationException("Die Synchronisation ist nicht eingerichtet.");
+
             IsSyncBusy = true;
             SyncStatusMessage = "Lade aus Sync-Datei...";
             SyncStatusColor = Colors.Orange;
@@ -1677,7 +1683,7 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
 
     private async Task RefreshSyncStateAsync()
     {
-        var configured = await _syncService.IsConfiguredAsync();
+        var configured = await _syncService.HasConfigurationAsync();
         var accessMode = await _syncService.GetAccessModeAsync().ConfigureAwait(false);
         var isReadOnly = accessMode == SyncAccessMode.ReadMerge;
         await MainThread.InvokeOnMainThreadAsync(() =>
@@ -1691,8 +1697,8 @@ public class VaultSettingsViewModel : INotifyPropertyChanged
              }
              if (configured && string.IsNullOrEmpty(SyncStatusMessage)) // Keep success message if just configured
              {
-                 SyncStatusMessage = isReadOnly ? "Sync bereit (Nur lesen & zusammenführen)" : "Sync bereit";
-                 SyncStatusColor = isReadOnly ? Colors.Orange : Colors.Green;
+                 SyncStatusMessage = isReadOnly ? "Sync eingerichtet (Nur lesen & zusammenführen)" : "Sync eingerichtet";
+                 SyncStatusColor = Colors.Gray;
                  
                  // Pre-fill path if configured (read propery from SyncService? It stores in Preferences)
                  // We don't have direct access here easily without exposing, but we can read preferences.
