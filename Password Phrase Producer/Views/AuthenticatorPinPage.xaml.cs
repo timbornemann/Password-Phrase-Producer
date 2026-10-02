@@ -13,6 +13,8 @@ public partial class AuthenticatorPinPage : ContentPage
     private bool _refreshingLockout;
     private bool _isSetupMode;
     private bool _isBusy;
+    private bool _isPageActive;
+    private bool _hasAttemptedAutoBiometric;
 
     public AuthenticatorPinPage(TotpEncryptionService encryptionService, IBiometricAuthenticationService biometricService,
         IUnlockAttemptGate attemptGate, IRecoveryQuestionsService recoveryQuestions)
@@ -22,10 +24,10 @@ public partial class AuthenticatorPinPage : ContentPage
         _biometricService = biometricService;
         _attemptGate = attemptGate;
         _recoveryQuestions = recoveryQuestions;
+        PinEntry.TextChanged += (_, e) => StrengthMeter.Password = e.NewTextValue;
         if (OperatingSystem.IsWindows())
         {
             BiometricSetupLabel.Text = "Windows Hello (PIN oder Biometrie) für den Authenticator aktivieren";
-            BiometricUnlockButton.Text = "Mit Windows Hello entsperren";
         }
         
         // Initial state (will be updated in OnAppearing)
@@ -36,6 +38,7 @@ public partial class AuthenticatorPinPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        _isPageActive = true;
         try
         {
             _isSetupMode = !await _encryptionService.HasPasswordAsync();
@@ -50,6 +53,13 @@ public partial class AuthenticatorPinPage : ContentPage
             _lockoutTimer.Interval = TimeSpan.FromSeconds(1);
             _lockoutTimer.Tick += async (_, _) => await RefreshLockoutAsync();
             _lockoutTimer.Start();
+
+            if (_isPageActive && !_isSetupMode && hasBiometricKey && BiometricUnlockButton.IsEnabled &&
+                !_hasAttemptedAutoBiometric)
+            {
+                _hasAttemptedAutoBiometric = true;
+                await UnlockWithBiometricsAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -117,6 +127,7 @@ public partial class AuthenticatorPinPage : ContentPage
             TitleLabel.Text = "Authenticator einrichten";
             SubtitleLabel.Text = "Bitte gib dein Master-Passwort ein.";
             UnlockButton.Text = "Passwort erstellen";
+            StrengthMeter.IsVisible = true;
             ConfirmPinEntry.IsVisible = true;
             BackButton.IsVisible = false; // Kein Zurück im Setup-Mode
         }
@@ -125,6 +136,7 @@ public partial class AuthenticatorPinPage : ContentPage
             TitleLabel.Text = "Authenticator gesperrt";
             SubtitleLabel.Text = "Bitte gib dein Master-Passwort ein.";
             UnlockButton.Text = "Entsperren";
+            StrengthMeter.IsVisible = false;
             ConfirmPinEntry.IsVisible = false;
             BackButton.IsVisible = true; // Zurück-Button im Unlock-Mode
         }
@@ -253,8 +265,11 @@ public partial class AuthenticatorPinPage : ContentPage
     }
 
     private async void OnBiometricUnlockClicked(object sender, EventArgs e)
+        => await UnlockWithBiometricsAsync();
+
+    private async Task UnlockWithBiometricsAsync()
     {
-        if (_isBusy) return;
+        if (_isBusy || !BiometricUnlockButton.IsEnabled) return;
         try
         {
             _isBusy = true;
@@ -327,6 +342,7 @@ public partial class AuthenticatorPinPage : ContentPage
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
+        _isPageActive = false;
         _lockoutTimer?.Stop();
         PinEntry.Text = string.Empty;
         ConfirmPinEntry.Text = string.Empty;

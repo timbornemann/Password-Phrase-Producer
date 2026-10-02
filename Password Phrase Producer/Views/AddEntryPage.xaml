@@ -108,7 +108,7 @@
                             FontSize="11" />
                     </VerticalStackLayout>
 
-                    <Button Text="Hinzufügen" Clicked="OnSaveClicked"
+                    <Button Text="Speichern" Clicked="OnSaveClicked"
                             BackgroundColor="{StaticResource BrandPrimary}" TextColor="White"
                             Margin="0,14,0,0" HeightRequest="40" CornerRadius="4" FontSize="12" FontAttributes="Bold" />
                 </VerticalStackLayout>

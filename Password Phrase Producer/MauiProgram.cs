@@ -109,7 +109,7 @@ public static class MauiProgram
         builder.Services.AddTransient<VaultEntryEditorPage>();
         builder.Services.AddTransient<AuthenticatorViewModel>();
         builder.Services.AddTransient<AuthenticatorPage>();
-        builder.Services.AddSingleton<AuthenticatorPinPage>();
+        builder.Services.AddTransient<AuthenticatorPinPage>();
         builder.Services.AddTransient<AddEntryPage>();
 
         builder.Services.AddSingleton<Services.Security.IAppLockService, Services.Security.AppLockService>();

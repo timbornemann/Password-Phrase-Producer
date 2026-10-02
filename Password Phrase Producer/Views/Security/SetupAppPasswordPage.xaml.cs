@@ -12,6 +12,7 @@ public partial class SetupAppPasswordPage : ContentPage
     {
         InitializeComponent();
         _appLockService = appLockService;
+        PasswordEntry.TextChanged += (_, e) => StrengthMeter.Password = e.NewTextValue;
     }
 
     private async void OnSetupClicked(object sender, EventArgs e)

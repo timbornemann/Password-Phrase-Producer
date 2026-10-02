@@ -25,7 +25,8 @@ public sealed class PasswordPromptPage : ContentPage
     private readonly TaskCompletionSource<string?> _taskCompletionSource = new();
     private readonly Entry _passwordEntry;
 
-    public PasswordPromptPage(string title, string message, string acceptButtonText, string cancelButtonText)
+    public PasswordPromptPage(string title, string message, string acceptButtonText, string cancelButtonText,
+        bool showStrengthMeter = false)
     {
         Title = title;
         Shell.SetNavBarIsVisible(this, false);
@@ -109,11 +110,17 @@ public sealed class PasswordPromptPage : ContentPage
             {
                 titleLabel,
                 messageLabel,
-                _passwordEntry,
-                acceptButton,
-                cancelButton
+                _passwordEntry
             }
         };
+        if (showStrengthMeter)
+        {
+            var meter = new PasswordStrengthMeter();
+            _passwordEntry.TextChanged += (_, e) => meter.Password = e.NewTextValue;
+            cardContent.Children.Add(meter);
+        }
+        cardContent.Children.Add(acceptButton);
+        cardContent.Children.Add(cancelButton);
 
         var card = new Border
         {

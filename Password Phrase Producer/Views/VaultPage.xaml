@@ -634,6 +634,9 @@
                             HeightRequest="40"
                             Margin="0,3"
                             HorizontalOptions="Fill" />
+                        <controls:PasswordStrengthMeter x:DataType="viewmodels:VaultPageViewModel"
+                                                        Password="{Binding Password}"
+                                                        IsVisible="{Binding IsNewVault}" />
                         <Entry x:Name="ConfirmPasswordEntry"
                             Text="{Binding ConfirmPassword}"
                             IsVisible="{Binding IsNewVault}"

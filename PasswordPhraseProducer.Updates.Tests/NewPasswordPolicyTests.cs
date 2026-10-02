@@ -6,18 +6,24 @@ namespace PasswordPhraseProducer.Updates.Tests;
 public sealed class NewPasswordPolicyTests
 {
     [Theory]
-    [InlineData("short")]
-    [InlineData("aaaaaaaaaaaaaaa")]
-    [InlineData("password123456789")]
-    [InlineData("123456789012345")]
-    public void RejectsShortOrObviousNewPasswords(string password)
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void RejectsMissingNewPasswords(string? password)
     {
         Assert.Throws<ArgumentException>(() => NewPasswordPolicy.Validate(password, nameof(password)));
     }
 
-    [Fact]
-    public void AcceptsLongPassphraseWithSpaces()
+    [Theory]
+    [InlineData("a")]
+    [InlineData("short")]
+    [InlineData("aaaaaaaaaaaaaaa")]
+    [InlineData("password123456789")]
+    [InlineData("123456789012345")]
+    [InlineData("Four distinct words make a passphrase")]
+    [InlineData("!@#")]
+    public void AcceptsAnyNonBlankNewPassword(string password)
     {
-        NewPasswordPolicy.Validate("Four distinct words make a passphrase", "password");
+        NewPasswordPolicy.Validate(password, nameof(password));
     }
 }

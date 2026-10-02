@@ -2,6 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:converters="clr-namespace:Password_Phrase_Producer.Converters"
+             xmlns:controls="clr-namespace:Password_Phrase_Producer.Views.Controls"
              x:Class="Password_Phrase_Producer.Views.AuthenticatorPinPage"
              Shell.NavBarIsVisible="False">
     <ContentPage.Resources>
@@ -76,6 +77,7 @@
                         HorizontalOptions="Fill"
                         ReturnType="Go"
                         Completed="OnPinEntered" />
+                    <controls:PasswordStrengthMeter x:Name="StrengthMeter" IsVisible="False" />
                     <Entry
                         x:Name="ConfirmPinEntry"
                         IsVisible="False"
@@ -121,12 +123,14 @@
                         CornerRadius="4" />
                     <Button
                         x:Name="BiometricUnlockButton"
-                        Text="Mit Biometrie entsperren"
+                        Text="Fingerabdruck"
                         Clicked="OnBiometricUnlockClicked"
                         IsVisible="False"
                         HeightRequest="40"
                         BackgroundColor="{StaticResource BackgroundInput}"
-                        TextColor="White"
+                        TextColor="{StaticResource TextSecondary}"
+                        BorderColor="{StaticResource BrandPrimary}"
+                        BorderWidth="1"
                         CornerRadius="4" />
                     <Label x:Name="AttemptStatusLabel" TextColor="{StaticResource TextSecondary}" HorizontalTextAlignment="Center" />
                     <Button x:Name="RecoveryButton" Text="Sicherheitsfragen beantworten"

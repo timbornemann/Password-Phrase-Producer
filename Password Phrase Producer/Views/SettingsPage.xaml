@@ -4,6 +4,7 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:converters="clr-namespace:Password_Phrase_Producer.Converters"
+    xmlns:controls="clr-namespace:Password_Phrase_Producer.Views.Controls"
     xmlns:viewmodels="clr-namespace:Password_Phrase_Producer.ViewModels"
     xmlns:views="clr-namespace:Password_Phrase_Producer.Views"
     Padding="0"
@@ -146,6 +147,8 @@
                             IsPassword="True"
                             FontSize="13"
                             HeightRequest="38" />
+                        <controls:PasswordStrengthMeter x:DataType="viewmodels:VaultSettingsViewModel"
+                                                        Password="{Binding NewAppPassword}" />
                         <Entry
                             Text="{Binding ConfirmAppPassword}"
                             Placeholder="Passwort bestätigen"
@@ -251,6 +254,8 @@
                             IsPassword="True"
                             FontSize="13"
                             HeightRequest="38" />
+                        <controls:PasswordStrengthMeter x:DataType="viewmodels:VaultSettingsViewModel"
+                                                        Password="{Binding NewMasterPassword}" />
                         <Entry
                             Text="{Binding ConfirmMasterPassword}"
                             Placeholder="Passwort bestätigen"
@@ -347,6 +352,8 @@
                             IsPassword="True"
                             FontSize="13"
                             HeightRequest="38" />
+                        <controls:PasswordStrengthMeter x:DataType="viewmodels:VaultSettingsViewModel"
+                                                        Password="{Binding NewDataVaultMasterPassword}" />
                         <Entry
                             Text="{Binding ConfirmDataVaultMasterPassword}"
                             Placeholder="Passwort bestätigen"
@@ -460,6 +467,8 @@
                             IsPassword="True"
                             FontSize="13"
                             HeightRequest="38" />
+                        <controls:PasswordStrengthMeter x:DataType="viewmodels:VaultSettingsViewModel"
+                                                        Password="{Binding NewAuthenticatorPassword}" />
                         <Entry
                             Text="{Binding ConfirmAuthenticatorPassword}"
                             Placeholder="Passwort bestätigen"

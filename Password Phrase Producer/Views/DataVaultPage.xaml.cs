@@ -543,7 +543,7 @@ public partial class DataVaultPage : ContentPage
             "Export-Passwort",
             "Gib ein Passwort zum Verschlüsseln der Export-Datei ein:",
             "Export",
-            "Abbrechen");
+            "Abbrechen", showStrengthMeter: true);
 
         if (string.IsNullOrEmpty(filePassword))
         {
@@ -592,7 +592,7 @@ public partial class DataVaultPage : ContentPage
             "Export-Passwort",
             "Gib ein Passwort zum Verschlüsseln der Export-Datei ein:",
             "Export",
-            "Abbrechen");
+            "Abbrechen", showStrengthMeter: true);
 
         if (string.IsNullOrEmpty(filePassword))
         {
@@ -653,7 +653,7 @@ public partial class DataVaultPage : ContentPage
             "Master-Passwort ändern",
             "Bitte gib das neue Master-Passwort ein.",
             "Weiter",
-            "Abbrechen");
+            "Abbrechen", showStrengthMeter: true);
 
         if (newPassword is null)
         {
@@ -706,7 +706,8 @@ public partial class DataVaultPage : ContentPage
         }
     }
 
-    private async Task<string?> DisplayPasswordPromptAsync(string title, string message, string accept, string cancel)
+    private async Task<string?> DisplayPasswordPromptAsync(string title, string message, string accept, string cancel,
+        bool showStrengthMeter = false)
     {
         var navigation = Navigation ?? Microsoft.Maui.Controls.Application.Current?.MainPage?.Navigation;
         if (navigation is null)
@@ -714,7 +715,7 @@ public partial class DataVaultPage : ContentPage
             throw new InvalidOperationException("Keine Navigationsinstanz verfügbar, um den Passwortdialog zu öffnen.");
         }
 
-        var promptPage = new PasswordPromptPage(title, message, accept, cancel);
+        var promptPage = new PasswordPromptPage(title, message, accept, cancel, showStrengthMeter);
 
         BeginModalInteraction();
         try
