@@ -11,13 +11,13 @@ namespace Password_Phrase_Producer.Views.Dialogs;
 /// </summary>
 public sealed class ReleaseNotesPopup : Popup
 {
-    private static readonly Color BackgroundCard = Color.FromArgb("#1B2036");
-    private static readonly Color BackgroundButton = Color.FromArgb("#1F2338");
-    private static readonly Color BackgroundButtonPrimary = Color.FromArgb("#4A5CFF");
+    private static readonly Color BackgroundCard = Color.FromArgb("#171C21");
+    private static readonly Color BackgroundButton = Color.FromArgb("#20272E");
+    private static readonly Color BackgroundButtonPrimary = Color.FromArgb("#536D81");
     private static readonly Color TextPrimary = Colors.White;
-    private static readonly Color TextSecondary = Color.FromArgb("#E8EBFF");
-    private static readonly Color TextTertiary = Color.FromArgb("#9EA3C4");
-    private static readonly Color TextError = Color.FromArgb("#FF8F8F");
+    private static readonly Color TextSecondary = Color.FromArgb("#DDE2E6");
+    private static readonly Color TextTertiary = Color.FromArgb("#9EAAB5");
+    private static readonly Color TextError = Color.FromArgb("#E88B91");
 
     public ReleaseNotesPopup(string markdown, string? version, Uri? githubUri)
     {
@@ -100,18 +100,12 @@ public sealed class ReleaseNotesPopup : Popup
         var card = new Border
         {
             BackgroundColor = BackgroundCard,
-            StrokeShape = new RoundRectangle { CornerRadius = 16 },
+            StrokeShape = new RoundRectangle { CornerRadius = 6 },
             StrokeThickness = 0,
             Padding = new Thickness(20, 20),
             WidthRequest = cardWidth,
             HorizontalOptions = LayoutOptions.Center,
             Content = layout
-        };
-        card.Shadow = new Shadow
-        {
-            Brush = new SolidColorBrush(Color.FromArgb("#25000000")),
-            Radius = 12,
-            Offset = new Point(0, 6)
         };
 
         Content = new Grid
@@ -160,7 +154,7 @@ public sealed class ReleaseNotesPopup : Popup
         {
             BackgroundColor = background,
             StrokeThickness = 0,
-            StrokeShape = new RoundRectangle { CornerRadius = 12 },
+            StrokeShape = new RoundRectangle { CornerRadius = 4 },
             Padding = new Thickness(14, 12),
             Content = label
         };

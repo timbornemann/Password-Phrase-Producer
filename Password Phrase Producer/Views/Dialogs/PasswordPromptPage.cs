@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Maui.Graphics;
+using Password_Phrase_Producer.Views.Controls;
 
 namespace Password_Phrase_Producer.Views.Dialogs;
 
@@ -12,14 +13,14 @@ namespace Password_Phrase_Producer.Views.Dialogs;
 public sealed class PasswordPromptPage : ContentPage
 {
     // Design System Colors
-    private static readonly Color BackgroundCard = Color.FromArgb("#1B2036");
-    private static readonly Color BackgroundInput = Color.FromArgb("#1F2338");
-    private static readonly Color BackgroundButtonPrimary = Color.FromArgb("#4A5CFF");
-    private static readonly Color BackgroundButtonSecondary = Color.FromArgb("#1F2338");
+    private static readonly Color BackgroundCard = Color.FromArgb("#171C21");
+    private static readonly Color BackgroundInput = Color.FromArgb("#20272E");
+    private static readonly Color BackgroundButtonPrimary = Color.FromArgb("#536D81");
+    private static readonly Color BackgroundButtonSecondary = Color.FromArgb("#20272E");
     private static readonly Color TextPrimary = Colors.White;
-    private static readonly Color TextSecondary = Color.FromArgb("#E8EBFF");
-    private static readonly Color TextTertiary = Color.FromArgb("#9EA3C4");
-    private static readonly Color TextPlaceholder = Color.FromArgb("#7F85B2");
+    private static readonly Color TextSecondary = Color.FromArgb("#DDE2E6");
+    private static readonly Color TextTertiary = Color.FromArgb("#9EAAB5");
+    private static readonly Color TextPlaceholder = Color.FromArgb("#8797A4");
 
     private readonly TaskCompletionSource<string?> _taskCompletionSource = new();
     private readonly Entry _passwordEntry;
@@ -36,9 +37,9 @@ public sealed class PasswordPromptPage : ContentPage
             EndPoint = new Point(1, 1),
             GradientStops =
             {
-                new GradientStop(Color.FromArgb("#101018"), 0),
-                new GradientStop(Color.FromArgb("#141426"), 0.6f),
-                new GradientStop(Color.FromArgb("#0F111A"), 1)
+                new GradientStop(Color.FromArgb("#0D1013"), 0),
+                new GradientStop(Color.FromArgb("#11161A"), 0.6f),
+                new GradientStop(Color.FromArgb("#0F1317"), 1)
             }
         };
 
@@ -62,7 +63,7 @@ public sealed class PasswordPromptPage : ContentPage
             Margin = new Thickness(0, 0, 0, 8)
         };
 
-        _passwordEntry = new Entry
+        _passwordEntry = new FramedEntry
         {
             Placeholder = "Passwort eingeben",
             PlaceholderColor = TextPlaceholder,
@@ -75,15 +76,6 @@ public sealed class PasswordPromptPage : ContentPage
             FontSize = 14
         };
 
-        var inputBorder = new Border
-        {
-            BackgroundColor = BackgroundInput,
-            StrokeThickness = 0,
-            Padding = new Thickness(12, 0),
-            Content = _passwordEntry
-        };
-        inputBorder.StrokeShape = new RoundRectangle { CornerRadius = 12 };
-
         var acceptButton = new Button
         {
             Text = string.IsNullOrWhiteSpace(acceptButtonText) ? "OK" : acceptButtonText,
@@ -91,7 +83,7 @@ public sealed class PasswordPromptPage : ContentPage
             TextColor = TextPrimary,
             FontSize = 14,
             FontAttributes = FontAttributes.Bold,
-            CornerRadius = 12,
+            CornerRadius = 4,
             HeightRequest = 40,
             HorizontalOptions = LayoutOptions.Fill,
             Margin = new Thickness(0, 8, 0, 0)
@@ -104,7 +96,7 @@ public sealed class PasswordPromptPage : ContentPage
             BackgroundColor = BackgroundButtonSecondary,
             TextColor = TextSecondary,
             FontSize = 14,
-            CornerRadius = 12,
+            CornerRadius = 4,
             HeightRequest = 40,
             HorizontalOptions = LayoutOptions.Fill
         };
@@ -117,7 +109,7 @@ public sealed class PasswordPromptPage : ContentPage
             {
                 titleLabel,
                 messageLabel,
-                inputBorder,
+                _passwordEntry,
                 acceptButton,
                 cancelButton
             }
@@ -131,13 +123,7 @@ public sealed class PasswordPromptPage : ContentPage
             Content = cardContent,
             MaximumWidthRequest = 360
         };
-        card.StrokeShape = new RoundRectangle { CornerRadius = 16 };
-        card.Shadow = new Shadow
-        {
-            Brush = new SolidColorBrush(Color.FromArgb("#25000000")),
-            Radius = 12,
-            Offset = new Point(0, 6)
-        };
+        card.StrokeShape = new RoundRectangle { CornerRadius = 6 };
 
         Content = new Grid
         {

@@ -12,9 +12,9 @@
     
     <ContentPage.Background>
         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#101018" Offset="0" />
-            <GradientStop Color="#141426" Offset="0.6" />
-            <GradientStop Color="#0F111A" Offset="1" />
+            <GradientStop Color="{StaticResource BackgroundDark1}" Offset="0" />
+            <GradientStop Color="{StaticResource BackgroundDark2}" Offset="0.6" />
+            <GradientStop Color="{StaticResource BackgroundDark3}" Offset="1" />
         </LinearGradientBrush>
     </ContentPage.Background>
 
@@ -25,10 +25,10 @@
                     x:Name="BackButton"
                     Padding="10,6"
                     StrokeThickness="0"
-                    BackgroundColor="#1F2338"
+                    BackgroundColor="{StaticResource BackgroundInput}"
                     HorizontalOptions="Start">
                     <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="10" />
+                        <RoundRectangle CornerRadius="4" />
                     </Border.StrokeShape>
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnBackTapped" />
@@ -43,7 +43,7 @@
                         <Label
                             Text="Zurück"
                             FontSize="12"
-                            TextColor="#CFD3FF" />
+                            TextColor="{StaticResource TextSecondary}" />
                     </HorizontalStackLayout>
                 </Border>
 
@@ -59,7 +59,7 @@
                         x:Name="SubtitleLabel"
                         Text="Bitte gib dein Master-Passwort ein."
                         FontSize="12"
-                        TextColor="#9EA3C4"
+                        TextColor="{StaticResource TextTertiary}"
                         HorizontalTextAlignment="Center" />
                 </VerticalStackLayout>
 
@@ -68,9 +68,9 @@
                         x:Name="PinEntry"
                         IsPassword="True"
                         Placeholder="Master-Passwort"
-                        PlaceholderColor="#7F85B2"
+                        PlaceholderColor="{StaticResource TextMuted}"
                         TextColor="White"
-                        BackgroundColor="#1F2338"
+                        BackgroundColor="{StaticResource BackgroundInput}"
                         HeightRequest="40"
                         Margin="0,3"
                         HorizontalOptions="Fill"
@@ -81,9 +81,9 @@
                         IsVisible="False"
                         IsPassword="True"
                         Placeholder="Passwort bestätigen"
-                        PlaceholderColor="#7F85B2"
+                        PlaceholderColor="{StaticResource TextMuted}"
                         TextColor="White"
-                        BackgroundColor="#1F2338"
+                        BackgroundColor="{StaticResource BackgroundInput}"
                         HeightRequest="40"
                         Margin="0,3"
                         HorizontalOptions="Fill"
@@ -94,7 +94,7 @@
                         <Switch x:Name="BiometricSetupSwitch" Grid.Column="0" />
                         <Label x:Name="BiometricSetupLabel" Grid.Column="1"
                                Text="Biometrische Anmeldung für den Authenticator aktivieren"
-                               TextColor="#E8EBFF"
+                               TextColor="{StaticResource TextSecondary}"
                                FontSize="12"
                                Margin="10,0,0,0"
                                VerticalOptions="Center" />
@@ -103,7 +103,7 @@
                     <Label
                         x:Name="ErrorLabel"
                         Text=""
-                        TextColor="#FF7474"
+                        TextColor="{StaticResource BrandError}"
                         FontSize="11"
                         IsVisible="False"
                         HorizontalTextAlignment="Center" />
@@ -116,19 +116,19 @@
                         Clicked="OnUnlockClicked"
                         HeightRequest="40"
                         FontAttributes="Bold"
-                        BackgroundColor="#4A5CFF"
+                        BackgroundColor="{StaticResource BrandPrimary}"
                         TextColor="White"
-                        CornerRadius="10" />
+                        CornerRadius="4" />
                     <Button
                         x:Name="BiometricUnlockButton"
                         Text="Mit Biometrie entsperren"
                         Clicked="OnBiometricUnlockClicked"
                         IsVisible="False"
                         HeightRequest="40"
-                        BackgroundColor="#1F2338"
+                        BackgroundColor="{StaticResource BackgroundInput}"
                         TextColor="White"
-                        CornerRadius="10" />
-                    <Label x:Name="AttemptStatusLabel" TextColor="#E8EBFF" HorizontalTextAlignment="Center" />
+                        CornerRadius="4" />
+                    <Label x:Name="AttemptStatusLabel" TextColor="{StaticResource TextSecondary}" HorizontalTextAlignment="Center" />
                     <Button x:Name="RecoveryButton" Text="Sicherheitsfragen beantworten"
                             Clicked="OnRecoveryClicked" IsVisible="False" />
                 </VerticalStackLayout>

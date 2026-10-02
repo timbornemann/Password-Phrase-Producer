@@ -2,11 +2,10 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
-using Microsoft.Maui.Controls.Shapes;
-using Microsoft.Maui.Graphics;
 using Password_Phrase_Producer.PasswordGenerationTechniques.ConcatenationTechniques;
 using Password_Phrase_Producer.Services;
 using Password_Phrase_Producer.Services.EntropyAnalyzer;
+using Password_Phrase_Producer.Views.Controls;
 
 namespace Password_Phrase_Producer.Windows.PasswordGenerationWindows;
 
@@ -60,7 +59,8 @@ public partial class ConcatenationTechniquesUiPage : PasswordGeneratorContentVie
 
         foreach (var child in phraseContainer.Children)
         {
-            if (TryGetEntry(child, out var entry) && !string.IsNullOrWhiteSpace(entry.Text))
+            if (child is Grid row && row.Children.Count > 1 &&
+                row.Children[1] is Entry entry && !string.IsNullOrWhiteSpace(entry.Text))
             {
                 phrases.Add(entry.Text);
             }
@@ -94,32 +94,18 @@ public partial class ConcatenationTechniquesUiPage : PasswordGeneratorContentVie
         }
     }
 
-    private View CreatePhraseEntry()
+    private Grid CreatePhraseEntry()
     {
         var indexLabel = new Label
         {
-            Text = "1",
-            FontSize = 16,
-            FontAttributes = FontAttributes.Bold,
-            TextColor = Colors.White,
-            HorizontalTextAlignment = TextAlignment.Center,
+            Text = "01",
+            FontSize = 12,
+            WidthRequest = 28,
             VerticalTextAlignment = TextAlignment.Center
         };
+        indexLabel.SetDynamicResource(Label.TextColorProperty, "TextTertiary");
 
-        var indexBorder = new Border
-        {
-            WidthRequest = 38,
-            HeightRequest = 38,
-            BackgroundColor = Color.FromArgb("#2F3452"),
-            StrokeThickness = 0,
-            HorizontalOptions = LayoutOptions.Center,
-            VerticalOptions = LayoutOptions.Center,
-            Content = indexLabel
-        };
-
-        indexBorder.StrokeShape = new RoundRectangle { CornerRadius = 14 };
-
-        var entry = new Entry
+        var entry = new FramedEntry
         {
             Placeholder = "Phrase",
             HorizontalOptions = LayoutOptions.Fill,
@@ -131,66 +117,20 @@ public partial class ConcatenationTechniquesUiPage : PasswordGeneratorContentVie
             entry.Style = style;
         }
 
-        var grid = new Grid
+        var row = new Grid
         {
             ColumnDefinitions =
             {
                 new ColumnDefinition { Width = GridLength.Auto },
                 new ColumnDefinition { Width = GridLength.Star }
             },
-            ColumnSpacing = 16,
-            RowDefinitions =
-            {
-                new RowDefinition { Height = GridLength.Auto }
-            },
-            Padding = new Thickness(0),
-            VerticalOptions = LayoutOptions.Fill
+            ColumnSpacing = 8
         };
-
-        grid.Children.Add(indexBorder);
-        Grid.SetColumn(indexBorder, 0);
-
-        grid.Children.Add(entry);
+        row.Children.Add(indexLabel);
+        row.Children.Add(entry);
         Grid.SetColumn(entry, 1);
 
-        return grid;
-    }
-
-    private static bool TryGetEntry(IView container, out Entry? entry)
-    {
-        switch (container)
-        {
-            case Entry directEntry:
-                entry = directEntry;
-                return true;
-            case Grid grid:
-                foreach (var child in grid.Children)
-                {
-                    if (TryGetEntry(child, out entry))
-                    {
-                        return true;
-                    }
-                }
-
-                entry = null;
-                return false;
-            case Layout layout:
-                foreach (var child in layout.Children)
-                {
-                    if (TryGetEntry(child, out entry))
-                    {
-                        return true;
-                    }
-                }
-
-                entry = null;
-                return false;
-            case Border border when border.Content is IView view:
-                return TryGetEntry(view, out entry);
-            default:
-                entry = null;
-                return false;
-        }
+        return row;
     }
 
     private void UpdatePhraseEntryIndices()
@@ -199,27 +139,14 @@ public partial class ConcatenationTechniquesUiPage : PasswordGeneratorContentVie
 
         foreach (var child in phraseContainer.Children)
         {
-            if (child is Grid grid)
+            if (child is Grid row && row.Children.Count > 1 &&
+                row.Children[0] is Label indexLabel && row.Children[1] is Entry entry)
             {
-                foreach (var element in grid.Children)
-                {
-                    if (element is Border badge && badge.Content is Label badgeLabel)
-                    {
-                        badgeLabel.Text = index.ToString();
-                    }
-                    else if (element is Entry entry)
-                    {
-                        entry.Placeholder = $"Phrase {index}";
-                    }
-                }
+                indexLabel.Text = index.ToString("D2");
+                entry.Placeholder = $"Phrase {index}";
             }
 
             index++;
-        }
-
-        if (phraseCountLabel is not null)
-        {
-            phraseCountLabel.Text = $"Phrasen ({phraseContainer.Children.Count})";
         }
     }
 }

@@ -11,9 +11,9 @@ namespace Password_Phrase_Producer.Views.Dialogs;
 /// </summary>
 public static class ToastPopup
 {
-    private static readonly Color BackgroundColor = Color.FromArgb("#1B2036");
-    private static readonly Color TextColor = Color.FromArgb("#E8EBFF");
-    private static readonly Color BorderColor = Color.FromArgb("#2A2F4A");
+    private static readonly Color BackgroundColor = Color.FromArgb("#171C21");
+    private static readonly Color TextColor = Color.FromArgb("#DDE2E6");
+    private static readonly Color BorderColor = Color.FromArgb("#313B44");
 
     /// <summary>
     /// Shows the toast and automatically dismisses it after the specified duration.
@@ -57,19 +57,13 @@ public static class ToastPopup
             BackgroundColor = BackgroundColor,
             StrokeThickness = 1,
             Stroke = new SolidColorBrush(BorderColor),
-            StrokeShape = new RoundRectangle { CornerRadius = 12 },
+            StrokeShape = new RoundRectangle { CornerRadius = 4 },
             Content = label,
             HorizontalOptions = LayoutOptions.Center,
             VerticalOptions = LayoutOptions.Start,
             Margin = new Thickness(20, 0, 20, 40),
             Opacity = 0,
             TranslationY = 20,
-            Shadow = new Shadow
-            {
-                Brush = new SolidColorBrush(Color.FromArgb("#40000000")),
-                Radius = 12,
-                Offset = new Point(0, 4)
-            },
             InputTransparent = true // Don't block touches
         };
 

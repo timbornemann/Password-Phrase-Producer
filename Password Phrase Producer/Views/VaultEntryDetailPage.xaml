@@ -7,18 +7,14 @@
     Shell.NavBarIsVisible="False">
     <ContentPage.Resources>
         <ResourceDictionary>
-            <Color x:Key="CardBackgroundColor">#1B2036</Color>
-            <Color x:Key="InputBackgroundColor">#1F2338</Color>
-            <Color x:Key="AccentColor">#4A5CFF</Color>
-            <Color x:Key="SecondaryButtonColor">#1F2338</Color>
             <Style TargetType="Label" x:Key="FieldLabelStyle">
                 <Setter Property="FontSize" Value="12" />
                 <Setter Property="FontAttributes" Value="Bold" />
-                <Setter Property="TextColor" Value="#9EA3C4" />
+                <Setter Property="TextColor" Value="{StaticResource TextTertiary}" />
             </Style>
             <Style TargetType="Label" x:Key="FieldValueStyle">
                 <Setter Property="FontSize" Value="14" />
-                <Setter Property="TextColor" Value="#E8EBFF" />
+                <Setter Property="TextColor" Value="{StaticResource TextSecondary}" />
                 <Setter Property="LineBreakMode" Value="WordWrap" />
             </Style>
         </ResourceDictionary>
@@ -26,9 +22,9 @@
 
     <ContentPage.Background>
         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#101018" Offset="0" />
-            <GradientStop Color="#141426" Offset="0.6" />
-            <GradientStop Color="#0F111A" Offset="1" />
+            <GradientStop Color="{StaticResource BackgroundDark1}" Offset="0" />
+            <GradientStop Color="{StaticResource BackgroundDark2}" Offset="0.6" />
+            <GradientStop Color="{StaticResource BackgroundDark3}" Offset="1" />
         </LinearGradientBrush>
     </ContentPage.Background>
 
@@ -48,17 +44,14 @@
             
             <!-- Edit Button -->
             <Border
-                WidthRequest="34"
-                HeightRequest="34"
-                BackgroundColor="#1F2338"
+                WidthRequest="40"
+                HeightRequest="40"
+                BackgroundColor="Transparent"
                 StrokeThickness="0"
                 VerticalOptions="Center">
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="10" />
+                    <RoundRectangle CornerRadius="4" />
                 </Border.StrokeShape>
-                <Border.Shadow>
-                    <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
-                </Border.Shadow>
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnEditTapped" />
                 </Border.GestureRecognizers>
@@ -81,7 +74,7 @@
                 <Label
                     Text="{Binding Category}"
                     FontSize="11"
-                    TextColor="#9EA3C4"
+                    TextColor="{StaticResource TextTertiary}"
                     HorizontalTextAlignment="Center"
                     IsVisible="{Binding Category, Converter={StaticResource StringNotNullOrWhiteSpaceConverter}}" />
             </VerticalStackLayout>
@@ -89,18 +82,15 @@
             <!-- Back Button -->
             <Border
                 Grid.Column="2"
-                WidthRequest="34"
-                HeightRequest="34"
-                BackgroundColor="#1F2338"
+                WidthRequest="40"
+                HeightRequest="40"
+                BackgroundColor="Transparent"
                 StrokeThickness="0"
                 HorizontalOptions="End"
                 VerticalOptions="Center">
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="10" />
+                    <RoundRectangle CornerRadius="4" />
                 </Border.StrokeShape>
-                <Border.Shadow>
-                    <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
-                </Border.Shadow>
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnCloseTapped" />
                 </Border.GestureRecognizers>
@@ -119,15 +109,12 @@
                 
                 <!-- Main Info Card -->
                 <Border
-                    BackgroundColor="{StaticResource CardBackgroundColor}"
+                    BackgroundColor="{StaticResource BackgroundCard}"
                     StrokeThickness="0"
                     Padding="16">
                     <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="16" />
+                        <RoundRectangle CornerRadius="6" />
                     </Border.StrokeShape>
-                    <Border.Shadow>
-                        <Shadow Brush="#25000000" Radius="12" Offset="0,6" />
-                    </Border.Shadow>
                     <VerticalStackLayout Spacing="16">
                         
                         <!-- Username -->
@@ -141,13 +128,13 @@
                                     VerticalOptions="Center" />
                                 <Border
                                     Grid.Column="1"
-                                    WidthRequest="34"
-                                    HeightRequest="34"
-                                    BackgroundColor="#2A2F4A"
+                                    WidthRequest="40"
+                                    HeightRequest="40"
+                                    BackgroundColor="{StaticResource BorderDefault}"
                                     StrokeThickness="0"
                                     VerticalOptions="Center">
                                     <Border.StrokeShape>
-                                        <RoundRectangle CornerRadius="8" />
+                                        <RoundRectangle CornerRadius="3" />
                                     </Border.StrokeShape>
                                     <Border.GestureRecognizers>
                                         <TapGestureRecognizer Tapped="OnCopyUsernameTapped" />
@@ -168,30 +155,30 @@
                             <Label Text="Passwort" Style="{StaticResource FieldLabelStyle}" />
                             <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
                                 <Border
-                                    BackgroundColor="{StaticResource InputBackgroundColor}"
+                                    BackgroundColor="{StaticResource BackgroundInput}"
                                     StrokeThickness="0"
                                     Padding="12,10"
                                     VerticalOptions="Center">
                                     <Border.StrokeShape>
-                                        <RoundRectangle CornerRadius="10" />
+                                        <RoundRectangle CornerRadius="4" />
                                     </Border.StrokeShape>
                                     <Label 
                                         x:Name="PasswordLabel"
                                         Text=""
                                         FontSize="14"
                                         FontFamily="Consolas"
-                                        TextColor="#E8EBFF"
+                                        TextColor="{StaticResource TextSecondary}"
                                         LineBreakMode="CharacterWrap" />
                                 </Border>
                                 <Border
                                     Grid.Column="1"
-                                    WidthRequest="34"
-                                    HeightRequest="34"
-                                    BackgroundColor="#2A2F4A"
+                                    WidthRequest="40"
+                                    HeightRequest="40"
+                                    BackgroundColor="{StaticResource BorderDefault}"
                                     StrokeThickness="0"
                                     VerticalOptions="Start">
                                     <Border.StrokeShape>
-                                        <RoundRectangle CornerRadius="8" />
+                                        <RoundRectangle CornerRadius="3" />
                                     </Border.StrokeShape>
                                     <Border.GestureRecognizers>
                                         <TapGestureRecognizer Tapped="OnTogglePasswordTapped" />
@@ -206,13 +193,13 @@
                                 </Border>
                                 <Border
                                     Grid.Column="2"
-                                    WidthRequest="34"
-                                    HeightRequest="34"
-                                    BackgroundColor="#2A2F4A"
+                                    WidthRequest="40"
+                                    HeightRequest="40"
+                                    BackgroundColor="{StaticResource BorderDefault}"
                                     StrokeThickness="0"
                                     VerticalOptions="Start">
                                     <Border.StrokeShape>
-                                        <RoundRectangle CornerRadius="8" />
+                                        <RoundRectangle CornerRadius="3" />
                                     </Border.StrokeShape>
                                     <Border.GestureRecognizers>
                                         <TapGestureRecognizer Tapped="OnCopyPasswordTapped" />
@@ -234,7 +221,7 @@
                             <Label 
                                 Text="{Binding Url}" 
                                 FontSize="14"
-                                TextColor="#58A7FF"
+                                TextColor="{StaticResource BrandAccent}"
                                 TextDecorations="Underline"
                                 LineBreakMode="WordWrap">
                                 <Label.GestureRecognizers>
@@ -248,16 +235,13 @@
                 
                 <!-- Notes Card -->
                 <Border
-                    BackgroundColor="{StaticResource CardBackgroundColor}"
+                    BackgroundColor="{StaticResource BackgroundCard}"
                     StrokeThickness="0"
                     Padding="16"
                     IsVisible="{Binding Source={x:Reference DetailPage}, Path=HasNotes}">
                     <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="16" />
+                        <RoundRectangle CornerRadius="6" />
                     </Border.StrokeShape>
-                    <Border.Shadow>
-                        <Shadow Brush="#25000000" Radius="12" Offset="0,6" />
-                    </Border.Shadow>
                     <VerticalStackLayout Spacing="12">
                         
                         <!-- Notes -->
@@ -283,11 +267,11 @@
                 
                 <!-- Metadata Card -->
                 <Border
-                    BackgroundColor="{StaticResource CardBackgroundColor}"
+                    BackgroundColor="{StaticResource BackgroundCard}"
                     StrokeThickness="0"
                     Padding="16">
                     <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="16" />
+                        <RoundRectangle CornerRadius="6" />
                     </Border.StrokeShape>
                     <VerticalStackLayout Spacing="8">
                         <Grid ColumnDefinitions="*,*">
@@ -296,14 +280,14 @@
                                 <Label 
                                     Text="{Binding CreatedAt, StringFormat='{0:d}'}" 
                                     FontSize="12"
-                                    TextColor="#E8EBFF" />
+                                    TextColor="{StaticResource TextSecondary}" />
                             </VerticalStackLayout>
                             <VerticalStackLayout Grid.Column="1" Spacing="2">
                                 <Label Text="Geändert" Style="{StaticResource FieldLabelStyle}" />
                                 <Label 
                                     Text="{Binding ModifiedAt, StringFormat='{0:d}'}" 
                                     FontSize="12"
-                                    TextColor="#E8EBFF" />
+                                    TextColor="{StaticResource TextSecondary}" />
                             </VerticalStackLayout>
                         </Grid>
                     </VerticalStackLayout>
@@ -315,15 +299,15 @@
         <!-- Bottom Action -->
         <Border
             Grid.Row="2"
-            BackgroundColor="{StaticResource CardBackgroundColor}"
+            BackgroundColor="{StaticResource BackgroundCard}"
             StrokeThickness="0"
             Padding="16,12">
             <Button
                 Text="Schließen"
-                BackgroundColor="{StaticResource SecondaryButtonColor}"
-                TextColor="#E8EBFF"
+                BackgroundColor="{StaticResource BackgroundInput}"
+                TextColor="{StaticResource TextSecondary}"
                 FontSize="14"
-                CornerRadius="12"
+                CornerRadius="5"
                 HeightRequest="44"
                 Clicked="OnCloseClicked" />
         </Border>

@@ -6,16 +6,16 @@
     <ContentPage.Content>
         <Grid>
             <Border
-                StrokeThickness="0"
-                BackgroundColor="#1B2036"
+                StrokeThickness="1"
+                BackgroundColor="{StaticResource BackgroundCard}"
                 StrokeShape="RoundRectangle 12"
                 Padding="24"
                 HorizontalOptions="Center"
-                VerticalOptions="Center">
+                VerticalOptions="Center" Stroke="{StaticResource BorderDefaultBrush}">
                 <VerticalStackLayout Spacing="16">
                     <ActivityIndicator
                         IsRunning="True"
-                        Color="#4A5CFF"
+                        Color="{StaticResource BrandPrimary}"
                         WidthRequest="48"
                         HeightRequest="48"
                         HorizontalOptions="Center" />

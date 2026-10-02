@@ -16,14 +16,14 @@ public sealed record ActionSheetPopupOption(string Id, string Title, string? Des
 public sealed class ActionSheetPopup : Popup
 {
     // Design System Colors
-    private static readonly Color BackgroundCard = Color.FromArgb("#1B2036");
-    private static readonly Color BackgroundOption = Color.FromArgb("#1F2338");
-    private static readonly Color BackgroundOptionSelected = Color.FromArgb("#262D4A");
+    private static readonly Color BackgroundCard = Color.FromArgb("#171C21");
+    private static readonly Color BackgroundOption = Color.FromArgb("#20272E");
+    private static readonly Color BackgroundOptionSelected = Color.FromArgb("#2B343D");
     private static readonly Color TextPrimary = Colors.White;
-    private static readonly Color TextSecondary = Color.FromArgb("#E8EBFF");
-    private static readonly Color TextTertiary = Color.FromArgb("#9EA3C4");
-    private static readonly Color TextDestructive = Color.FromArgb("#FF7474");
-    private static readonly Color AccentSuccess = Color.FromArgb("#63F5A8");
+    private static readonly Color TextSecondary = Color.FromArgb("#DDE2E6");
+    private static readonly Color TextTertiary = Color.FromArgb("#9EAAB5");
+    private static readonly Color TextDestructive = Color.FromArgb("#E88B91");
+    private static readonly Color AccentSuccess = Color.FromArgb("#69C49A");
 
     private readonly string? _cancelText;
 
@@ -78,18 +78,11 @@ public sealed class ActionSheetPopup : Popup
         var card = new Border
         {
             BackgroundColor = BackgroundCard,
-            StrokeShape = new RoundRectangle { CornerRadius = 20 },
+            StrokeShape = new RoundRectangle { CornerRadius = 8 },
             StrokeThickness = 1,
-            Stroke = new SolidColorBrush(Color.FromArgb("#2A2F4A")),
+            Stroke = new SolidColorBrush(Color.FromArgb("#313B44")),
             Padding = new Thickness(18, 18, 18, 22),
             Content = contentStack
-        };
-
-        card.Shadow = new Shadow
-        {
-            Brush = new SolidColorBrush(Color.FromArgb("#50000000")),
-            Radius = 20,
-            Offset = new Point(0, 8)
         };
 
         var rootStack = new VerticalStackLayout
@@ -197,7 +190,7 @@ public sealed class ActionSheetPopup : Popup
         var optionBorder = new Border
         {
             BackgroundColor = option.IsSelected ? BackgroundOptionSelected : BackgroundOption,
-            StrokeShape = new RoundRectangle { CornerRadius = 12 },
+            StrokeShape = new RoundRectangle { CornerRadius = 4 },
             StrokeThickness = 0,
             Padding = new Thickness(14, 12),
             Content = optionLayout
@@ -217,9 +210,9 @@ public sealed class ActionSheetPopup : Popup
         var cancelBorder = new Border
         {
             BackgroundColor = BackgroundCard,
-            StrokeShape = new RoundRectangle { CornerRadius = 16 },
+            StrokeShape = new RoundRectangle { CornerRadius = 6 },
             StrokeThickness = 1,
-            Stroke = new SolidColorBrush(Color.FromArgb("#2A2F4A")),
+            Stroke = new SolidColorBrush(Color.FromArgb("#313B44")),
             Padding = new Thickness(16, 14),
             Content = new Label
             {
@@ -229,13 +222,6 @@ public sealed class ActionSheetPopup : Popup
                 TextColor = TextSecondary,
                 HorizontalTextAlignment = TextAlignment.Center
             }
-        };
-
-        cancelBorder.Shadow = new Shadow
-        {
-            Brush = new SolidColorBrush(Color.FromArgb("#40000000")),
-            Radius = 16,
-            Offset = new Point(0, 6)
         };
 
         cancelBorder.GestureRecognizers.Add(new TapGestureRecognizer

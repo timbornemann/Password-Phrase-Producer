@@ -9,9 +9,9 @@
     
     <ContentPage.Background>
         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#101018" Offset="0" />
-            <GradientStop Color="#141426" Offset="0.6" />
-            <GradientStop Color="#0F111A" Offset="1" />
+            <GradientStop Color="{StaticResource BackgroundDark1}" Offset="0" />
+            <GradientStop Color="{StaticResource BackgroundDark2}" Offset="0.6" />
+            <GradientStop Color="{StaticResource BackgroundDark3}" Offset="1" />
         </LinearGradientBrush>
     </ContentPage.Background>
 
@@ -22,17 +22,14 @@
               Padding="16,16,16,10">
             
             <!-- Hamburger Menu -->
-            <Border WidthRequest="34"
-                    HeightRequest="34"
-                    BackgroundColor="#1F2338"
+            <Border WidthRequest="40"
+                    HeightRequest="40"
+                    BackgroundColor="Transparent"
                     StrokeThickness="0"
                     VerticalOptions="Center">
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="10" />
+                    <RoundRectangle CornerRadius="4" />
                 </Border.StrokeShape>
-                <Border.Shadow>
-                    <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
-                </Border.Shadow>
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnOpenMenuTapped" />
                 </Border.GestureRecognizers>
@@ -43,26 +40,21 @@
                        VerticalOptions="Center"/>
             </Border>
             
-            <Label Grid.Column="1"
-                   Text="Methode auswählen"
-                   FontSize="18"
-                   FontAttributes="Bold"
-                   TextColor="White"
-                   VerticalOptions="Center"/>
+            <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                <Label Text="Methode wählen" FontSize="18" FontAttributes="Bold"
+                       TextColor="{StaticResource TextPrimary}" />
+            </VerticalStackLayout>
             
             <!-- Back Button -->
             <Border Grid.Column="2"
-                    WidthRequest="34"
-                    HeightRequest="34"
-                    BackgroundColor="#1F2338"
+                    WidthRequest="40"
+                    HeightRequest="40"
+                    BackgroundColor="Transparent"
                     StrokeThickness="0"
                     VerticalOptions="Center">
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="10" />
+                    <RoundRectangle CornerRadius="4" />
                 </Border.StrokeShape>
-                <Border.Shadow>
-                    <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
-                </Border.Shadow>
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnBackTapped" />
                 </Border.GestureRecognizers>
@@ -80,46 +72,32 @@
                              Spacing="14"
                              Padding="16,0,16,28">
 
-            <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding ModeOptions}">
+            <VerticalStackLayout Spacing="0" BindableLayout.ItemsSource="{Binding ModeOptions}">
                 <BindableLayout.ItemTemplate>
                     <DataTemplate x:DataType="local:PasswordModeOption">
-                        <Border Padding="0"
-                                StrokeThickness="0"
-                                MinimumHeightRequest="80">
-                            <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="16" />
-                            </Border.StrokeShape>
-                            <Border.Background>
-                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                    <GradientStop Color="#1F2540" Offset="0" />
-                                    <GradientStop Color="#1B2036" Offset="1" />
-                                </LinearGradientBrush>
-                            </Border.Background>
-                            <Border.Shadow>
-                                <Shadow Brush="#25000000" Radius="8" Offset="0,4" />
-                            </Border.Shadow>
-                            <Border.GestureRecognizers>
+                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto"
+                              ColumnSpacing="12" MinimumHeightRequest="76" Padding="2,10">
+                            <Grid.GestureRecognizers>
                                 <TapGestureRecognizer Command="{Binding BindingContext.NavigateToModeCommand, Source={RelativeSource AncestorType={x:Type local:Views.GenerationMethodsPage}}}"
                                                      CommandParameter="{Binding}"/>
-                            </Border.GestureRecognizers>
-                            
-                            <VerticalStackLayout Padding="14" 
-                                                 Spacing="6"
-                                                 VerticalOptions="Center">
+                            </Grid.GestureRecognizers>
+                            <VerticalStackLayout Spacing="4" VerticalOptions="Center">
                                 <Label Text="{Binding Title}"
-                                       FontSize="14"
-                                       FontAttributes="Bold"
-                                       TextColor="White"
+                                       FontSize="16"
+                                       TextColor="{StaticResource TextPrimary}"
                                        LineBreakMode="TailTruncation"
                                        MaxLines="2"/>
-                                
                                 <Label Text="{Binding Description}"
-                                       FontSize="11"
-                                       TextColor="#9EA3C4"
+                                       FontSize="12"
+                                       TextColor="{StaticResource TextTertiary}"
                                        LineBreakMode="TailTruncation"
                                        MaxLines="2"/>
                             </VerticalStackLayout>
-                        </Border>
+                            <Image Grid.Column="1" Source="chevronright.png" WidthRequest="13" HeightRequest="13"
+                                   Opacity="0.7" VerticalOptions="Center" />
+                            <BoxView Grid.Row="1" Grid.ColumnSpan="2" HeightRequest="1"
+                                     Color="{StaticResource BorderSubtle}" Margin="0,12,0,0" />
+                        </Grid>
                     </DataTemplate>
                 </BindableLayout.ItemTemplate>
             </VerticalStackLayout>

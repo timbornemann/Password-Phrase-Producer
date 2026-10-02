@@ -23,7 +23,7 @@ public partial class PasswordAnalysisPanel : ContentView
         strengthLabel.Text = measured
             ? $"Stärke: {analysisResult.StrengthLabel} ({analysisResult.StrengthScore:F0}%)"
             : "Stärke: nicht messbar";
-        scoreGrid.IsVisible = measured;
+        strengthBar.IsVisible = measured;
         strengthBar.Progress = measured ? Math.Clamp(analysisResult.StrengthScore / 100d, 0d, 1d) : 0;
         entropyLabel.Text = measured ? $"Entropie: {analysisResult.Entropy:F1} Bit" : "Entropie: nicht bestimmbar";
         characterSetLabel.Text = $"Zeichenräume: {analysisResult.CharacterSetSize} · Gruppen: {analysisResult.CharacterGroupCount}";
@@ -31,30 +31,28 @@ public partial class PasswordAnalysisPanel : ContentView
         if (analysisResult.Suggestions.Count > 0)
         {
             suggestionsLabel.Text = string.Join("\n", analysisResult.Suggestions.Select(s => $"• {s}"));
-            suggestionBorder.IsVisible = true;
+            suggestionSection.IsVisible = true;
         }
         else
         {
-            suggestionBorder.IsVisible = false;
+            suggestionSection.IsVisible = false;
             suggestionsLabel.Text = string.Empty;
         }
 
-        analysisBorder.IsVisible = true;
         IsVisible = true;
     }
 
     public void Reset()
     {
         currentResult = null;
-        analysisBorder.IsVisible = false;
         IsVisible = false;
         strengthBar.Progress = 0;
-        scoreGrid.IsVisible = true;
+        strengthBar.IsVisible = true;
         strengthLabel.Text = "Stärke: -";
         entropyLabel.Text = "Entropie: -";
         characterSetLabel.Text = "Zeichenräume: -";
         suggestionsLabel.Text = string.Empty;
-        suggestionBorder.IsVisible = false;
+        suggestionSection.IsVisible = false;
     }
 
     private async void OnInfoTapped(object? sender, EventArgs e)

@@ -9,57 +9,59 @@
     <!-- ========================================== -->
 
     <!-- Primary Brand Colors -->
-    <Color x:Key="BrandPrimary">#4A5CFF</Color>
-    <Color x:Key="BrandPrimaryDark">#3B4AD1</Color>
-    <Color x:Key="BrandAccent">#7B8CFF</Color>
-    <Color x:Key="BrandSuccess">#63F5A8</Color>
-    <Color x:Key="BrandError">#FF7474</Color>
-    <Color x:Key="BrandWarning">#FFB84A</Color>
-    <Color x:Key="BrandLink">#58A7FF</Color>
+    <Color x:Key="BrandPrimary">#536D81</Color>
+    <Color x:Key="BrandPrimaryDark">#4D697F</Color>
+    <Color x:Key="BrandAccent">#A9BBC9</Color>
+    <Color x:Key="BrandSuccess">#69C49A</Color>
+    <Color x:Key="BrandError">#E88B91</Color>
+    <Color x:Key="BrandDanger">#AA4C59</Color>
+    <Color x:Key="BrandWarning">#D7AA70</Color>
+    <Color x:Key="BrandLink">#A9BBC9</Color>
 
     <!-- Background Colors -->
-    <Color x:Key="BackgroundDark1">#101018</Color>
-    <Color x:Key="BackgroundDark2">#141426</Color>
-    <Color x:Key="BackgroundDark3">#0F111A</Color>
-    <Color x:Key="BackgroundCard">#1B2036</Color>
-    <Color x:Key="BackgroundInput">#1F2338</Color>
-    <Color x:Key="BackgroundElevated">#252538</Color>
-    <Color x:Key="BackgroundOverlay">#CC0B0D1A</Color>
+    <Color x:Key="BackgroundDark1">#0D1013</Color>
+    <Color x:Key="BackgroundDark2">#11161A</Color>
+    <Color x:Key="BackgroundDark3">#0F1317</Color>
+    <Color x:Key="BackgroundCard">#171C21</Color>
+    <Color x:Key="BackgroundCardActive">#1C2329</Color>
+    <Color x:Key="BackgroundInput">#20272E</Color>
+    <Color x:Key="BackgroundElevated">#2B343D</Color>
+    <Color x:Key="BackgroundOverlay">#D90D1013</Color>
 
     <!-- Text Colors -->
-    <Color x:Key="TextPrimary">#FFFFFF</Color>
-    <Color x:Key="TextSecondary">#E8EBFF</Color>
-    <Color x:Key="TextTertiary">#9EA3C4</Color>
-    <Color x:Key="TextDisabled">#5A6080</Color>
-    <Color x:Key="TextMuted">#7F85B2</Color>
-    <Color x:Key="TextPlaceholder">#7F85B2</Color>
+    <Color x:Key="TextPrimary">#F7F8F9</Color>
+    <Color x:Key="TextSecondary">#DDE2E6</Color>
+    <Color x:Key="TextTertiary">#9EAAB5</Color>
+    <Color x:Key="TextDisabled">#71808C</Color>
+    <Color x:Key="TextMuted">#8797A4</Color>
+    <Color x:Key="TextPlaceholder">#8797A4</Color>
 
     <!-- Icon Button Colors -->
-    <Color x:Key="IconButtonBackground">#1F2338</Color>
-    <Color x:Key="IconButtonText">#CFD3FF</Color>
-    <Color x:Key="IconButtonDestructive">#3B2232</Color>
+    <Color x:Key="IconButtonBackground">#20272E</Color>
+    <Color x:Key="IconButtonText">#DDE2E6</Color>
+    <Color x:Key="IconButtonDestructive">#392A30</Color>
 
     <!-- Border/Divider Colors -->
-    <Color x:Key="BorderSubtle">#2A2A3A</Color>
-    <Color x:Key="BorderDefault">#2A2F4A</Color>
+    <Color x:Key="BorderSubtle">#252D34</Color>
+    <Color x:Key="BorderDefault">#313B44</Color>
 
     <!-- Shadow Colors -->
     <Color x:Key="ShadowColor">#25000000</Color>
     <Color x:Key="ShadowColorStrong">#40000000</Color>
 
     <!-- Legacy Colors (for compatibility) -->
-    <Color x:Key="Primary">#4A5CFF</Color>
-    <Color x:Key="PrimaryDark">#3B4AD1</Color>
+    <Color x:Key="Primary">#536D81</Color>
+    <Color x:Key="PrimaryDark">#4D697F</Color>
     <Color x:Key="PrimaryDarkText">#F5F6FA</Color>
-    <Color x:Key="Secondary">#4BCFFA</Color>
-    <Color x:Key="SecondaryDarkText">#00A8FF</Color>
-    <Color x:Key="Tertiary">#1E272E</Color>
+    <Color x:Key="Secondary">#A9BBC9</Color>
+    <Color x:Key="SecondaryDarkText">#536D81</Color>
+    <Color x:Key="Tertiary">#20272E</Color>
 
     <Color x:Key="White">White</Color>
     <Color x:Key="Black">Black</Color>
-    <Color x:Key="Magenta">#D600AA</Color>
-    <Color x:Key="MidnightBlue">#190649</Color>
-    <Color x:Key="OffBlack">#1f1f1f</Color>
+    <Color x:Key="Magenta">#A9BBC9</Color>
+    <Color x:Key="MidnightBlue">#0D1013</Color>
+    <Color x:Key="OffBlack">#0D1013</Color>
 
     <Color x:Key="Gray100">#E1E1E1</Color>
     <Color x:Key="Gray200">#C8C8C8</Color>
@@ -75,6 +77,7 @@
     <SolidColorBrush x:Key="BrandPrimaryDarkBrush" Color="{StaticResource BrandPrimaryDark}"/>
     <SolidColorBrush x:Key="BackgroundCardBrush" Color="{StaticResource BackgroundCard}"/>
     <SolidColorBrush x:Key="BackgroundInputBrush" Color="{StaticResource BackgroundInput}"/>
+    <SolidColorBrush x:Key="BorderDefaultBrush" Color="{StaticResource BorderDefault}"/>
     <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimary}"/>
     <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondary}"/>
     <SolidColorBrush x:Key="TextTertiaryBrush" Color="{StaticResource TextTertiary}"/>
@@ -108,19 +111,19 @@
     <!-- ========================================== -->
     <!-- Design System - Corner Radius             -->
     <!-- ========================================== -->
-    <x:Double x:Key="RadiusSM">8</x:Double>
-    <x:Double x:Key="RadiusMD">10</x:Double>
-    <x:Double x:Key="RadiusLG">12</x:Double>
-    <x:Double x:Key="RadiusXL">16</x:Double>
-    <x:Double x:Key="RadiusXXL">18</x:Double>
-    <x:Double x:Key="RadiusDialog">26</x:Double>
+    <x:Double x:Key="RadiusSM">3</x:Double>
+    <x:Double x:Key="RadiusMD">4</x:Double>
+    <x:Double x:Key="RadiusLG">5</x:Double>
+    <x:Double x:Key="RadiusXL">6</x:Double>
+    <x:Double x:Key="RadiusXXL">8</x:Double>
+    <x:Double x:Key="RadiusDialog">8</x:Double>
 
     <!-- ========================================== -->
     <!-- Design System - Component Sizes           -->
     <!-- ========================================== -->
-    <x:Double x:Key="IconButtonSize">34</x:Double>
-    <x:Double x:Key="IconButtonSizeLarge">40</x:Double>
-    <x:Double x:Key="ButtonHeightDefault">40</x:Double>
+    <x:Double x:Key="IconButtonSize">40</x:Double>
+    <x:Double x:Key="IconButtonSizeLarge">44</x:Double>
+    <x:Double x:Key="ButtonHeightDefault">44</x:Double>
     <x:Double x:Key="ButtonHeightCompact">36</x:Double>
     <x:Double x:Key="InputHeight">40</x:Double>
 

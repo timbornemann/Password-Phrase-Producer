@@ -34,7 +34,7 @@
         <Setter Property="FontSize" Value="{StaticResource FontSizeBody}"/>
         <Setter Property="FontAttributes" Value="Bold"/>
         <Setter Property="BorderWidth" Value="0"/>
-        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="CornerRadius" Value="4"/>
         <Setter Property="Padding" Value="14,10"/>
         <Setter Property="MinimumHeightRequest" Value="{StaticResource ButtonHeightDefault}"/>
         <Setter Property="MinimumWidthRequest" Value="36"/>
@@ -104,7 +104,7 @@
     <Style TargetType="Frame">
         <Setter Property="HasShadow" Value="False" />
         <Setter Property="BorderColor" Value="{StaticResource BorderSubtle}" />
-        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="CornerRadius" Value="5" />
         <Setter Property="BackgroundColor" Value="{StaticResource BackgroundCard}" />
     </Style>
 
@@ -112,9 +112,9 @@
         <Setter Property="Opacity" Value="1" />
         <Setter Property="BorderColor" Value="Transparent"/>
         <Setter Property="BorderWidth" Value="0"/>
-        <Setter Property="CornerRadius" Value="10"/>
-        <Setter Property="MinimumHeightRequest" Value="34"/>
-        <Setter Property="MinimumWidthRequest" Value="34"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="MinimumHeightRequest" Value="40"/>
+        <Setter Property="MinimumWidthRequest" Value="40"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
@@ -341,7 +341,7 @@
     <Style TargetType="Button" x:Key="PrimaryButtonStyle">
         <Setter Property="TextColor" Value="{StaticResource TextPrimary}" />
         <Setter Property="BackgroundColor" Value="{StaticResource BrandPrimary}" />
-        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="CornerRadius" Value="4" />
         <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
         <Setter Property="FontAttributes" Value="Bold" />
         <Setter Property="HeightRequest" Value="{StaticResource ButtonHeightDefault}" />
@@ -352,7 +352,7 @@
     <Style TargetType="Button" x:Key="SecondaryButtonStyle">
         <Setter Property="TextColor" Value="{StaticResource TextSecondary}" />
         <Setter Property="BackgroundColor" Value="{StaticResource BackgroundInput}" />
-        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="CornerRadius" Value="4" />
         <Setter Property="FontSize" Value="{StaticResource FontSizeSmall}" />
         <Setter Property="HeightRequest" Value="{StaticResource ButtonHeightCompact}" />
         <Setter Property="Padding" Value="12,8" />
@@ -362,7 +362,7 @@
     <Style TargetType="Button" x:Key="CompactSecondaryButtonStyle">
         <Setter Property="TextColor" Value="{StaticResource TextSecondary}" />
         <Setter Property="BackgroundColor" Value="{StaticResource BorderDefault}" />
-        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="CornerRadius" Value="4" />
         <Setter Property="FontSize" Value="{StaticResource FontSizeSmall}" />
         <Setter Property="HeightRequest" Value="{StaticResource ButtonHeightCompact}" />
         <Setter Property="Padding" Value="14,8" />
@@ -372,18 +372,13 @@
     <Style TargetType="Button" x:Key="PrimaryActionButtonStyle">
         <Setter Property="TextColor" Value="{StaticResource TextPrimary}" />
         <Setter Property="BackgroundColor" Value="{StaticResource BrandPrimary}" />
-        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="CornerRadius" Value="4" />
         <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
         <Setter Property="FontAttributes" Value="Bold" />
         <Setter Property="HeightRequest" Value="42" />
         <Setter Property="Padding" Value="16,10" />
         <Setter Property="HorizontalOptions" Value="FillAndExpand" />
         <Setter Property="VerticalOptions" Value="Center" />
-        <Setter Property="Shadow">
-            <Setter.Value>
-                <Shadow Brush="{StaticResource ShadowBrush}" Radius="10" Offset="0,4" />
-            </Setter.Value>
-        </Setter>
     </Style>
 
     <!-- Entry Styles -->
@@ -399,47 +394,50 @@
 
     <!-- Card Styles -->
     <Style TargetType="Border" x:Key="CardStyle">
-        <Setter Property="StrokeThickness" Value="0" />
+        <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="Stroke" Value="{StaticResource BorderDefaultBrush}" />
         <Setter Property="Padding" Value="16" />
         <Setter Property="BackgroundColor" Value="{StaticResource BackgroundCard}" />
         <Setter Property="StrokeShape">
             <Setter.Value>
-                <RoundRectangle CornerRadius="16" />
+                <RoundRectangle CornerRadius="6" />
             </Setter.Value>
         </Setter>
     </Style>
 
     <Style TargetType="Border" x:Key="CompactCardStyle">
-        <Setter Property="StrokeThickness" Value="0" />
+        <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="Stroke" Value="{StaticResource BorderDefaultBrush}" />
         <Setter Property="Padding" Value="14" />
         <Setter Property="BackgroundColor" Value="{StaticResource BackgroundInput}" />
         <Setter Property="StrokeShape">
             <Setter.Value>
-                <RoundRectangle CornerRadius="16" />
+                <RoundRectangle CornerRadius="6" />
             </Setter.Value>
         </Setter>
     </Style>
 
     <Style TargetType="Border" x:Key="InputContainerStyle">
-        <Setter Property="StrokeThickness" Value="0" />
+        <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="Stroke" Value="{StaticResource BorderDefaultBrush}" />
         <Setter Property="Padding" Value="10,8" />
         <Setter Property="BackgroundColor" Value="{StaticResource BackgroundInput}" />
         <Setter Property="StrokeShape">
             <Setter.Value>
-                <RoundRectangle CornerRadius="12" />
+                <RoundRectangle CornerRadius="5" />
             </Setter.Value>
         </Setter>
     </Style>
 
     <!-- Icon Button Style -->
     <Style TargetType="Border" x:Key="IconButtonStyle">
-        <Setter Property="WidthRequest" Value="34" />
-        <Setter Property="HeightRequest" Value="34" />
+        <Setter Property="WidthRequest" Value="40" />
+        <Setter Property="HeightRequest" Value="40" />
         <Setter Property="BackgroundColor" Value="{StaticResource IconButtonBackground}" />
         <Setter Property="StrokeThickness" Value="0" />
         <Setter Property="StrokeShape">
             <Setter.Value>
-                <RoundRectangle CornerRadius="10" />
+                <RoundRectangle CornerRadius="4" />
             </Setter.Value>
         </Setter>
     </Style>

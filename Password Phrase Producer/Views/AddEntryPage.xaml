@@ -2,15 +2,16 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:cv="clr-namespace:Camera.MAUI;assembly=Camera.MAUI"
+             xmlns:controls="clr-namespace:Password_Phrase_Producer.Views.Controls"
              x:Class="Password_Phrase_Producer.Views.AddEntryPage"
              Padding="0"
              Shell.NavBarIsVisible="False">
 
     <ContentPage.Background>
         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#101018" Offset="0" />
-            <GradientStop Color="#141426" Offset="0.6" />
-            <GradientStop Color="#0F111A" Offset="1" />
+            <GradientStop Color="{StaticResource BackgroundDark1}" Offset="0" />
+            <GradientStop Color="{StaticResource BackgroundDark2}" Offset="0.6" />
+            <GradientStop Color="{StaticResource BackgroundDark3}" Offset="1" />
         </LinearGradientBrush>
     </ContentPage.Background>
 
@@ -21,17 +22,14 @@
 
                 <!-- Back/Close Button -->
                 <Border
-                    WidthRequest="34"
-                    HeightRequest="34"
-                    BackgroundColor="#1F2338"
+                    WidthRequest="40"
+                    HeightRequest="40"
+                    BackgroundColor="Transparent"
                     StrokeThickness="0"
                     VerticalOptions="Center">
                     <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="10" />
+                        <RoundRectangle CornerRadius="4" />
                     </Border.StrokeShape>
-                    <Border.Shadow>
-                        <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
-                    </Border.Shadow>
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnCloseClicked" />
                     </Border.GestureRecognizers>
@@ -56,10 +54,10 @@
                 <!-- Spacer to keep title centered -->
                 <Border
                     Grid.Column="2"
-                    WidthRequest="34"
-                    HeightRequest="34"
+                    WidthRequest="40"
+                    HeightRequest="40"
                     Opacity="0"
-                    BackgroundColor="#1F2338"
+                    BackgroundColor="Transparent"
                     StrokeThickness="0" />
             </Grid>
         </Grid>
@@ -68,15 +66,15 @@
         <Border Grid.Row="1"
                 Margin="16,6,16,16"
                 StrokeThickness="0"
-                BackgroundColor="#1F2338">
+                BackgroundColor="{StaticResource BackgroundInput}">
             <Border.StrokeShape>
-                <RoundRectangle CornerRadius="10" />
+                <RoundRectangle CornerRadius="4" />
             </Border.StrokeShape>
             <Grid ColumnDefinitions="*, *">
-                <Button x:Name="BtnManual" Text="Manuell" Clicked="OnTabClicked" 
-                        BackgroundColor="#4A5CFF" TextColor="White" CornerRadius="8" Margin="2" HeightRequest="36" FontSize="12" />
+                <Button x:Name="BtnManual" Text="Manuell" Clicked="OnTabClicked"
+                        BackgroundColor="{StaticResource BrandPrimary}" TextColor="White" CornerRadius="3" Margin="2" HeightRequest="36" FontSize="12" />
                 <Button x:Name="BtnScan" Text="QR Scan" Clicked="OnTabClicked" Grid.Column="1"
-                        BackgroundColor="Transparent" TextColor="#7F85B2" CornerRadius="8" Margin="2" HeightRequest="36" FontSize="12" />
+                        BackgroundColor="Transparent" TextColor="{StaticResource TextMuted}" CornerRadius="3" Margin="2" HeightRequest="36" FontSize="12" />
             </Grid>
         </Border>
 
@@ -86,51 +84,42 @@
             <ScrollView x:Name="ManualView" IsVisible="True" Padding="16">
                 <VerticalStackLayout Spacing="14">
                     <VerticalStackLayout Spacing="4">
-                        <Label Text="Aussteller (z.B. Google)" TextColor="#9EA3C4" FontSize="11" FontAttributes="Bold" />
-                        <Border BackgroundColor="#1F2338" StrokeThickness="0" Padding="12,8">
-                            <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="10" />
-                            </Border.StrokeShape>
-                            <Entry x:Name="EntryIssuer" Placeholder="z.B. Google" TextColor="White" BackgroundColor="Transparent" PlaceholderColor="#7F85B2" />
-                        </Border>
+                        <Label Text="Aussteller (z.B. Google)" TextColor="{StaticResource TextTertiary}" FontSize="11" FontAttributes="Bold" />
+                        <controls:FramedEntry x:Name="EntryIssuer" Placeholder="z.B. Google" TextColor="White"
+                                              BackgroundColor="{StaticResource BackgroundInput}" PlaceholderColor="{StaticResource TextMuted}"
+                                              HeightRequest="44" />
                     </VerticalStackLayout>
 
                     <VerticalStackLayout Spacing="4">
-                        <Label Text="Account (z.B. E-Mail)" TextColor="#9EA3C4" FontSize="11" FontAttributes="Bold" />
-                        <Border BackgroundColor="#1F2338" StrokeThickness="0" Padding="12,8">
-                            <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="10" />
-                            </Border.StrokeShape>
-                            <Entry x:Name="EntryAccount" Placeholder="user@example.com" TextColor="White" BackgroundColor="Transparent" PlaceholderColor="#7F85B2" />
-                        </Border>
+                        <Label Text="Account (z.B. E-Mail)" TextColor="{StaticResource TextTertiary}" FontSize="11" FontAttributes="Bold" />
+                        <controls:FramedEntry x:Name="EntryAccount" Placeholder="user@example.com" TextColor="White"
+                                              BackgroundColor="{StaticResource BackgroundInput}" PlaceholderColor="{StaticResource TextMuted}"
+                                              HeightRequest="44" />
                     </VerticalStackLayout>
 
                     <VerticalStackLayout Spacing="4">
-                        <Label Text="Secret (Base32)" TextColor="#9EA3C4" FontSize="11" FontAttributes="Bold" />
-                        <Border BackgroundColor="#1F2338" StrokeThickness="0" Padding="12,8">
-                            <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="10" />
-                            </Border.StrokeShape>
-                            <Entry x:Name="EntrySecret" Placeholder="JBSWY..." TextColor="White" BackgroundColor="Transparent" PlaceholderColor="#7F85B2" />
-                        </Border>
+                        <Label Text="Secret (Base32)" TextColor="{StaticResource TextTertiary}" FontSize="11" FontAttributes="Bold" />
+                        <controls:FramedEntry x:Name="EntrySecret" Placeholder="JBSWY..." TextColor="White"
+                                              BackgroundColor="{StaticResource BackgroundInput}" PlaceholderColor="{StaticResource TextMuted}"
+                                              HeightRequest="44" />
                         <Label
                             Text="Hinweis: Leerzeichen/Bindestriche werden automatisch entfernt. Ein otpauth://-Link kann hier ebenfalls eingefügt werden."
-                            TextColor="#5A6080"
+                            TextColor="{StaticResource TextDisabled}"
                             FontSize="11" />
                     </VerticalStackLayout>
 
-                    <Button Text="Hinzufügen" Clicked="OnSaveClicked" 
-                            BackgroundColor="#4A5CFF" TextColor="White" 
-                            Margin="0,14,0,0" HeightRequest="40" CornerRadius="10" FontSize="12" FontAttributes="Bold" />
+                    <Button Text="Hinzufügen" Clicked="OnSaveClicked"
+                            BackgroundColor="{StaticResource BrandPrimary}" TextColor="White"
+                            Margin="0,14,0,0" HeightRequest="40" CornerRadius="4" FontSize="12" FontAttributes="Bold" />
                 </VerticalStackLayout>
             </ScrollView>
 
             <!-- Scan View: scans continuously, a detected code is imported automatically -->
             <Grid x:Name="ScanView" IsVisible="False" RowDefinitions="*,Auto">
                 <Grid Grid.Row="0" Margin="16,0,16,0">
-                    <Border StrokeThickness="0" BackgroundColor="#0B0C14">
+                    <Border StrokeThickness="0" BackgroundColor="{StaticResource BackgroundDark1}">
                         <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="16" />
+                            <RoundRectangle CornerRadius="6" />
                         </Border.StrokeShape>
                         <Grid>
                             <cv:CameraView x:Name="cameraView"
@@ -155,7 +144,7 @@
                                   InputTransparent="True">
                                 <Grid.Resources>
                                     <Style TargetType="BoxView">
-                                        <Setter Property="Color" Value="#7B8CFF" />
+                                        <Setter Property="Color" Value="#A9BBC9" />
                                         <Setter Property="CornerRadius" Value="2" />
                                     </Style>
                                 </Grid.Resources>
@@ -183,7 +172,7 @@
                                        FontAttributes="Bold"
                                        HorizontalTextAlignment="Center" />
                                 <Label Text="Du kannst den QR-Code auch als Bild (z.B. Screenshot) laden oder einen otpauth-Link aus der Zwischenablage einfügen."
-                                       TextColor="#9EA3C4"
+                                       TextColor="{StaticResource TextTertiary}"
                                        FontSize="12"
                                        HorizontalTextAlignment="Center" />
                             </VerticalStackLayout>
@@ -195,20 +184,20 @@
                                                  VerticalOptions="Start"
                                                  Margin="10"
                                                  Spacing="8">
-                                <Border BackgroundColor="#CC1F2338" StrokeThickness="0" Padding="6">
+                                <Border BackgroundColor="#CC20272E" StrokeThickness="0" Padding="6">
                                     <Border.StrokeShape>
-                                        <RoundRectangle CornerRadius="12" />
+                                        <RoundRectangle CornerRadius="5" />
                                     </Border.StrokeShape>
                                     <VerticalStackLayout Spacing="4">
                                         <Button Text="+"
                                                 Clicked="OnZoomInClicked"
-                                                BackgroundColor="#2A2F4A"
+                                                BackgroundColor="{StaticResource BorderDefault}"
                                                 TextColor="White"
                                                 FontSize="18"
                                                 FontAttributes="Bold"
                                                 WidthRequest="40"
                                                 HeightRequest="40"
-                                                CornerRadius="8"
+                                                CornerRadius="3"
                                                 Padding="0" />
                                         <Label x:Name="ZoomLevelLabel"
                                                Text="1.0x"
@@ -217,13 +206,13 @@
                                                HorizontalOptions="Center" />
                                         <Button Text="-"
                                                 Clicked="OnZoomOutClicked"
-                                                BackgroundColor="#2A2F4A"
+                                                BackgroundColor="{StaticResource BorderDefault}"
                                                 TextColor="White"
                                                 FontSize="18"
                                                 FontAttributes="Bold"
                                                 WidthRequest="40"
                                                 HeightRequest="40"
-                                                CornerRadius="8"
+                                                CornerRadius="3"
                                                 Padding="0" />
                                     </VerticalStackLayout>
                                 </Border>
@@ -231,26 +220,26 @@
                                 <Button x:Name="FlashlightButton"
                                         Text="Licht"
                                         Clicked="OnFlashlightClicked"
-                                        BackgroundColor="#CC1F2338"
-                                        TextColor="#E8EBFF"
+                                        BackgroundColor="#CC20272E"
+                                        TextColor="{StaticResource TextSecondary}"
                                         FontSize="11"
                                         FontAttributes="Bold"
                                         WidthRequest="52"
                                         HeightRequest="40"
-                                        CornerRadius="12"
+                                        CornerRadius="5"
                                         Padding="0" />
 
                                 <Button x:Name="SwitchCameraButton"
                                         Text="Kamera"
                                         IsVisible="False"
                                         Clicked="OnSwitchCameraClicked"
-                                        BackgroundColor="#CC1F2338"
-                                        TextColor="#E8EBFF"
+                                        BackgroundColor="#CC20272E"
+                                        TextColor="{StaticResource TextSecondary}"
                                         FontSize="11"
                                         FontAttributes="Bold"
                                         WidthRequest="52"
                                         HeightRequest="40"
-                                        CornerRadius="12"
+                                        CornerRadius="5"
                                         Padding="0" />
                             </VerticalStackLayout>
                         </Grid>
@@ -261,10 +250,10 @@
                 <Border Grid.Row="1"
                         Margin="16,12,16,16"
                         Padding="14,12"
-                        BackgroundColor="#1F2338"
+                        BackgroundColor="{StaticResource BackgroundInput}"
                         StrokeThickness="0">
                     <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="14" />
+                        <RoundRectangle CornerRadius="5" />
                     </Border.StrokeShape>
                     <VerticalStackLayout Spacing="10">
                         <VerticalStackLayout Spacing="3">
@@ -276,46 +265,46 @@
                                    HorizontalTextAlignment="Center" />
                             <Label x:Name="ScanHintLabel"
                                    Text="Halte den QR-Code in den Rahmen – er wird automatisch erkannt. Auch Google-Authenticator-Exporte werden unterstützt."
-                                   TextColor="#9EA3C4"
+                                   TextColor="{StaticResource TextTertiary}"
                                    FontSize="11"
                                    HorizontalTextAlignment="Center" />
                         </VerticalStackLayout>
 
                         <!-- Progress of a Google export that is split over several QR codes -->
                         <VerticalStackLayout x:Name="BatchPanel" IsVisible="False" Spacing="8">
-                            <ProgressBar x:Name="BatchProgress" ProgressColor="#4A5CFF" />
+                            <ProgressBar x:Name="BatchProgress" ProgressColor="{StaticResource BrandPrimary}" />
                             <Label x:Name="BatchLabel"
-                                   TextColor="#E8EBFF"
+                                   TextColor="{StaticResource TextSecondary}"
                                    FontSize="11"
                                    HorizontalTextAlignment="Center" />
                             <Button x:Name="ImportPartialButton"
                                     Text="Bisher gescannte Konten importieren"
                                     Clicked="OnImportPartialClicked"
-                                    BackgroundColor="#2A2F4A"
+                                    BackgroundColor="{StaticResource BorderDefault}"
                                     TextColor="White"
                                     FontSize="12"
                                     HeightRequest="38"
-                                    CornerRadius="10" />
+                                    CornerRadius="4" />
                         </VerticalStackLayout>
 
                         <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
                             <Button Text="Aus Bild laden"
                                     Clicked="OnPickImageClicked"
-                                    BackgroundColor="#4A5CFF"
+                                    BackgroundColor="{StaticResource BrandPrimary}"
                                     TextColor="White"
                                     FontSize="12"
                                     FontAttributes="Bold"
                                     HeightRequest="40"
-                                    CornerRadius="10" />
+                                    CornerRadius="4" />
                             <Button Grid.Column="1"
                                     Text="Link einfügen"
                                     Clicked="OnPasteClicked"
-                                    BackgroundColor="#2A2F4A"
+                                    BackgroundColor="{StaticResource BorderDefault}"
                                     TextColor="White"
                                     FontSize="12"
                                     FontAttributes="Bold"
                                     HeightRequest="40"
-                                    CornerRadius="10" />
+                                    CornerRadius="4" />
                         </Grid>
                     </VerticalStackLayout>
                 </Border>

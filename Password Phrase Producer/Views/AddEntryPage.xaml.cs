@@ -13,12 +13,12 @@ namespace Password_Phrase_Producer.Views;
 
 public partial class AddEntryPage : ContentPage
 {
-    private static readonly Color AccentColor = Color.FromArgb("#4A5CFF");
-    private static readonly Color InactiveTabColor = Color.FromArgb("#7F85B2");
-    private static readonly Color ViewfinderColor = Color.FromArgb("#7B8CFF");
+    private static readonly Color AccentColor = Color.FromArgb("#536D81");
+    private static readonly Color InactiveTabColor = Color.FromArgb("#8797A4");
+    private static readonly Color ViewfinderColor = Color.FromArgb("#A9BBC9");
     private static readonly Color SuccessColor = Color.FromArgb("#3DDC84");
-    private static readonly Color WarningColor = Color.FromArgb("#FFB347");
-    private static readonly Color ErrorColor = Color.FromArgb("#FF6B6B");
+    private static readonly Color WarningColor = Color.FromArgb("#D7AA70");
+    private static readonly Color ErrorColor = Color.FromArgb("#E88B91");
 
     private const string DefaultStatus = "Suche nach QR-Code …";
     private const string DefaultHint = "Halte den QR-Code in den Rahmen – er wird automatisch erkannt. Auch Google-Authenticator-Exporte werden unterstützt.";
@@ -409,7 +409,7 @@ public partial class AddEntryPage : ContentPage
 
     private void UpdateTorchButton()
     {
-        FlashlightButton.BackgroundColor = cameraView.TorchEnabled ? Color.FromArgb("#7B8CFF") : Color.FromArgb("#CC1F2338");
+        FlashlightButton.BackgroundColor = cameraView.TorchEnabled ? Color.FromArgb("#A9BBC9") : Color.FromArgb("#CC20272E");
     }
 
     private async void OnSwitchCameraClicked(object sender, EventArgs e)

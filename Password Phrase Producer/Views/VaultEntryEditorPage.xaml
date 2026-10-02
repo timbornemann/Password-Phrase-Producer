@@ -4,51 +4,52 @@
     x:Name="EditorPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:Password_Phrase_Producer.Views.Controls"
     Shell.NavBarIsVisible="False">
     <ContentPage.Resources>
         <ResourceDictionary>
-            <Color x:Key="CardBackgroundColor">#1B2036</Color>
-            <Color x:Key="InputBackgroundColor">#1F2338</Color>
-            <Color x:Key="AccentColor">#4A5CFF</Color>
-            <Color x:Key="SecondaryButtonColor">#1F2338</Color>
             <Style TargetType="Label" x:Key="FieldLabelStyle">
                 <Setter Property="FontSize" Value="12" />
                 <Setter Property="FontAttributes" Value="Bold" />
-                <Setter Property="TextColor" Value="#E8EBFF" />
+                <Setter Property="TextColor" Value="{StaticResource TextSecondary}" />
             </Style>
             <Style TargetType="Entry" x:Key="InputEntryStyle">
-                <Setter Property="BackgroundColor" Value="Transparent" />
+                <Setter Property="BackgroundColor" Value="{StaticResource BackgroundInput}" />
                 <Setter Property="TextColor" Value="White" />
-                <Setter Property="PlaceholderColor" Value="#7F85B2" />
+                <Setter Property="PlaceholderColor" Value="{StaticResource TextMuted}" />
                 <Setter Property="FontSize" Value="14" />
+                <Setter Property="HeightRequest" Value="44" />
+                <Setter Property="Margin" Value="0,4,0,12" />
             </Style>
             <Style TargetType="Editor" x:Key="InputEditorStyle">
-                <Setter Property="BackgroundColor" Value="Transparent" />
+                <Setter Property="BackgroundColor" Value="{StaticResource BackgroundInput}" />
                 <Setter Property="TextColor" Value="White" />
-                <Setter Property="PlaceholderColor" Value="#7F85B2" />
+                <Setter Property="PlaceholderColor" Value="{StaticResource TextMuted}" />
                 <Setter Property="FontSize" Value="13" />
                 <Setter Property="AutoSize" Value="TextChanges" />
+                <Setter Property="MinimumHeightRequest" Value="84" />
+                <Setter Property="Margin" Value="0,4,0,12" />
             </Style>
             <Style TargetType="Button" x:Key="PrimaryButtonStyle">
-                <Setter Property="BackgroundColor" Value="{StaticResource AccentColor}" />
+                <Setter Property="BackgroundColor" Value="{StaticResource BrandPrimary}" />
                 <Setter Property="TextColor" Value="White" />
                 <Setter Property="FontAttributes" Value="Bold" />
                 <Setter Property="FontSize" Value="14" />
-                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="CornerRadius" Value="4" />
                 <Setter Property="Padding" Value="0,12" />
             </Style>
             <Style TargetType="Button" x:Key="SecondaryButtonStyle" BasedOn="{StaticResource PrimaryButtonStyle}">
-                <Setter Property="BackgroundColor" Value="{StaticResource SecondaryButtonColor}" />
-                <Setter Property="TextColor" Value="#E8EBFF" />
+                <Setter Property="BackgroundColor" Value="{StaticResource BackgroundInput}" />
+                <Setter Property="TextColor" Value="{StaticResource TextSecondary}" />
             </Style>
         </ResourceDictionary>
     </ContentPage.Resources>
 
     <ContentPage.Background>
         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#101018" Offset="0" />
-            <GradientStop Color="#141426" Offset="0.6" />
-            <GradientStop Color="#0F111A" Offset="1" />
+            <GradientStop Color="{StaticResource BackgroundDark1}" Offset="0" />
+            <GradientStop Color="{StaticResource BackgroundDark2}" Offset="0.6" />
+            <GradientStop Color="{StaticResource BackgroundDark3}" Offset="1" />
         </LinearGradientBrush>
     </ContentPage.Background>
 
@@ -70,26 +71,19 @@
                     FontSize="20"
                     FontAttributes="Bold"
                     TextColor="White" />
-                <Label
-                    Text="Pflege deine Zugangsdaten sicher und strukturiert."
-                    FontSize="12"
-                    TextColor="#9EA3C4" />
             </VerticalStackLayout>
 
             <Border
                 Grid.Column="1"
-                WidthRequest="34"
-                HeightRequest="34"
-                BackgroundColor="#1F2338"
+                WidthRequest="40"
+                HeightRequest="40"
+                BackgroundColor="Transparent"
                 StrokeThickness="0"
                 HorizontalOptions="End"
                 VerticalOptions="Center">
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="10" />
+                    <RoundRectangle CornerRadius="4" />
                 </Border.StrokeShape>
-                <Border.Shadow>
-                    <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
-                </Border.Shadow>
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnCloseTapped" />
                 </Border.GestureRecognizers>
@@ -103,154 +97,77 @@
         </Grid>
 
         <ScrollView Grid.Row="1">
-            <VerticalStackLayout Padding="16,0,16,24" Spacing="14">
-                <Border
-                    BackgroundColor="{StaticResource CardBackgroundColor}"
-                    StrokeThickness="0"
-                    Padding="16">
-                    <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="16" />
-                    </Border.StrokeShape>
-                    <Border.Shadow>
-                        <Shadow Brush="#25000000" Radius="12" Offset="0,6" />
-                    </Border.Shadow>
-                    <VerticalStackLayout Spacing="8">
-                        <Label Text="Bezeichnung" Style="{StaticResource FieldLabelStyle}" />
-                        <Border
-                            BackgroundColor="{StaticResource InputBackgroundColor}"
-                            StrokeThickness="0"
-                            Padding="10,8"
-                            Margin="0,4,0,12">
-                            <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="12" />
-                            </Border.StrokeShape>
-                            <Entry Style="{StaticResource InputEntryStyle}" Placeholder="z. B. E-Mail" Text="{Binding Label}" />
-                        </Border>
+            <VerticalStackLayout Padding="16,0,16,24" Spacing="8">
+                <Label Text="Bezeichnung" Style="{StaticResource FieldLabelStyle}" />
+                <controls:FramedEntry Style="{StaticResource InputEntryStyle}" Placeholder="z. B. E-Mail" Text="{Binding Label}" />
 
-                        <Label Text="Kategorie" Style="{StaticResource FieldLabelStyle}" />
-                        <Border
-                            BackgroundColor="{StaticResource InputBackgroundColor}"
-                            StrokeThickness="0"
-                            Padding="10,8"
-                            Margin="0,4,0,12">
-                            <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="12" />
-                            </Border.StrokeShape>
-                            <Entry
-                                x:Name="CategoryEntry"
-                                Style="{StaticResource InputEntryStyle}"
-                                Placeholder="Ordner oder Gruppe"
-                                Text="{Binding Category}"
-                                TextChanged="OnCategoryTextChanged"
-                                Focused="OnCategoryEntryFocused"
-                                Unfocused="OnCategoryEntryUnfocused" />
-                        </Border>
-                        <FlexLayout
-                            x:Name="CategorySuggestionsView"
-                            Direction="Row"
-                            Wrap="Wrap"
-                            AlignItems="Center"
-                            Margin="0,-6,0,8"
-                            BindableLayout.ItemsSource="{Binding Source={x:Reference EditorPage}, Path=CategorySuggestions}"
-                            IsVisible="False">
-                            <BindableLayout.ItemTemplate>
-                                <DataTemplate>
-                                    <Border
-                                        Margin="0,4,8,0"
-                                        Padding="10,4"
-                                        BackgroundColor="#2A2F4A"
-                                        StrokeThickness="0">
-                                        <Border.StrokeShape>
-                                            <RoundRectangle CornerRadius="10" />
-                                        </Border.StrokeShape>
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Tapped="OnCategorySuggestionTapped" CommandParameter="{Binding .}" />
-                                        </Border.GestureRecognizers>
-                                        <Label
-                                            Text="{Binding .}"
-                                            FontSize="11"
-                                            TextColor="#CFD3FF" />
-                                    </Border>
-                                </DataTemplate>
-                            </BindableLayout.ItemTemplate>
-                        </FlexLayout>
+                <Label Text="Kategorie" Style="{StaticResource FieldLabelStyle}" />
+                <controls:FramedEntry
+                    x:Name="CategoryEntry"
+                    Style="{StaticResource InputEntryStyle}"
+                    Placeholder="Ordner oder Gruppe"
+                    Text="{Binding Category}"
+                    TextChanged="OnCategoryTextChanged"
+                    Focused="OnCategoryEntryFocused"
+                    Unfocused="OnCategoryEntryUnfocused" />
+                <FlexLayout
+                    x:Name="CategorySuggestionsView"
+                    Direction="Row"
+                    Wrap="Wrap"
+                    AlignItems="Center"
+                    Margin="0,-6,0,8"
+                    BindableLayout.ItemsSource="{Binding Source={x:Reference EditorPage}, Path=CategorySuggestions}"
+                    IsVisible="False">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate>
+                            <Border
+                                Margin="0,4,8,0"
+                                Padding="10,4"
+                                BackgroundColor="{StaticResource BorderDefault}"
+                                StrokeThickness="0">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="4" />
+                                </Border.StrokeShape>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnCategorySuggestionTapped" CommandParameter="{Binding .}" />
+                                </Border.GestureRecognizers>
+                                <Label
+                                    Text="{Binding .}"
+                                    FontSize="11"
+                                    TextColor="{StaticResource TextSecondary}" />
+                            </Border>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </FlexLayout>
 
-                        <Label Text="Benutzername" Style="{StaticResource FieldLabelStyle}" />
-                        <Border
-                            BackgroundColor="{StaticResource InputBackgroundColor}"
-                            StrokeThickness="0"
-                            Padding="10,8"
-                            Margin="0,4,0,12">
-                            <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="12" />
-                            </Border.StrokeShape>
-                            <Entry Style="{StaticResource InputEntryStyle}" Placeholder="Login oder Nutzername" Text="{Binding Username}" />
-                        </Border>
+                <Label Text="Benutzername" Style="{StaticResource FieldLabelStyle}" />
+                <controls:FramedEntry Style="{StaticResource InputEntryStyle}" Placeholder="Login oder Nutzername" Text="{Binding Username}" />
 
-                        <Label Text="Passwort" Style="{StaticResource FieldLabelStyle}" />
-                        <Border
-                            BackgroundColor="{StaticResource InputBackgroundColor}"
-                            StrokeThickness="0"
-                            Padding="10,8"
-                            Margin="0,4,0,12">
-                            <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="12" />
-                            </Border.StrokeShape>
-                            <Entry
-                                Style="{StaticResource InputEntryStyle}"
-                                Placeholder="Sicheres Passwort"
-                                Text="{Binding Password}"
-                                IsPassword="True" />
-                        </Border>
+                <Label Text="Passwort" Style="{StaticResource FieldLabelStyle}" />
+                <controls:FramedEntry
+                    Style="{StaticResource InputEntryStyle}"
+                    Placeholder="Sicheres Passwort"
+                    Text="{Binding Password}"
+                    IsPassword="True" />
 
-                        <Label Text="URL" Style="{StaticResource FieldLabelStyle}" />
-                        <Border
-                            BackgroundColor="{StaticResource InputBackgroundColor}"
-                            StrokeThickness="0"
-                            Padding="10,8"
-                            Margin="0,4,0,12">
-                            <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="12" />
-                            </Border.StrokeShape>
-                            <Entry
-                                Style="{StaticResource InputEntryStyle}"
-                                Placeholder="https://"
-                                Text="{Binding Url}"
-                                Keyboard="Url" />
-                        </Border>
+                <Label Text="URL" Style="{StaticResource FieldLabelStyle}" />
+                <controls:FramedEntry
+                    Style="{StaticResource InputEntryStyle}"
+                    Placeholder="https://"
+                    Text="{Binding Url}"
+                    Keyboard="Url" />
 
-                        <Label Text="Notizen" Style="{StaticResource FieldLabelStyle}" />
-                        <Border
-                            BackgroundColor="{StaticResource InputBackgroundColor}"
-                            StrokeThickness="0"
-                            Padding="10,8"
-                            Margin="0,4,0,12">
-                            <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="12" />
-                            </Border.StrokeShape>
-                            <Editor Style="{StaticResource InputEditorStyle}" Placeholder="Zusätzliche Informationen" Text="{Binding Notes}" />
-                        </Border>
+                <Label Text="Notizen" Style="{StaticResource FieldLabelStyle}" />
+                <controls:FramedEditor Style="{StaticResource InputEditorStyle}" Placeholder="Zusätzliche Informationen" Text="{Binding Notes}" />
 
-                        <Label Text="Freies Textfeld" Style="{StaticResource FieldLabelStyle}" />
-                        <Border
-                            BackgroundColor="{StaticResource InputBackgroundColor}"
-                            StrokeThickness="0"
-                            Padding="10,8"
-                            Margin="0,4,0,12">
-                            <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="12" />
-                            </Border.StrokeShape>
-                            <Editor Style="{StaticResource InputEditorStyle}" Placeholder="Individuelle Inhalte" Text="{Binding FreeText}" />
-                        </Border>
+                <Label Text="Freies Textfeld" Style="{StaticResource FieldLabelStyle}" />
+                <controls:FramedEditor Style="{StaticResource InputEditorStyle}" Placeholder="Individuelle Inhalte" Text="{Binding FreeText}" />
 
-                        <Label Text="Zuletzt geändert" Style="{StaticResource FieldLabelStyle}" />
-                        <Label
-                            Text="{Binding ModifiedAt, StringFormat='{0:G}'}"
-                            FontSize="11"
-                            TextColor="#9EA3C4" />
-                    </VerticalStackLayout>
-                </Border>
-
+                <Label Text="Zuletzt geändert" Style="{StaticResource FieldLabelStyle}" />
+                <Label
+                    Text="{Binding ModifiedAt, StringFormat='{0:G}'}"
+                    FontSize="11"
+                    TextColor="{StaticResource TextTertiary}" />
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,8,0,0">
                     <Button
                         Grid.Column="0"

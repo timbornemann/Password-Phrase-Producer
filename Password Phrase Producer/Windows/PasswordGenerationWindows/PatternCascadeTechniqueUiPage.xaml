@@ -3,66 +3,51 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:controls="clr-namespace:Password_Phrase_Producer.Windows.PasswordGenerationWindows.Controls"
              xmlns:local="clr-namespace:Password_Phrase_Producer.Windows.PasswordGenerationWindows"
+             xmlns:fields="clr-namespace:Password_Phrase_Producer.Views.Controls"
              x:Class="Password_Phrase_Producer.Windows.PasswordGenerationWindows.PatternCascadeTechniqueUiPage">
     <VerticalStackLayout Spacing="16">
-        <Border StrokeThickness="0"
-                Padding="14"
-                BackgroundColor="#1B2036">
-            <Border.StrokeShape>
-                <RoundRectangle CornerRadius="16" />
-            </Border.StrokeShape>
-            <VerticalStackLayout Spacing="10">
-                <Label Text="Pattern Cascade"
-                       FontSize="15"
-                       FontAttributes="Bold"
-                       TextColor="White"/>
-                <Label Text="Kombiniere zwei Wörter und einen Zahlencode zu einem strukturierten Passwort."
-                       TextColor="#9EA3C4"
-                       FontSize="12"
-                       LineBreakMode="WordWrap"/>
-                <Entry x:Name="primaryEntry"
-                       Placeholder="Erstes Wort"
-                       Style="{StaticResource DarkEntryStyle}" />
-                <Entry x:Name="secondaryEntry"
-                       Placeholder="Zweites Wort"
-                       Style="{StaticResource DarkEntryStyle}" />
-                <Entry x:Name="numericEntry"
-                       Placeholder="Zahlencode (optional)"
-                       Keyboard="Numeric"
-                       Style="{StaticResource DarkEntryStyle}" />
-            </VerticalStackLayout>
-        </Border>
+        <VerticalStackLayout Spacing="10">
+            <Label Text="Eingaben"
+                   FontSize="15"
+                   FontAttributes="Bold"
+                   TextColor="White"/>
+            <fields:FramedEntry x:Name="primaryEntry"
+                   Placeholder="Erstes Wort"
+                   Style="{StaticResource DarkEntryStyle}" />
+            <fields:FramedEntry x:Name="secondaryEntry"
+                   Placeholder="Zweites Wort"
+                   Style="{StaticResource DarkEntryStyle}" />
+            <fields:FramedEntry x:Name="numericEntry"
+                   Placeholder="Zahlencode (optional)"
+                   Keyboard="Numeric"
+                   Style="{StaticResource DarkEntryStyle}" />
+        </VerticalStackLayout>
 
-        <Border StrokeThickness="0"
-                Padding="14"
-                BackgroundColor="#1B2036">
-            <Border.StrokeShape>
-                <RoundRectangle CornerRadius="16" />
-            </Border.StrokeShape>
-            <VerticalStackLayout Spacing="12">
-                <Label Text="Cascade-Passwort"
-                       FontSize="15"
-                       FontAttributes="Bold"
-                       TextColor="White"/>
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                    <Entry x:Name="resultEntry"
-                           Placeholder="Generiertes Passwort"
-                           Style="{StaticResource DarkEntryStyle}"
-                           IsReadOnly="True" />
-                    <Button Grid.Column="1"
-                            Text="Kopieren"
-                            Style="{StaticResource PrimaryActionButtonStyle}"
-                            Clicked="OnCopyClicked"
-                            HorizontalOptions="End" />
-                </Grid>
-                <Button Text="Passwort erzeugen"
-                        Style="{StaticResource PrimaryActionButtonStyle}"
-                        Clicked="OnCreateClicked" />
-                <ContentView x:Name="addToVaultHost"
-                             IsVisible="False" />
-                <controls:PasswordAnalysisPanel x:Name="analysisPanel"
-                                                 IsVisible="False" />
-            </VerticalStackLayout>
-        </Border>
+        <BoxView HeightRequest="1" Color="{StaticResource BorderSubtle}" />
+
+        <VerticalStackLayout Spacing="12">
+            <Label Text="Ergebnis"
+                   FontSize="15"
+                   FontAttributes="Bold"
+                   TextColor="White"/>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <fields:FramedEntry x:Name="resultEntry"
+                       Placeholder="Generiertes Passwort"
+                       Style="{StaticResource DarkEntryStyle}"
+                       IsReadOnly="True" />
+                <Button Grid.Column="1"
+                        Text="Kopieren"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Clicked="OnCopyClicked"
+                        HorizontalOptions="End" />
+            </Grid>
+            <Button Text="Passwort erzeugen"
+                    Style="{StaticResource PrimaryActionButtonStyle}"
+                    Clicked="OnCreateClicked" />
+            <ContentView x:Name="addToVaultHost"
+                         IsVisible="False" />
+            <controls:PasswordAnalysisPanel x:Name="analysisPanel"
+                                             IsVisible="False" />
+        </VerticalStackLayout>
     </VerticalStackLayout>
 </local:PasswordGeneratorContentView>

@@ -23,7 +23,7 @@ public sealed class RecoverySettingsPage : ContentPage
         _questions = questions;
         _gate = gate;
         Title = "Sicherheitsfragen";
-        BackgroundColor = Color.FromArgb("#101018");
+        BackgroundColor = Color.FromArgb("#0D1013");
         _firstName.TextColor = _lastName.TextColor = Colors.White;
         _birthDate.TextColor = Colors.White;
         _birthDate.DateSelected += (_, _) => _birthDateSelected = true;
@@ -60,7 +60,7 @@ public sealed class RecoverySettingsPage : ContentPage
             form.Children.Add(correct);
         }
 
-        var save = new Button { Text = "Fragen speichern", BackgroundColor = Color.FromArgb("#4A5CFF"), TextColor = Colors.White };
+        var save = new Button { Text = "Fragen speichern", BackgroundColor = Color.FromArgb("#536D81"), TextColor = Colors.White };
         save.Clicked += OnSave;
         form.Children.Add(save);
         form.Children.Add(new Label { Text = "Einmaligen Notzugang bewusst erneuern", TextColor = Colors.White, FontAttributes = FontAttributes.Bold });

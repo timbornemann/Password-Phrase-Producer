@@ -30,6 +30,72 @@ public partial class SettingsPage : ContentPage
         UpdatePanel.BindingContext = updates;
         _recoveryQuestions = recoveryQuestions;
         _attemptGate = attemptGate;
+        ShowSettingsCategory("security");
+        ShowVaultPasswordCategory("password");
+    }
+
+    private async void OnSettingsCategoryClicked(object? sender, EventArgs e)
+    {
+        if (sender is not Button button || button.CommandParameter is not string category)
+            return;
+
+        ShowSettingsCategory(category);
+        await SettingsScroll.ScrollToAsync(0, 0, false);
+    }
+
+    private void ShowSettingsCategory(string category)
+    {
+        SecuritySettingsSection.IsVisible = category == "security";
+        VaultSettingsSection.IsVisible = category == "vaults";
+        DataSettingsSection.IsVisible = category == "data";
+        AppSettingsSection.IsVisible = category == "app";
+
+        SettingsSectionTitle.Text = category switch
+        {
+            "vaults" => "Tresor-Passwörter",
+            "data" => "Daten & Synchronisation",
+            "app" => "App & Updates",
+            _ => "Zugriff & Sicherheit"
+        };
+
+        foreach (var (tab, key) in new[]
+        {
+            (SecurityTab, "security"), (VaultTab, "vaults"),
+            (DataTab, "data"), (AppTab, "app")
+        })
+        {
+            var selected = key == category;
+            tab.BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb(selected ? "#2B343D" : "#171C21");
+            tab.TextColor = Microsoft.Maui.Graphics.Color.FromArgb(selected ? "#F7F8F9" : "#9EAAB5");
+            tab.BorderColor = Microsoft.Maui.Graphics.Color.FromArgb(selected ? "#536D81" : "#313B44");
+            tab.BorderWidth = 1;
+        }
+    }
+
+    private void OnVaultCategoryClicked(object? sender, EventArgs e)
+    {
+        if (sender is Button { CommandParameter: string category })
+            ShowVaultPasswordCategory(category);
+    }
+
+    private void ShowVaultPasswordCategory(string category)
+    {
+        PasswordVaultSettingsCard.IsVisible = category == "password";
+        DataVaultSettingsCard.IsVisible = category == "data";
+        AuthenticatorSettingsCard.IsVisible = category == "authenticator";
+
+        foreach (var (tab, key) in new[]
+        {
+            (PasswordVaultTab, "password"), (DataVaultTab, "data"),
+            (AuthenticatorTab, "authenticator")
+        })
+        {
+            var selected = key == category;
+            tab.BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb(selected ? "#2B343D" : "#171C21");
+            tab.TextColor = Microsoft.Maui.Graphics.Color.FromArgb(selected ? "#F7F8F9" : "#9EAAB5");
+            tab.BorderColor = Microsoft.Maui.Graphics.Color.FromArgb(selected ? "#536D81" : "#313B44");
+            tab.BorderWidth = 1;
+        }
     }
 
     private async void OnConfigureRecoveryClicked(object? sender, EventArgs e)

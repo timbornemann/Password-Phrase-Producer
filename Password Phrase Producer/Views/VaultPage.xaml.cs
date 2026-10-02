@@ -486,8 +486,8 @@ public partial class VaultPage : ContentPage
 
     private static async Task AnimateCopyButton(Border border)
     {
-        var originalColor = border.BackgroundColor ?? Microsoft.Maui.Graphics.Color.FromArgb("#2A2F4A");
-        var highlightColor = Microsoft.Maui.Graphics.Color.FromArgb("#4A5CFF");
+        var originalColor = border.BackgroundColor ?? Microsoft.Maui.Graphics.Color.FromArgb("#313B44");
+        var highlightColor = Microsoft.Maui.Graphics.Color.FromArgb("#536D81");
 
         // Cancel any existing animations
         border.AbortAnimation("CopyButtonAnimation1");

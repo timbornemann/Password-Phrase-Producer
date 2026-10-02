@@ -24,13 +24,13 @@ public sealed class RecoveryChallengePage : ContentPage
         _gate = gate;
         _access = access;
         Title = "Einmaliger Notzugang";
-        BackgroundColor = Color.FromArgb("#101018");
+        BackgroundColor = Color.FromArgb("#0D1013");
         _firstName.TextColor = _lastName.TextColor = Colors.White;
         _birthDate.TextColor = Colors.White;
         _birthDate.DateSelected += (_, _) => _birthDateSelected = true;
         foreach (var picker in _answerPickers) picker.TextColor = Colors.White;
 
-        var submit = new Button { Text = "Antworten einmalig abgeben", BackgroundColor = Color.FromArgb("#4A5CFF"), TextColor = Colors.White };
+        var submit = new Button { Text = "Antworten einmalig abgeben", BackgroundColor = Color.FromArgb("#536D81"), TextColor = Colors.White };
         submit.Clicked += OnSubmit;
         var cancel = new Button { Text = "Abbrechen" };
         cancel.Clicked += async (_, _) => await CloseAsync(false);

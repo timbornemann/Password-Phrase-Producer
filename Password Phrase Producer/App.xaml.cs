@@ -135,11 +135,11 @@ namespace Password_Phrase_Producer
         {
             return new ContentPage
             {
-                BackgroundColor = Color.FromArgb("#512BD4"),
+                BackgroundColor = Color.FromArgb("#0D1013"),
                 Content = new ActivityIndicator
                 {
                     IsRunning = true,
-                    Color = Colors.White,
+                    Color = Color.FromArgb("#A9BBC9"),
                     VerticalOptions = LayoutOptions.Center,
                     HorizontalOptions = LayoutOptions.Center
                 }
@@ -151,8 +151,8 @@ namespace Password_Phrase_Producer
             var window = base.CreateWindow(activationState);
 
             #if WINDOWS
-                  window.Width = 350;
-                  window.Height = 600;
+                  window.Width = 440;
+                  window.Height = 740;
             #endif
 
             return window;

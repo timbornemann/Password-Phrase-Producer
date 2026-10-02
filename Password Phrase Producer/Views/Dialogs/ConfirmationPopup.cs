@@ -12,13 +12,13 @@ namespace Password_Phrase_Producer.Views.Dialogs;
 public sealed class ConfirmationPopup : Popup
 {
     // Design System Colors
-    private static readonly Color BackgroundCard = Color.FromArgb("#1B2036");
-    private static readonly Color BackgroundButton = Color.FromArgb("#1F2338");
-    private static readonly Color BackgroundButtonPrimary = Color.FromArgb("#4A5CFF");
-    private static readonly Color BackgroundButtonDestructive = Color.FromArgb("#3B2232");
+    private static readonly Color BackgroundCard = Color.FromArgb("#171C21");
+    private static readonly Color BackgroundButton = Color.FromArgb("#20272E");
+    private static readonly Color BackgroundButtonPrimary = Color.FromArgb("#536D81");
+    private static readonly Color BackgroundButtonDestructive = Color.FromArgb("#392A30");
     private static readonly Color TextPrimary = Colors.White;
-    private static readonly Color TextSecondary = Color.FromArgb("#E8EBFF");
-    private static readonly Color TextTertiary = Color.FromArgb("#9EA3C4");
+    private static readonly Color TextSecondary = Color.FromArgb("#DDE2E6");
+    private static readonly Color TextTertiary = Color.FromArgb("#9EAAB5");
 
     public ConfirmationPopup(string title, string message, string confirmText, string cancelText, bool confirmIsDestructive = false)
     {
@@ -74,17 +74,10 @@ public sealed class ConfirmationPopup : Popup
         var card = new Border
         {
             BackgroundColor = BackgroundCard,
-            StrokeShape = new RoundRectangle { CornerRadius = 16 },
+            StrokeShape = new RoundRectangle { CornerRadius = 6 },
             StrokeThickness = 0,
             Padding = new Thickness(20, 20),
             Content = cardLayout
-        };
-
-        card.Shadow = new Shadow
-        {
-            Brush = new SolidColorBrush(Color.FromArgb("#25000000")),
-            Radius = 12,
-            Offset = new Point(0, 6)
         };
 
         Content = new Grid
@@ -120,7 +113,7 @@ public sealed class ConfirmationPopup : Popup
         {
             BackgroundColor = background,
             StrokeThickness = 0,
-            StrokeShape = new RoundRectangle { CornerRadius = 12 },
+            StrokeShape = new RoundRectangle { CornerRadius = 4 },
             Padding = new Thickness(14, 12),
             Content = label
         };

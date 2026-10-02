@@ -16,8 +16,8 @@ public class LoadingPopup : Popup
         var border = new Border
         {
             StrokeThickness = 0,
-            BackgroundColor = Color.FromArgb("#1B2036"),
-            StrokeShape = new RoundRectangle { CornerRadius = 12 },
+            BackgroundColor = Color.FromArgb("#171C21"),
+            StrokeShape = new RoundRectangle { CornerRadius = 4 },
             Padding = 24,
             HorizontalOptions = LayoutOptions.Center,
             VerticalOptions = LayoutOptions.Center,
@@ -29,7 +29,7 @@ public class LoadingPopup : Popup
                     new ActivityIndicator
                     {
                         IsRunning = true,
-                        Color = Color.FromArgb("#4A5CFF"),
+                        Color = Color.FromArgb("#536D81"),
                         WidthRequest = 48,
                         HeightRequest = 48,
                         HorizontalOptions = LayoutOptions.Center

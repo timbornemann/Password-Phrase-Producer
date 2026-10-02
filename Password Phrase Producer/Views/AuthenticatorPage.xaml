@@ -9,9 +9,9 @@
 
     <ContentPage.Background>
         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#101018" Offset="0" />
-            <GradientStop Color="#141426" Offset="0.6" />
-            <GradientStop Color="#0F111A" Offset="1" />
+            <GradientStop Color="{StaticResource BackgroundDark1}" Offset="0" />
+            <GradientStop Color="{StaticResource BackgroundDark2}" Offset="0.6" />
+            <GradientStop Color="{StaticResource BackgroundDark3}" Offset="1" />
         </LinearGradientBrush>
     </ContentPage.Background>
 
@@ -31,17 +31,14 @@
 
                 <!-- Menu Button -->
                 <Border
-                    WidthRequest="34"
-                    HeightRequest="34"
-                    BackgroundColor="#1F2338"
+                    WidthRequest="40"
+                    HeightRequest="40"
+                    BackgroundColor="Transparent"
                     StrokeThickness="0"
                     VerticalOptions="Center">
                     <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="10" />
+                        <RoundRectangle CornerRadius="4" />
                     </Border.StrokeShape>
-                    <Border.Shadow>
-                        <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
-                    </Border.Shadow>
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnOpenMenuTapped" />
                     </Border.GestureRecognizers>
@@ -53,28 +50,22 @@
                         VerticalOptions="Center" />
                 </Border>
 
-                <Label
-                    Grid.Column="1"
-                    Text="Authenticator"
-                    FontSize="18"
-                    FontAttributes="Bold"
-                    VerticalOptions="Center"
-                    TextColor="White" />
+                <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                    <Label Text="Authenticator" FontSize="18" FontAttributes="Bold"
+                           TextColor="{StaticResource TextPrimary}" />
+                </VerticalStackLayout>
 
                 <!-- Add Button -->
                 <Border
                     Grid.Column="2"
-                    WidthRequest="34"
-                    HeightRequest="34"
-                    BackgroundColor="#4A5CFF"
+                    WidthRequest="40"
+                    HeightRequest="40"
+                    BackgroundColor="{StaticResource BrandPrimary}"
                     StrokeThickness="0"
                     VerticalOptions="Center">
                     <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="10" />
+                        <RoundRectangle CornerRadius="4" />
                     </Border.StrokeShape>
-                    <Border.Shadow>
-                        <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
-                    </Border.Shadow>
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Command="{Binding AddEntryCommand}" />
                     </Border.GestureRecognizers>
@@ -89,18 +80,15 @@
                 <!-- Back Button -->
                 <Border
                     Grid.Column="3"
-                    WidthRequest="34"
-                    HeightRequest="34"
-                    BackgroundColor="#1F2338"
+                    WidthRequest="40"
+                    HeightRequest="40"
+                    BackgroundColor="Transparent"
                     StrokeThickness="0"
                     HorizontalOptions="End"
                     VerticalOptions="Center">
                     <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="10" />
+                        <RoundRectangle CornerRadius="4" />
                     </Border.StrokeShape>
-                    <Border.Shadow>
-                        <Shadow Brush="#25000000" Radius="6" Offset="0,3" />
-                    </Border.Shadow>
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnBackTapped" />
                     </Border.GestureRecognizers>
@@ -120,7 +108,7 @@
             Grid.Row="1"
             Command="{Binding RefreshCommand}"
             IsRefreshing="{Binding IsBusy}"
-            RefreshColor="#4A5CFF">
+            RefreshColor="{StaticResource BrandPrimary}">
             <ScrollView VerticalScrollBarVisibility="Never">
                 <VerticalStackLayout Spacing="12" BindableLayout.ItemsSource="{Binding Entries}">
                     <BindableLayout.EmptyView>
@@ -132,16 +120,16 @@
                             <Border
                                 WidthRequest="52"
                                 HeightRequest="52"
-                                BackgroundColor="#1F2338"
+                                BackgroundColor="{StaticResource BackgroundInput}"
                                 StrokeThickness="0">
                                 <Border.StrokeShape>
-                                    <RoundRectangle CornerRadius="16" />
+                                    <RoundRectangle CornerRadius="6" />
                                 </Border.StrokeShape>
                                 <Label
                                     Text="A"
                                     FontSize="22"
                                     FontAttributes="Bold"
-                                    TextColor="#CFD3FF"
+                                    TextColor="{StaticResource TextSecondary}"
                                     HorizontalOptions="Center"
                                     VerticalOptions="Center" />
                             </Border>
@@ -150,20 +138,20 @@
                                 FontSize="14"
                                 FontAttributes="Bold"
                                 HorizontalTextAlignment="Center"
-                                TextColor="#E8EBFF" />
+                                TextColor="{StaticResource TextSecondary}" />
                             <Label
                                 Text="Füge deinen ersten 2FA-Eintrag hinzu."
                                 FontSize="12"
                                 HorizontalTextAlignment="Center"
-                                TextColor="#9EA3C4" />
+                                TextColor="{StaticResource TextTertiary}" />
                             <Button
                                 Text="Eintrag hinzufügen"
                                 Command="{Binding AddEntryCommand}"
-                                BackgroundColor="#1F2338"
-                                TextColor="#E8EBFF"
-                                BorderColor="#4A5CFF"
+                                BackgroundColor="{StaticResource BackgroundInput}"
+                                TextColor="{StaticResource TextSecondary}"
+                                BorderColor="{StaticResource BrandPrimary}"
                                 BorderWidth="1"
-                                CornerRadius="10"
+                                CornerRadius="4"
                                 HeightRequest="40"
                                 Padding="14,6"
                                 FontSize="12"
@@ -175,19 +163,16 @@
                             <Grid>
                             <Border
                                 Padding="12"
-                                StrokeThickness="0"
-                                BackgroundColor="#1B2036">
+                                StrokeThickness="1"
+                                BackgroundColor="{StaticResource BackgroundCard}" Stroke="{StaticResource BorderDefaultBrush}">
                                 <Border.StrokeShape>
-                                    <RoundRectangle CornerRadius="14" />
+                                    <RoundRectangle CornerRadius="5" />
                                 </Border.StrokeShape>
-                                <Border.Shadow>
-                                    <Shadow Brush="#25000000" Radius="10" Offset="0,4" />
-                                </Border.Shadow>
                                 <Border.Triggers>
                                     <DataTrigger TargetType="Border" Binding="{Binding IsCopyFeedbackActive}" Value="True">
-                                        <Setter Property="BackgroundColor" Value="#1F2338" />
+                                        <Setter Property="BackgroundColor" Value="#20272E" />
                                         <Setter Property="StrokeThickness" Value="1" />
-                                        <Setter Property="Stroke" Value="#4A5CFF" />
+                                        <Setter Property="Stroke" Value="#536D81" />
                                     </DataTrigger>
                                 </Border.Triggers>
     
@@ -208,7 +193,7 @@
                                         <Label
                                             Text="{Binding AccountName}"
                                             FontSize="12"
-                                            TextColor="#9EA3C4"
+                                            TextColor="{StaticResource TextTertiary}"
                                             LineBreakMode="TailTruncation" />
                                     </VerticalStackLayout>
     
@@ -222,15 +207,15 @@
                                         <Border
                                             WidthRequest="30"
                                             HeightRequest="30"
-                                            BackgroundColor="#2A2F4A"
+                                            BackgroundColor="{StaticResource BorderDefault}"
                                             StrokeThickness="0"
                                             VerticalOptions="Center">
                                             <Border.StrokeShape>
-                                                <RoundRectangle CornerRadius="8" />
+                                                <RoundRectangle CornerRadius="3" />
                                             </Border.StrokeShape>
                                             <Border.Triggers>
                                                 <DataTrigger TargetType="Border" Binding="{Binding IsCopyFeedbackActive}" Value="True">
-                                                    <Setter Property="BackgroundColor" Value="#4A5CFF" />
+                                                    <Setter Property="BackgroundColor" Value="#536D81" />
                                                 </DataTrigger>
                                             </Border.Triggers>
                                             <Border.GestureRecognizers>
@@ -248,11 +233,11 @@
                                         <Border
                                             WidthRequest="30"
                                             HeightRequest="30"
-                                            BackgroundColor="#3B2232"
+                                            BackgroundColor="{StaticResource IconButtonDestructive}"
                                             StrokeThickness="0"
                                             VerticalOptions="Center">
                                             <Border.StrokeShape>
-                                                <RoundRectangle CornerRadius="8" />
+                                                <RoundRectangle CornerRadius="3" />
                                             </Border.StrokeShape>
                                             <Border.GestureRecognizers>
                                                 <TapGestureRecognizer
@@ -289,7 +274,7 @@
                                             Grid.Row="0"
                                             Text="{Binding RemainingSeconds}"
                                             HorizontalOptions="Center"
-                                            TextColor="#5A6080"
+                                            TextColor="{StaticResource TextDisabled}"
                                             FontSize="12"
                                             ZIndex="10"
                                             Margin="0,0,0,2" />
@@ -302,10 +287,10 @@
                                             Padding="0">
                                             <ProgressBar
                                                 Progress="{Binding Progress}"
-                                                ProgressColor="#4A5CFF"
+                                                ProgressColor="{StaticResource BrandPrimary}"
                                                 ScaleY="4"
                                                 WidthRequest="44"
-                                                BackgroundColor="#2A2F4A"
+                                                BackgroundColor="{StaticResource BorderDefault}"
                                                 VerticalOptions="Center"
                                                 HorizontalOptions="Center" />
                                         </Border>

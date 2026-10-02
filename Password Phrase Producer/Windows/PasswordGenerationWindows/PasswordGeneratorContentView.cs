@@ -65,8 +65,8 @@ public abstract class PasswordGeneratorContentView : ContentView, IPasswordResul
     /// </summary>
     protected static async Task AnimateCopyButton(Button button)
     {
-        var originalColor = button.BackgroundColor ?? Color.FromArgb("#4A5CFF");
-        var highlightColor = Color.FromArgb("#6B7DFF");
+        var originalColor = button.BackgroundColor ?? Color.FromArgb("#536D81");
+        var highlightColor = Color.FromArgb("#A9BBC9");
 
         // Cancel any existing animations
         button.AbortAnimation("CopyButtonAnimation1");

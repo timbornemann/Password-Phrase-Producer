@@ -19,12 +19,12 @@ internal static class ReleaseNotesMarkdown
         .Build();
 
     private static readonly Color TextPrimary = Colors.White;
-    private static readonly Color TextSecondary = Color.FromArgb("#E8EBFF");
-    private static readonly Color TextTertiary = Color.FromArgb("#9EA3C4");
-    private static readonly Color LinkColor = Color.FromArgb("#9AABFF");
-    private static readonly Color CodeBackground = Color.FromArgb("#262D4A");
-    private static readonly Color QuoteBackground = Color.FromArgb("#222846");
-    private static readonly Color RuleColor = Color.FromArgb("#3A4068");
+    private static readonly Color TextSecondary = Color.FromArgb("#DDE2E6");
+    private static readonly Color TextTertiary = Color.FromArgb("#9EAAB5");
+    private static readonly Color LinkColor = Color.FromArgb("#A9BBC9");
+    private static readonly Color CodeBackground = Color.FromArgb("#2B343D");
+    private static readonly Color QuoteBackground = Color.FromArgb("#2B343D");
+    private static readonly Color RuleColor = Color.FromArgb("#313B44");
 
     private readonly record struct InlineStyle(FontAttributes Attributes, TextDecorations Decorations, Color Color, double FontSize);
 
@@ -158,7 +158,7 @@ internal static class ReleaseNotesMarkdown
         {
             BackgroundColor = QuoteBackground,
             StrokeThickness = 0,
-            StrokeShape = new RoundRectangle { CornerRadius = 8 },
+            StrokeShape = new RoundRectangle { CornerRadius = 3 },
             Padding = new Thickness(12, 8),
             Content = stack
         };
@@ -190,7 +190,7 @@ internal static class ReleaseNotesMarkdown
         {
             BackgroundColor = CodeBackground,
             StrokeThickness = 0,
-            StrokeShape = new RoundRectangle { CornerRadius = 8 },
+            StrokeShape = new RoundRectangle { CornerRadius = 3 },
             Padding = new Thickness(10, 8),
             Content = stack
         };
@@ -247,7 +247,7 @@ internal static class ReleaseNotesMarkdown
         {
             BackgroundColor = CodeBackground,
             StrokeThickness = 0,
-            StrokeShape = new RoundRectangle { CornerRadius = 8 },
+            StrokeShape = new RoundRectangle { CornerRadius = 3 },
             Padding = new Thickness(10, 8),
             Content = grid
         };

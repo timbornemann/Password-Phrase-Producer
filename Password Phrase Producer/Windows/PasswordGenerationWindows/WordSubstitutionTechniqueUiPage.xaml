@@ -3,80 +3,65 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:controls="clr-namespace:Password_Phrase_Producer.Windows.PasswordGenerationWindows.Controls"
              xmlns:local="clr-namespace:Password_Phrase_Producer.Windows.PasswordGenerationWindows"
+             xmlns:fields="clr-namespace:Password_Phrase_Producer.Views.Controls"
              x:Class="Password_Phrase_Producer.Windows.PasswordGenerationWindows.WordSubstitutionTechniqueUiPage">
     <VerticalStackLayout Spacing="16">
-        <Border StrokeThickness="0"
-                Padding="14"
-                BackgroundColor="#1B2036">
-            <Border.StrokeShape>
-                <RoundRectangle CornerRadius="16" />
-            </Border.StrokeShape>
-            <VerticalStackLayout Spacing="10">
-                <Label Text="Eingabe"
-                       FontSize="15"
-                       FontAttributes="Bold"
-                       TextColor="White"/>
-                <Label Text="Gib einen Text ein, der durch Leet-Speak und Symbolersetzung transformiert wird."
-                       TextColor="#9EA3C4"
+        <VerticalStackLayout Spacing="10">
+            <Label Text="Eingabe"
+                   FontSize="15"
+                   FontAttributes="Bold"
+                   TextColor="White"/>
+            <fields:FramedEntry x:Name="passwordEntry"
+                   Placeholder="Eingabetext"
+                   Style="{StaticResource DarkEntryStyle}" />
+            <Label Text="Transformationsoptionen"
+                   FontSize="13"
+                   FontAttributes="Bold"
+                   TextColor="White"
+                   Margin="0,6,0,0"/>
+            <HorizontalStackLayout Spacing="6">
+                <CheckBox x:Name="leetSpeakCheckBox"
+                          IsChecked="True" />
+                <Label Text="Leet-Speak aktivieren (a→4, e→3, etc.)"
                        FontSize="12"
-                       LineBreakMode="WordWrap"/>
-                <Entry x:Name="passwordEntry"
-                       Placeholder="Eingabetext"
-                       Style="{StaticResource DarkEntryStyle}" />
-                <Label Text="Transformationsoptionen"
-                       FontSize="13"
-                       FontAttributes="Bold"
-                       TextColor="White"
-                       Margin="0,6,0,0"/>
-                <HorizontalStackLayout Spacing="6">
-                    <CheckBox x:Name="leetSpeakCheckBox"
-                              IsChecked="True" />
-                    <Label Text="Leet-Speak aktivieren (a→4, e→3, etc.)"
-                           FontSize="12"
-                           VerticalOptions="Center"
-                           TextColor="White" />
-                </HorizontalStackLayout>
-                <HorizontalStackLayout Spacing="6">
-                    <CheckBox x:Name="symbolSubstitutionCheckBox"
-                              IsChecked="True" />
-                    <Label Text="Wortersetzung aktivieren (and→&amp;, at→@, etc.)"
-                           FontSize="12"
-                           VerticalOptions="Center"
-                           TextColor="White" />
-                </HorizontalStackLayout>
-            </VerticalStackLayout>
-        </Border>
+                       VerticalOptions="Center"
+                       TextColor="White" />
+            </HorizontalStackLayout>
+            <HorizontalStackLayout Spacing="6">
+                <CheckBox x:Name="symbolSubstitutionCheckBox"
+                          IsChecked="True" />
+                <Label Text="Wortersetzung aktivieren (and→&amp;, at→@, etc.)"
+                       FontSize="12"
+                       VerticalOptions="Center"
+                       TextColor="White" />
+            </HorizontalStackLayout>
+        </VerticalStackLayout>
 
-        <Border StrokeThickness="0"
-                Padding="14"
-                BackgroundColor="#1B2036">
-            <Border.StrokeShape>
-                <RoundRectangle CornerRadius="16" />
-            </Border.StrokeShape>
-            <VerticalStackLayout Spacing="12">
-                <Label Text="Transformiertes Ergebnis"
-                       FontSize="15"
-                       FontAttributes="Bold"
-                       TextColor="White"/>
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                    <Entry x:Name="resultEntry"
-                           Placeholder="Transformierte Ausgabe"
-                           Style="{StaticResource DarkEntryStyle}"
-                           IsReadOnly="True" />
-                    <Button Grid.Column="1"
-                            Text="Kopieren"
-                            Style="{StaticResource PrimaryActionButtonStyle}"
-                            Clicked="OnCopyClicked"
-                            HorizontalOptions="End" />
-                </Grid>
-                <Button Text="Transformieren"
-                        Style="{StaticResource PrimaryActionButtonStyle}"
-                        Clicked="OnCreateClicked" />
-                <ContentView x:Name="addToVaultHost"
-                             IsVisible="False" />
-                <controls:PasswordAnalysisPanel x:Name="analysisPanel"
-                                                 IsVisible="False" />
-            </VerticalStackLayout>
-        </Border>
+        <BoxView HeightRequest="1" Color="{StaticResource BorderSubtle}" />
+
+        <VerticalStackLayout Spacing="12">
+            <Label Text="Ergebnis"
+                   FontSize="15"
+                   FontAttributes="Bold"
+                   TextColor="White"/>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <fields:FramedEntry x:Name="resultEntry"
+                       Placeholder="Transformierte Ausgabe"
+                       Style="{StaticResource DarkEntryStyle}"
+                       IsReadOnly="True" />
+                <Button Grid.Column="1"
+                        Text="Kopieren"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Clicked="OnCopyClicked"
+                        HorizontalOptions="End" />
+            </Grid>
+            <Button Text="Transformieren"
+                    Style="{StaticResource PrimaryActionButtonStyle}"
+                    Clicked="OnCreateClicked" />
+            <ContentView x:Name="addToVaultHost"
+                         IsVisible="False" />
+            <controls:PasswordAnalysisPanel x:Name="analysisPanel"
+                                             IsVisible="False" />
+        </VerticalStackLayout>
     </VerticalStackLayout>
 </local:PasswordGeneratorContentView>
