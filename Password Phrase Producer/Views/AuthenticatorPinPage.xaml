@@ -74,7 +74,7 @@
                         HeightRequest="40"
                         Margin="0,3"
                         HorizontalOptions="Fill"
-                        ReturnType="Done"
+                        ReturnType="Go"
                         Completed="OnPinEntered" />
                     <Entry
                         x:Name="ConfirmPinEntry"
@@ -87,7 +87,7 @@
                         HeightRequest="40"
                         Margin="0,3"
                         HorizontalOptions="Fill"
-                        ReturnType="Done"
+                        ReturnType="Go"
                         Completed="OnConfirmPinEntered" />
 
                     <Grid x:Name="BiometricSetupRow" ColumnDefinitions="Auto,*" IsVisible="False">

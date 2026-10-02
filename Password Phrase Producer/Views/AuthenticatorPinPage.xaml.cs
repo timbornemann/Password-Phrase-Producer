@@ -280,19 +280,22 @@ public partial class AuthenticatorPinPage : ContentPage
 
     private void OnPinEntered(object sender, EventArgs e)
     {
-        if (_isSetupMode)
+        if (_isBusy || !UnlockButton.IsEnabled) return;
+
+        if (_isSetupMode && string.IsNullOrEmpty(ConfirmPinEntry.Text))
         {
             ConfirmPinEntry.Focus();
         }
         else
         {
-            OnUnlockClicked(sender, e);
+            OnUnlockClicked(UnlockButton, EventArgs.Empty);
         }
     }
 
     private void OnConfirmPinEntered(object sender, EventArgs e)
     {
-        OnUnlockClicked(sender, e);
+        if (_isBusy || !UnlockButton.IsEnabled) return;
+        OnUnlockClicked(UnlockButton, EventArgs.Empty);
     }
 
     private void ShowError(string message)

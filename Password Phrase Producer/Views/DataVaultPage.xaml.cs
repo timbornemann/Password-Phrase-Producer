@@ -38,6 +38,30 @@ public partial class DataVaultPage : ContentPage
         _recoveryQuestions = recoveryQuestions;
     }
 
+    private void OnVaultPasswordCompleted(object? sender, EventArgs e)
+    {
+        if (_viewModel.IsNewVault && string.IsNullOrEmpty(ConfirmPasswordEntry.Text))
+        {
+            ConfirmPasswordEntry.Focus();
+            return;
+        }
+
+        SubmitPasswordFromKeyboard();
+    }
+
+    private void OnConfirmPasswordCompleted(object? sender, EventArgs e)
+        => SubmitPasswordFromKeyboard();
+
+    private void SubmitPasswordFromKeyboard()
+    {
+        if (!UnlockButton.IsEnabled) return;
+
+        _viewModel.Password = VaultPasswordEntry.Text ?? string.Empty;
+        _viewModel.ConfirmPassword = ConfirmPasswordEntry.Text ?? string.Empty;
+        if (_viewModel.UnlockCommand.CanExecute(null))
+            _viewModel.UnlockCommand.Execute(null);
+    }
+
     protected override async void OnAppearing()
     {
         base.OnAppearing();

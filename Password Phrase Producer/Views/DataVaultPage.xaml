@@ -625,6 +625,8 @@
                         <Entry x:Name="VaultPasswordEntry"
                             Text="{Binding Password}"
                             IsPassword="True"
+                            ReturnType="Go"
+                            Completed="OnVaultPasswordCompleted"
                             Placeholder="Master-Passwort"
                             PlaceholderColor="{StaticResource TextMuted}"
                             TextColor="White"
@@ -632,10 +634,12 @@
                             HeightRequest="40"
                             Margin="0,3"
                             HorizontalOptions="Fill" />
-                        <Entry
+                        <Entry x:Name="ConfirmPasswordEntry"
                             Text="{Binding ConfirmPassword}"
                             IsVisible="{Binding IsNewVault}"
                             IsPassword="True"
+                            ReturnType="Go"
+                            Completed="OnConfirmPasswordCompleted"
                             Placeholder="Passwort bestätigen"
                             PlaceholderColor="{StaticResource TextMuted}"
                             TextColor="White"
