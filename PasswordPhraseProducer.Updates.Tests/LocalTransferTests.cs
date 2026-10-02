@@ -43,6 +43,12 @@ public sealed class LocalTransferTests
     }
 
     [Fact]
+    public void TlsTargetHostIsAValidDnsNameForAndroidSni()
+    {
+        Assert.Equal(UriHostNameType.Dns, Uri.CheckHostName(LocalTransferProtocol.TlsHostName));
+    }
+
+    [Fact]
     public void QrCodeRoundTripsAndRejectsNonPrivateAddresses()
     {
         var phrase = AdaptiveDicewareTechnique.GenerateSessionPhrase();
@@ -135,6 +141,37 @@ public sealed class LocalTransferTests
         await using var expired = LocalTransferProtocol.StartSend(address, phrase, CreateEmptyBackup(phrase),
             () => Task.FromResult(true), lifetime: TimeSpan.FromMilliseconds(80));
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => expired.Completion);
+    }
+
+    [Fact]
+    public async Task BrokenTlsHandshakesDoNotUseUpPasswordAttempts()
+    {
+        var address = LocalTransferAddresses.Find().FirstOrDefault();
+        Assert.NotNull(address);
+        var phrase = AdaptiveDicewareTechnique.GenerateSessionPhrase();
+        var expected = CreateEmptyBackup(phrase);
+        await using var sender = LocalTransferProtocol.StartSend(address, phrase, expected.ToArray(),
+            () => Task.FromResult(true));
+
+        for (var index = 0; index < 4; index++)
+        {
+            using var client = new TcpClient(AddressFamily.InterNetwork);
+            await client.ConnectAsync(address, sender.Ticket.Port);
+            var stream = client.GetStream();
+            await stream.WriteAsync("not tls"u8.ToArray());
+            client.Client.Shutdown(SocketShutdown.Send);
+            var buffer = new byte[256];
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            try
+            {
+                while (await stream.ReadAsync(buffer, timeout.Token) > 0) { }
+            }
+            catch (IOException) { /* A TLS alert may reset the plaintext socket. */ }
+        }
+
+        var received = await LocalTransferProtocol.ReceiveAsync(sender.Ticket);
+        await sender.Completion;
+        Assert.Equal(expected, received);
     }
 
     [Fact]

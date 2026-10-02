@@ -12,6 +12,9 @@ namespace Password_Phrase_Producer.Services.LocalTransfer;
 
 internal static class LocalTransferProtocol
 {
+    // SslStream uses TargetHost as the SNI host on Android. It must be a valid DNS
+    // name even though the TCP connection itself goes directly to the LAN address.
+    internal const string TlsHostName = "local-vault-transfer.invalid";
     private static readonly byte[] Magic = "PPP-LAN-1"u8.ToArray();
     private const int ProofLength = 32;
     private const int NonceLength = 32;
@@ -39,7 +42,14 @@ internal static class LocalTransferProtocol
         try
         {
             using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-            var request = new CertificateRequest("CN=Local Vault Transfer", key, HashAlgorithmName.SHA256);
+            var request = new CertificateRequest($"CN={TlsHostName}", key, HashAlgorithmName.SHA256);
+            var names = new SubjectAlternativeNameBuilder();
+            names.AddDnsName(TlsHostName);
+            request.CertificateExtensions.Add(names.Build());
+            request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
+            request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, true));
+            request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(
+                new OidCollection { new Oid("1.3.6.1.5.5.7.3.1") }, true));
             using var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-1),
                 DateTimeOffset.UtcNow.AddMinutes(10));
             var session = new LocalSendSession(listener, normalized, backup, approve,
@@ -80,12 +90,19 @@ internal static class LocalTransferProtocol
         using (var handshake = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token))
         {
             handshake.CancelAfter(ConnectionTimeout);
-            await tls.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
+            try
             {
-                TargetHost = "Local Vault Transfer",
-                EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
-                CertificateRevocationCheckMode = X509RevocationMode.NoCheck
-            }, handshake.Token).ConfigureAwait(false);
+                await tls.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
+                {
+                    TargetHost = TlsHostName,
+                    EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+                    CertificateRevocationCheckMode = X509RevocationMode.NoCheck
+                }, handshake.Token).ConfigureAwait(false);
+            }
+            catch (AuthenticationException ex)
+            {
+                throw new AuthenticationException("Die verschlüsselte Verbindung zum Sender konnte nicht aufgebaut werden.", ex);
+            }
         }
         if (certificateHash is null) throw new AuthenticationException("TLS-Zertifikat fehlt.");
 
@@ -210,9 +227,11 @@ internal static class LocalTransferProtocol
                     using (var attempt = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token))
                     {
                         attempt.CancelAfter(ConnectionTimeout);
+                        var challengeSent = false;
                         try
                         {
-                            if (await SendToClientAsync(client, attempt.Token).ConfigureAwait(false))
+                            if (await SendToClientAsync(client, attempt.Token, () => challengeSent = true)
+                                    .ConfigureAwait(false))
                                 return;
                             failures++;
                         }
@@ -220,7 +239,9 @@ internal static class LocalTransferProtocol
                             OperationCanceledException or SocketException)
                         {
                             if (_lifetime.IsCancellationRequested) break;
-                            failures++;
+                            // A TLS handshake failure is not a wrong session code.
+                            // Count only connections that received our HMAC challenge.
+                            if (challengeSent) failures++;
                         }
                     }
                 }
@@ -234,7 +255,8 @@ internal static class LocalTransferProtocol
             }
         }
 
-        private async Task<bool> SendToClientAsync(TcpClient client, CancellationToken token)
+        private async Task<bool> SendToClientAsync(TcpClient client, CancellationToken token,
+            Action challengeSent)
         {
             using var tls = new SslStream(client.GetStream(), false);
             await tls.AuthenticateAsServerAsync(new SslServerAuthenticationOptions
@@ -259,6 +281,7 @@ internal static class LocalTransferProtocol
                     .CopyTo(header, offset);
                 await tls.WriteAsync(header, token).ConfigureAwait(false);
                 await tls.FlushAsync(token).ConfigureAwait(false);
+                challengeSent();
 
                 var clientMessage = new byte[NonceLength + ProofLength];
                 await tls.ReadExactlyAsync(clientMessage, token).ConfigureAwait(false);
