@@ -7,6 +7,7 @@ using Password_Phrase_Producer.Services.Security;
 using Password_Phrase_Producer.Services.Vault;
 using Password_Phrase_Producer.Views.Security;
 using Password_Phrase_Producer.Services.Updates;
+using Password_Phrase_Producer.Services.LocalTransfer;
 using PasswordPhraseProducer.Updates;
 
 namespace Password_Phrase_Producer
@@ -17,11 +18,13 @@ namespace Password_Phrase_Producer
         private readonly IAppLockService _appLockService;
         private bool _storageChecked;
 
-        public App(IServiceProvider serviceProvider, IAppLockService appLockService, IUnlockAttemptGate attemptGate)
+        public App(IServiceProvider serviceProvider, IAppLockService appLockService, IUnlockAttemptGate attemptGate,
+            LocalTransferActivity localTransferActivity)
         {
             InitializeComponent();
             _serviceProvider = serviceProvider;
             _appLockService = appLockService;
+            _appLockService.Locked += localTransferActivity.CancelAll;
             attemptGate.LockedOut += access =>
             {
                 if (access != ProtectedAccess.App) return;

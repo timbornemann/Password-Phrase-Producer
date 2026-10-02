@@ -113,6 +113,7 @@ public static class MauiProgram
         builder.Services.AddTransient<AddEntryPage>();
 
         builder.Services.AddSingleton<Services.Security.IAppLockService, Services.Security.AppLockService>();
+        builder.Services.AddSingleton<Services.LocalTransfer.LocalTransferActivity>();
         builder.Services.AddSingleton<Services.Storage.ISecureFileService, Services.Storage.SecureFileService>();
         builder.Services.AddSingleton<ISynchronizationService, SynchronizationService>();
 

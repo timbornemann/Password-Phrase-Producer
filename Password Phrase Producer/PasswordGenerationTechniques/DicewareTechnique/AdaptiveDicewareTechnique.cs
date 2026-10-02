@@ -2,12 +2,34 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 
 namespace Password_Phrase_Producer.PasswordGenerationTechniques.DicewareTechnique
 {
     internal class AdaptiveDicewareTechnique : IDicewareTechnique
     {
         private static readonly string[] WordList = LoadWordList();
+        private static readonly HashSet<string> SessionWordSet = new(WordList, StringComparer.Ordinal);
+
+        internal static string GenerateSessionPhrase()
+        {
+            var words = new string[6];
+            for (var index = 0; index < words.Length; index++)
+                words[index] = WordList[RandomNumberGenerator.GetInt32(WordList.Length)];
+            return string.Join(' ', words);
+        }
+
+        internal static bool TryNormalizeSessionPhrase(string? value, out string phrase)
+        {
+            phrase = string.Empty;
+            if (string.IsNullOrWhiteSpace(value) || value.Length > 256) return false;
+            var words = value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(word => word.ToLowerInvariant())
+                .ToArray();
+            if (words.Length != 6 || words.Any(word => !SessionWordSet.Contains(word))) return false;
+            phrase = string.Join(' ', words);
+            return true;
+        }
 
         private static string[] LoadWordList()
         {

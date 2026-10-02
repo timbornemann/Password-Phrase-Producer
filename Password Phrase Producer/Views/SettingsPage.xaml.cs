@@ -7,9 +7,14 @@ using CommunityToolkit.Maui.Views;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
+using Microsoft.Maui.Devices;
 using Password_Phrase_Producer.ViewModels;
 using Password_Phrase_Producer.Views.Dialogs;
 using Password_Phrase_Producer.Services.Security;
+using Password_Phrase_Producer.Services.LocalTransfer;
+using Password_Phrase_Producer.Services.Vault;
+using System.Security.Cryptography;
+using Password_Phrase_Producer.PasswordGenerationTechniques.DicewareTechnique;
 using Password_Phrase_Producer.Views.Security;
 
 namespace Password_Phrase_Producer.Views;
@@ -19,17 +24,32 @@ public partial class SettingsPage : ContentPage
     private readonly VaultSettingsViewModel _viewModel;
     private readonly IRecoveryQuestionsService _recoveryQuestions;
     private readonly IUnlockAttemptGate _attemptGate;
+    private readonly LocalTransferActivity _localTransferActivity;
+    private readonly IAppLockService _appLock;
+    private readonly PasswordVaultService _passwordVault;
+    private readonly DataVaultService _dataVault;
+    private readonly TotpEncryptionService _authenticator;
     private LoadingPage? _loadingPage;
     private bool _recoverySettingsBusy;
+    private bool _localTransferBusy;
 
     public SettingsPage(VaultSettingsViewModel viewModel, UpdateSettingsViewModel updates,
-        IRecoveryQuestionsService recoveryQuestions, IUnlockAttemptGate attemptGate)
+        IRecoveryQuestionsService recoveryQuestions, IUnlockAttemptGate attemptGate,
+        LocalTransferActivity localTransferActivity, IAppLockService appLock,
+        PasswordVaultService passwordVault, DataVaultService dataVault, TotpEncryptionService authenticator)
     {
         InitializeComponent();
         BindingContext = _viewModel = viewModel;
         UpdatePanel.BindingContext = updates;
         _recoveryQuestions = recoveryQuestions;
         _attemptGate = attemptGate;
+        _localTransferActivity = localTransferActivity;
+        _appLock = appLock;
+        _passwordVault = passwordVault;
+        _dataVault = dataVault;
+        _authenticator = authenticator;
+        LocalTransferSection.IsVisible = DeviceInfo.Platform == DevicePlatform.WinUI ||
+                                         DeviceInfo.Platform == DevicePlatform.Android;
         ShowSettingsCategory("security");
         ShowVaultPasswordCategory("password");
     }
@@ -258,6 +278,7 @@ public partial class SettingsPage : ContentPage
 
     private async Task<bool> EnsureAuthenticatorUnlockedAsync()
     {
+        if (_viewModel.IsAuthenticatorUnlocked) return true;
         if (!_viewModel.HasAuthenticatorPassword)
         {
             return true; // No password set, consider it unlocked
@@ -698,6 +719,173 @@ public partial class SettingsPage : ContentPage
             () => DisplayAlert("Älteres Gesamtbackup",
                 "Dieses Backup schützt die Liste seiner Tresore nicht gegen nachträgliches Entfernen. Importiere es nur, wenn du seiner Herkunft und Vollständigkeit vertraust.",
                 "Trotzdem importieren", "Abbrechen"));
+    }
+
+    private async void OnLocalSendClicked(object? sender, EventArgs e)
+    {
+        if (_localTransferBusy) return;
+        _localTransferBusy = true;
+        byte[]? backup = null;
+        var activity = _localTransferActivity.Begin();
+        try
+        {
+            if (!_appLock.IsUnlocked) throw new OperationCanceledException();
+            await _viewModel.InitializeAsync();
+            if (!_viewModel.IsPasswordVaultConfigured && !_viewModel.IsDataVaultConfigured &&
+                !_viewModel.HasAuthenticatorPassword)
+                throw new InvalidOperationException("Richte zuerst mindestens einen Tresor ein.");
+            var addresses = LocalTransferAddresses.Find();
+            if (addresses.Count == 0)
+                throw new InvalidOperationException("Keine private LAN-Adresse gefunden. Verbinde beide Geräte mit demselben Netzwerk.");
+            var selection = addresses.Count == 1 ? addresses[0].ToString() :
+                await DisplayActionSheet("LAN-Adresse wählen", "Abbrechen", null,
+                    addresses.Select(ip => ip.ToString()).ToArray());
+            if (selection is null || !System.Net.IPAddress.TryParse(selection, out var address)) return;
+
+            var wasPasswordLocked = !_viewModel.IsVaultUnlocked;
+            var wasDataLocked = !_viewModel.IsDataVaultUnlocked;
+            var wasAuthenticatorLocked = !_viewModel.IsAuthenticatorUnlocked;
+            var phrase = AdaptiveDicewareTechnique.GenerateSessionPhrase();
+            try
+            {
+                if (_viewModel.IsPasswordVaultConfigured && !await EnsureVaultUnlockedWithoutSyncAsync()) return;
+                if (_viewModel.IsDataVaultConfigured && !await EnsureDataVaultUnlockedWithoutSyncAsync()) return;
+                if (_viewModel.HasAuthenticatorPassword && !await EnsureAuthenticatorUnlockedAsync()) return;
+                activity.Token.ThrowIfCancellationRequested();
+                if (!_appLock.IsUnlocked) throw new OperationCanceledException();
+                await ShowLoadingPageAsync("Verschlüssele Gesamtbackup …");
+                try { backup = await Task.Run(() => _viewModel.CreateFullBackupAsync(phrase, activity.Token), activity.Token); }
+                finally { await HideLoadingPageAsync(); }
+            }
+            finally
+            {
+                if (wasPasswordLocked && _viewModel.IsVaultUnlocked) _viewModel.LockVault();
+                if (wasDataLocked && _viewModel.IsDataVaultUnlocked) _viewModel.LockDataVault();
+                if (wasAuthenticatorLocked && _viewModel.IsAuthenticatorUnlocked) _viewModel.LockAuthenticator();
+            }
+            activity.Token.ThrowIfCancellationRequested();
+            if (!_appLock.IsUnlocked) throw new OperationCanceledException();
+            var page = new LocalSendPage(address, phrase, backup!, _localTransferActivity);
+            await Navigation.PushModalAsync(page);
+            backup = null; // The page owns and erases the encrypted backup.
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { await DisplayAlert("Lokaler Transfer", ex.Message, "OK"); }
+        finally
+        {
+            if (backup is not null) CryptographicOperations.ZeroMemory(backup);
+            _localTransferActivity.End(activity);
+            _localTransferBusy = false;
+        }
+    }
+
+    private async void OnLocalReceiveClicked(object? sender, EventArgs e)
+    {
+        if (_localTransferBusy) return;
+        _localTransferBusy = true;
+        LocalReceivedBackup? received = null;
+        CancellationTokenSource? activity = null;
+        try
+        {
+            if (!_appLock.IsUnlocked) throw new OperationCanceledException();
+            await _viewModel.InitializeAsync();
+            var page = new LocalReceivePage(_localTransferActivity);
+            await Navigation.PushModalAsync(page);
+            received = await page.WaitForResultAsync();
+            if (received is null) return;
+            activity = _localTransferActivity.Begin();
+            activity.Token.ThrowIfCancellationRequested();
+            if (!_appLock.IsUnlocked) throw new OperationCanceledException();
+
+            LocalBackupContents contents;
+            await ShowLoadingPageAsync("Prüfe Gesamtbackup …");
+            try { contents = await Task.Run(() => LocalBackupVerifier.Verify(received.Bytes, received.Phrase), activity.Token); }
+            finally { await HideLoadingPageAsync(); }
+            activity.Token.ThrowIfCancellationRequested();
+            if (!await DisplayAlert("Tresore empfangen", $"Enthalten: {contents.Description}. Mit lokalen Daten zusammenführen?",
+                    "Weiter", "Abbrechen")) return;
+
+            // Gather and confirm every missing local password before configuring a store.
+            string? passwordMaster = contents.PasswordVault && !_viewModel.IsPasswordVaultConfigured
+                ? await PromptNewLocalMasterAsync("Passwort-Tresor", activity.Token) : null;
+            if (contents.PasswordVault && !_viewModel.IsPasswordVaultConfigured && passwordMaster is null) return;
+            string? dataMaster = contents.DataVault && !_viewModel.IsDataVaultConfigured
+                ? await PromptNewLocalMasterAsync("Datentresor", activity.Token) : null;
+            if (contents.DataVault && !_viewModel.IsDataVaultConfigured && dataMaster is null) return;
+            string? authenticatorMaster = contents.Authenticator && !_viewModel.HasAuthenticatorPassword
+                ? await PromptNewLocalMasterAsync("Authenticator", activity.Token) : null;
+            if (contents.Authenticator && !_viewModel.HasAuthenticatorPassword && authenticatorMaster is null) return;
+
+            var wasPasswordLocked = !_viewModel.IsVaultUnlocked;
+            var wasDataLocked = !_viewModel.IsDataVaultUnlocked;
+            var wasAuthenticatorLocked = !_viewModel.IsAuthenticatorUnlocked;
+            try
+            {
+                if (contents.PasswordVault && passwordMaster is null && !await EnsureVaultUnlockedWithoutSyncAsync()) return;
+                if (contents.DataVault && dataMaster is null && !await EnsureDataVaultUnlockedWithoutSyncAsync()) return;
+                if (contents.Authenticator && authenticatorMaster is null && !await EnsureAuthenticatorUnlockedAsync()) return;
+                activity.Token.ThrowIfCancellationRequested();
+                if (!_appLock.IsUnlocked) throw new OperationCanceledException();
+                if (!await DisplayAlert("Import bestätigen", "Tresore jetzt zusammenführen?", "Importieren", "Abbrechen"))
+                    return;
+                activity.Token.ThrowIfCancellationRequested();
+                if (!_appLock.IsUnlocked) throw new OperationCanceledException();
+
+                await ShowLoadingPageAsync("Importiere Tresore …");
+                try
+                {
+                    if (passwordMaster is not null)
+                        await _passwordVault.SetMasterPasswordAsync(passwordMaster, false, activity.Token);
+                    if (dataMaster is not null)
+                        await _dataVault.SetMasterPasswordAsync(dataMaster, false, activity.Token);
+                    if (authenticatorMaster is not null)
+                        await _authenticator.SetupPasswordAsync(authenticatorMaster);
+                    activity.Token.ThrowIfCancellationRequested();
+                    using var stream = new MemoryStream(received.Bytes, writable: false);
+                    if (!await _viewModel.RestoreFullBackupAsync(stream, received.Phrase,
+                            cancellationToken: activity.Token))
+                        throw new InvalidOperationException("Der Import wurde abgebrochen.");
+                    await _viewModel.RefreshVaultStateAsync();
+                    await _viewModel.RefreshDataVaultStateAsync();
+                }
+                finally { await HideLoadingPageAsync(); }
+            }
+            finally
+            {
+                if (wasPasswordLocked && _viewModel.IsVaultUnlocked) _viewModel.LockVault();
+                if (wasDataLocked && _viewModel.IsDataVaultUnlocked) _viewModel.LockDataVault();
+                if (wasAuthenticatorLocked && _viewModel.IsAuthenticatorUnlocked) _viewModel.LockAuthenticator();
+            }
+            activity.Token.ThrowIfCancellationRequested();
+            if (!_appLock.IsUnlocked) throw new OperationCanceledException();
+            await DisplayAlert("Lokaler Transfer", "Tresore wurden zusammengeführt.", "OK");
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { await DisplayAlert("Lokaler Transfer fehlgeschlagen", ex.Message, "OK"); }
+        finally
+        {
+            if (received is not null) CryptographicOperations.ZeroMemory(received.Bytes);
+            if (activity is not null) _localTransferActivity.End(activity);
+            _localTransferBusy = false;
+        }
+    }
+
+    private async Task<string?> PromptNewLocalMasterAsync(string vault, CancellationToken token)
+    {
+        while (true)
+        {
+            token.ThrowIfCancellationRequested();
+            var first = await DisplayPasswordPromptAsync($"{vault} einrichten",
+                "Neues lokales Master-Passwort (mindestens 15 Zeichen):", "Weiter", "Abbrechen");
+            if (first is null) return null;
+            try { NewPasswordPolicy.Validate(first, nameof(first)); }
+            catch (ArgumentException ex) { await DisplayAlert(vault, ex.Message, "OK"); continue; }
+            var repeated = await DisplayPasswordPromptAsync($"{vault} bestätigen",
+                "Neues lokales Master-Passwort wiederholen:", "Bestätigen", "Abbrechen");
+            if (repeated is null) return null;
+            if (string.Equals(first, repeated, StringComparison.Ordinal)) return first;
+            await DisplayAlert(vault, "Die Passwörter stimmen nicht überein.", "OK");
+        }
     }
 
     private async Task ImportDataVaultEncryptedAsync()

@@ -541,6 +541,23 @@
                 </Border>
                 </VerticalStackLayout>
                 <VerticalStackLayout x:Name="DataSettingsSection" Spacing="14" IsVisible="False">
+                <Border x:Name="LocalTransferSection"
+                    BackgroundColor="{StaticResource BackgroundCard}"
+                    Padding="14"
+                    StrokeThickness="1" Stroke="{StaticResource BorderDefaultBrush}">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="6" /></Border.StrokeShape>
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Lokaler Transfer" FontSize="16" FontAttributes="Bold" TextColor="White" />
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                            <Button Text="Senden" Clicked="OnLocalSendClicked"
+                                BackgroundColor="{StaticResource BrandPrimary}" TextColor="White"
+                                CornerRadius="4" Padding="10,8" />
+                            <Button Grid.Column="1" Text="Empfangen" Clicked="OnLocalReceiveClicked"
+                                BackgroundColor="{StaticResource BackgroundInput}" TextColor="White"
+                                CornerRadius="4" Padding="10,8" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
                 <Border
                     BackgroundColor="{StaticResource BackgroundCard}"
                     Padding="14"

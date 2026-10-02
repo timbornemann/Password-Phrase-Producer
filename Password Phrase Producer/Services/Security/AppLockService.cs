@@ -8,6 +8,7 @@ namespace Password_Phrase_Producer.Services.Security;
 public interface IAppLockService
 {
     bool IsUnlocked { get; }
+    event Action? Locked;
     Task<bool> IsConfiguredAsync();
     Task<bool> UnlockAsync(string password);
     Task<bool> VerifyPasswordAsync(string password);
@@ -38,6 +39,7 @@ public class AppLockService : IAppLockService
     private AppLockMetadata? _cachedMetadata;
 
     public bool IsUnlocked { get { lock (_keyStateLock) return _masterKey != null; } }
+    public event Action? Locked;
 
     public AppLockService(IBiometricAuthenticationService biometricService, IUnlockAttemptGate? attemptGate = null)
     {
@@ -465,6 +467,7 @@ public class AppLockService : IAppLockService
                 _masterKey = null;
             }
         }
+        Locked?.Invoke();
     }
 
     public byte[] GetMasterKey()
