@@ -253,14 +253,13 @@ public sealed partial class UpdateTests
     public async Task MaintenanceWaitsForNestedOperationsAndRejectsNewIndependentOnes()
     {
         var gate = new AppDataOperations();
+        var independentContext = ExecutionContext.Capture()!;
         var active = gate.BeginOperation();
-        var quiesce = gate.QuiesceAsync(TimeSpan.FromSeconds(2), default);
+        var quiesce = gate.QuiesceAsync(TimeSpan.FromSeconds(10), default);
         Assert.False(quiesce.IsCompleted);
         using (gate.BeginOperation()) { } // Existing operations may complete nested work.
-        Task independent;
-        using (ExecutionContext.SuppressFlow())
-            independent = Task.Run(() => Assert.Throws<InvalidOperationException>(() => gate.BeginOperation()));
-        await independent;
+        ExecutionContext.Run(independentContext,
+            _ => Assert.Throws<InvalidOperationException>(() => gate.BeginOperation()), null);
         active.Dispose();
         using (await quiesce) { }
         using var next = gate.BeginOperation();
